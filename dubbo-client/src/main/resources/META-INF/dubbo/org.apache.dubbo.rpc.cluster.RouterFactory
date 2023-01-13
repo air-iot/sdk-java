@@ -1,0 +1,1 @@
+nodeSelector=cn.airiot.sdk.client.dubbo.extension.router.NodeSelectorRouterFactory

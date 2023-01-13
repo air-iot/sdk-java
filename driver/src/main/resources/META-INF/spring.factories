@@ -1,0 +1,3 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  cn.airiot.sdk.driver.configuration.DriverAutoConfiguration
+org.springframework.boot.SpringApplicationRunListener=cn.airiot.sdk.driver.LoggerApplicationRunListener

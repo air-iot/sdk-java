@@ -1,0 +1,1 @@
+etcd=cn.airiot.sdk.client.dubbo.extension.registry.EtcdKratosRegistryFactory

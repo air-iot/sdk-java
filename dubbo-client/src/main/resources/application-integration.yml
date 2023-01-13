@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: sdk-client-dubbo
+dubbo:
+  application:
+    name: ${spring.application.name}
+    register-consumer: false
+  protocol:
+    name: grpc
+    port: -1
+  registry:
+    id: etcd
+    address: etcd://root:dell123@121.89.244.23:2379
+  client:
+    services:
+      default:
+        selectors:
+          - metadata:
+              env: aliyun
+
+logging:
+  level:
+    cn.airiot.sdk.client.dubbo: DEBUG
