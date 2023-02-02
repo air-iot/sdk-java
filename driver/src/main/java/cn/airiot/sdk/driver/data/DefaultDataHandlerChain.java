@@ -1,9 +1,10 @@
 package cn.airiot.sdk.driver.data;
 
 import cn.airiot.sdk.driver.data.handlers.RangeValueHandler;
+import cn.airiot.sdk.driver.data.handlers.TagValueHandler;
 import cn.airiot.sdk.driver.data.model.Field;
 import cn.airiot.sdk.driver.data.model.Point;
-import cn.airiot.sdk.driver.model.Tag;
+import cn.airiot.sdk.driver.data.model.Tag;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,6 +30,7 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
      * 注册
      */
     public void registerDefaultHandlers() {
+        this.handlers.add(new TagValueHandler());
         this.handlers.add(new RangeValueHandler());
     }
 
@@ -58,7 +60,7 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
         if (handlers.isEmpty()) {
             return point;
         }
-        
+
         String deviceId = point.getId();
         List<Field> finalFields = new ArrayList<>(point.getFields().size());
         for (Field field : point.getFields()) {

@@ -2,7 +2,7 @@ package cn.airiot.sdk.driver.data.impl;
 
 import cn.airiot.sdk.driver.GlobalContext;
 import cn.airiot.sdk.driver.configuration.properties.DriverAppProperties;
-import cn.airiot.sdk.driver.configuration.properties.DriverDataProperties;
+import cn.airiot.sdk.driver.configuration.properties.DriverMQProperties;
 import cn.airiot.sdk.driver.data.AbstractDataSender;
 import cn.airiot.sdk.driver.data.DataHandlerChain;
 import cn.airiot.sdk.driver.data.LogSenderException;
@@ -33,7 +33,7 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
     private final Logger log = LoggerFactory.getLogger(MQTTDataSender.class);
 
     private final DriverAppProperties driverAppProperties;
-    private final DriverDataProperties.Mqtt mqttProperties;
+    private final DriverMQProperties.Mqtt mqttProperties;
     private final int qos;
     private final AtomicBoolean running = new AtomicBoolean(false);
     /**
@@ -46,7 +46,7 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
 
     public MQTTDataSender(DataHandlerChain chain,
                           DriverAppProperties driverAppProperties,
-                          DriverDataProperties.Mqtt mqttProperties,
+                          DriverMQProperties.Mqtt mqttProperties,
                           GlobalContext globalContext,
                           DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
         super(driverAppProperties.getProjectId(), globalContext, chain, driverGrpcClient);
@@ -92,6 +92,7 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
         options.setCleanSession(true);
         options.setUserName(this.mqttProperties.getUsername());
         options.setPassword(this.mqttProperties.getPassword().toCharArray());
+        options.setMqttVersion(this.mqttProperties.getProtocolVersion());
 
         // 连接超时
         int connectTimeout = (int) this.mqttProperties.getConnectTimeout().getSeconds();

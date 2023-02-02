@@ -1,7 +1,7 @@
 package cn.airiot.sdk.driver.data;
 
 import cn.airiot.sdk.driver.data.model.Point;
-import cn.airiot.sdk.driver.model.Tag;
+import cn.airiot.sdk.driver.data.model.Tag;
 
 /**
  * 采集数据处理链

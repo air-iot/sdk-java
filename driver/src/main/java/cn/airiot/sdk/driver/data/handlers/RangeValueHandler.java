@@ -1,8 +1,8 @@
 package cn.airiot.sdk.driver.data.handlers;
 
 import cn.airiot.sdk.driver.data.DataHandler;
-import cn.airiot.sdk.driver.model.Range;
-import cn.airiot.sdk.driver.model.Tag;
+import cn.airiot.sdk.driver.data.model.Range;
+import cn.airiot.sdk.driver.data.model.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,7 +11,7 @@ public class RangeValueHandler implements DataHandler {
     private final Logger log = LoggerFactory.getLogger(RangeValueHandler.class);
 
     @Override
-    public boolean supports(String nodeId, Tag tag, Object value) {
+    public boolean supports(String deviceId, Tag tag, Object value) {
         boolean matched;
         String tagId = "";
         Range range = null;
@@ -20,7 +20,7 @@ public class RangeValueHandler implements DataHandler {
             range = tag.getRange();
         }
 
-        if (!DataHandler.super.supports(nodeId, tag, value) || tag == null) {
+        if (!DataHandler.super.supports(deviceId, tag, value) || tag == null) {
             matched = false;
         } else {
             matched = value instanceof Number
@@ -30,13 +30,13 @@ public class RangeValueHandler implements DataHandler {
 
         if (log.isDebugEnabled()) {
             log.debug("Range 数据处理器: Node[{}], Tag[{}], Range[{}], Value[{}], 匹配结果[{}]",
-                    nodeId, tagId, range, value, matched);
+                    deviceId, tagId, range, value, matched);
         }
         return matched;
     }
 
     @Override
-    public Object handle(String nodeId, Tag tag, Object value) {
+    public Object handle(String deviceId, Tag tag, Object value) {
         double val = ((Number) value).doubleValue();
         Range range = tag.getRange();
 
@@ -45,16 +45,16 @@ public class RangeValueHandler implements DataHandler {
 
         String tagId = tag.getId();
 
-        log.debug("Range 数据处理器: Node[{}], Tag[{}], Value[{}], 有效范围[{}]", nodeId, tagId, val, range);
+        log.debug("Range 数据处理器: Node[{}], Tag[{}], Value[{}], 有效范围[{}]", deviceId, tagId, val, range);
 
         if (val >= minValue && val <= maxValue) {
             log.debug("Range 数据处理器: Node[{}], Tag[{}], Value[{}], 在有效范围内[{} - {}], 无须处理",
-                    nodeId, tagId, val, minValue, maxValue);
+                    deviceId, tagId, val, minValue, maxValue);
             return val;
         }
 
         log.debug("Range 数据处理器: Node[{}], Tag[{}], Value[{}], 超出有效范围内[{} - {}]",
-                nodeId, tagId, val, minValue, maxValue);
+                deviceId, tagId, val, minValue, maxValue);
 
         switch (range.getActive()) {
             case "fixed":
@@ -65,18 +65,18 @@ public class RangeValueHandler implements DataHandler {
                 double fixedValue = range.getFixedValue().doubleValue();
 
                 log.debug("Range 数据处理器: Node[{}], Tag[{}], Value[{}], 转换为固定值[{}]",
-                        nodeId, tagId, val, fixedValue);
+                        deviceId, tagId, val, fixedValue);
 
                 return fixedValue;
             case "boundary":
                 double finalValue = minValue > val ? minValue : maxValue;
 
                 log.debug("Range 数据处理器: Node[{}], Tag[{}], Value[{}], 转换为边界值[{}]",
-                        nodeId, tagId, val, finalValue);
+                        deviceId, tagId, val, finalValue);
 
                 return finalValue;
             case "discard":
-                log.debug("Range 数据处理器: Node[{}], Tag[{}], Value[{}], 丢弃", nodeId, tagId, val);
+                log.debug("Range 数据处理器: Node[{}], Tag[{}], Value[{}], 丢弃", deviceId, tagId, val);
                 return null;
             default:
                 throw new IllegalArgumentException("未定义的有效范围动作: " + range.getActive());

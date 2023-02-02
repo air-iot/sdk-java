@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<archetype-descriptor xmlns="https://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.1.0"
+                      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                      xsi:schemaLocation="https://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.1.0 http://maven.apache.org/xsd/archetype-descriptor-1.1.0.xsd"
+                      name="airiot-sdk">
+
+    <requiredProperties>
+        <!-- springboot 版本 -->
+        <requiredProperty key="springBootVersion"/>
+        <!-- AIRIOT SDK 版本 -->
+        <requiredProperty key="sdkVersion"/>
+
+        <!-- 是否启 sdk 客户端功能, 如果为 true 则加载相关资源 -->
+        <requiredProperty key="enableClient">
+            <defaultValue>false</defaultValue>
+        </requiredProperty>
+
+        <!-- 驱动信息 -->
+        <requiredProperty key="driverId"/>
+        <requiredProperty key="driverName"/>
+    </requiredProperties>
+
+    <fileSets>
+        <fileSet filtered="true" packaged="true" encoding="UTF-8">
+            <directory>src/main/java</directory>
+            <includes>
+                <include>**/*.java</include>
+            </includes>
+        </fileSet>
+        <fileSet filtered="true" encoding="UTF-8">
+            <directory>src/main/resources</directory>
+            <includes>
+                <include>**/*.xml</include>
+                <include>**/*.properties</include>
+                <include>**/*.yml</include>
+                <include>**/*.yaml</include>
+            </includes>
+        </fileSet>
+        <fileSet filtered="true" packaged="true" encoding="UTF-8">
+            <directory>src/test/java</directory>
+            <includes>
+                <include>**/*.java</include>
+            </includes>
+        </fileSet>
+        <fileSet filtered="true" encoding="UTF-8">
+            <directory>src/test/resources</directory>
+            <includes>
+                <include>**/*.xml</include>
+                <include>**/*.properties</include>
+                <include>**/*.yml</include>
+                <include>**/*.yaml</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+</archetype-descriptor>

@@ -7,12 +7,9 @@ import com.google.gson.GsonBuilder;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 查询请求构建器
@@ -20,6 +17,8 @@ import java.util.Map;
 public class Query {
 
     private final static Gson GSON = new GsonBuilder().create();
+
+    private final transient Builder builder;
 
     /**
      * 要返回的字段列表
@@ -68,11 +67,80 @@ public class Query {
         private Integer limit;
         private Boolean withCount;
 
+        public boolean containsSelectField(String field) {
+            if (CollectionUtils.isEmpty(this.projects)) {
+                return false;
+            }
+            return this.projects.containsKey(field);
+        }
+
+        public <T> boolean containsSelectField(SFunction<T, ?> column) {
+            return this.containsSelectField(BuilderUtils.getPropertyName(column));
+        }
+
         /**
          * @see #select(Collection)
          */
         public Builder select(String... fields) {
             return this.select(Arrays.asList(fields));
+        }
+
+        protected Builder select(Map<String, Object> field) {
+            if (field == null) {
+                throw new IllegalArgumentException("the select 'field' cannot be null or empty");
+            }
+
+            if (field.isEmpty()) {
+                return this;
+            }
+
+            if (this.groupFields == null) {
+                this.groupFields = new HashMap<>(1);
+            }
+
+            this.groupFields.putAll(field);
+            return this;
+        }
+
+        /**
+         * 聚合查询字段
+         *
+         * @param field 字段名
+         */
+        public AggregateBuilder aggregate(String field) {
+            return new AggregateBuilder(this, field);
+        }
+
+        /**
+         * 聚合查询字段
+         *
+         * @param column 列
+         */
+        public <T> AggregateBuilder aggregate(SFunction<T, ?> column) {
+            return this.aggregate(BuilderUtils.getPropertyName(column));
+        }
+
+        public <T> Builder select(SFunction<T, ?>... columns) {
+            if (columns == null || columns.length == 0) {
+                return this;
+            }
+
+            List<String> columnNames = Arrays.stream(columns).map(BuilderUtils::getPropertyName).collect(Collectors.toCollection(
+                    () -> new ArrayList<>(columns.length)
+            ));
+
+            return this.select(columnNames);
+        }
+
+        /**
+         * 获取指定类型中定义的全部字段
+         * <br>
+         * 如果字段被 static 和 transient 修饰则会跳过. 如果字段上带有 {@link cn.airiot.sdk.client.annotation.Field} 则使用该注解定义的名称
+         *
+         * @param tClass 类型
+         */
+        public <T> Builder select(Class<T> tClass) {
+            return this.select(BuilderUtils.getColumns(tClass));
         }
 
         /**
@@ -84,7 +152,7 @@ public class Query {
             if (CollectionUtils.isEmpty(fields)) {
                 return this;
             }
-            
+
             if (this.projects == null) {
                 this.projects = Maps.newHashMapWithExpectedSize(fields.size());
             }
@@ -99,6 +167,45 @@ public class Query {
 
             return this;
         }
+
+
+        /**
+         * 排除要查询的字段列表, 即查询结果中不返回该字段
+         *
+         * @param columns 要排除的字段名称列表
+         */
+        public Builder exclude(Collection<String> columns) {
+            if (CollectionUtils.isEmpty(columns) || CollectionUtils.isEmpty(projects)) {
+                return this;
+            }
+
+            for (String column : columns) {
+                this.projects.remove(column);
+            }
+
+            return this;
+        }
+
+
+        public Builder exclude(String... columns) {
+            if (columns == null) {
+                return this;
+            }
+            return this.exclude(Arrays.asList(columns));
+        }
+
+        public <T> Builder exclude(SFunction<T, ?>... columns) {
+            if (columns == null) {
+                return this;
+            }
+
+            List<String> columnNames = Arrays.stream(columns).map(BuilderUtils::getPropertyName).collect(Collectors.toCollection(
+                    () -> new ArrayList<>(columns.length)
+            ));
+
+            return this.exclude(columnNames);
+        }
+
 
         private void checkOrCreateFilters() {
             if (this.filters != null) {
@@ -125,6 +232,11 @@ public class Query {
             return this;
         }
 
+        public <Type, T> Builder eq(SFunction<Type, ?> column, T value) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.eq(propName, value);
+        }
+
         /**
          * 不等于
          *
@@ -143,8 +255,18 @@ public class Query {
             return this;
         }
 
+        public <Type, T> Builder ne(SFunction<Type, ?> column, T value) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.ne(propName, value);
+        }
+
         public <T> Builder in(String field, T... value) {
             return this.in(field, Arrays.asList(value));
+        }
+
+        public <Type, T> Builder in(SFunction<Type, ?> column, T value) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.in(propName, value);
         }
 
         /**
@@ -169,29 +291,36 @@ public class Query {
             return this;
         }
 
+        public <T> Builder notIn(String field, T... values) {
+            if (values == null || values.length == 0) {
+                throw new IllegalArgumentException("Query: the field[" + field + "] values of condition 'not in' cannot be null and empty");
+            }
+            return this.notIn(field, Arrays.asList(values));
+        }
 
-        public <T> Builder notIn(String field, T... value) {
-            return this.notIn(field, Arrays.asList(value));
+        public <Type, T> Builder notIn(SFunction<Type, ?> column, T... values) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.notIn(propName, values);
         }
 
         /**
          * 不在指定列表之内
          *
-         * @param field 字段名
-         * @param value 字段值列表
+         * @param field  字段名
+         * @param values 字段值列表
          */
-        public <T> Builder notIn(String field, Collection<T> value) {
+        public <T> Builder notIn(String field, Collection<T> values) {
             if (!StringUtils.hasText(field)) {
                 throw new IllegalArgumentException("Query: the field name of condition 'not in' cannot be empty");
             }
 
-            if (value == null || value.isEmpty()) {
+            if (values == null || values.isEmpty()) {
                 throw new IllegalArgumentException("Query: the field[" + field + "] values of condition 'not in' cannot be null and empty");
             }
 
             this.checkOrCreateFilters();
 
-            this.filters.put(field.trim(), LogicOp.NIN.apply(value));
+            this.filters.put(field.trim(), LogicOp.NOT_IN.apply(values));
 
             return this;
         }
@@ -202,7 +331,7 @@ public class Query {
          * @param field 字段名
          * @param value 字段值
          */
-        public <T extends Number> Builder lt(String field, T value) {
+        public Builder lt(String field, Object value) {
             if (!StringUtils.hasText(field)) {
                 throw new IllegalArgumentException("Query: the field name of condition 'lt' cannot be empty");
             }
@@ -218,13 +347,18 @@ public class Query {
             return this;
         }
 
+        public <T> Builder lt(SFunction<T, ?> column, Object value) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.lt(propName, value);
+        }
+
         /**
          * 小于或等于
          *
          * @param field 字段名
          * @param value 字段值
          */
-        public <T extends Number> Builder lte(String field, T value) {
+        public Builder lte(String field, Object value) {
             if (!StringUtils.hasText(field)) {
                 throw new IllegalArgumentException("Query: the field name of condition 'lte' cannot be empty");
             }
@@ -240,13 +374,18 @@ public class Query {
             return this;
         }
 
+        public <T> Builder lte(SFunction<T, ?> column, Object value) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.lte(propName, value);
+        }
+
         /**
          * 大于
          *
          * @param field 字段名
          * @param value 字段值
          */
-        public <T extends Number> Builder gt(String field, T value) {
+        public Builder gt(String field, Object value) {
             if (!StringUtils.hasText(field)) {
                 throw new IllegalArgumentException("Query: the field name of condition 'gt' cannot be empty");
             }
@@ -262,13 +401,18 @@ public class Query {
             return this;
         }
 
+        public <T> Builder gt(SFunction<T, ?> column, Object value) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.gt(propName, value);
+        }
+
         /**
          * 大于或等于
          *
          * @param field 字段名
          * @param value 字段值
          */
-        public <T extends Number> Builder gte(String field, T value) {
+        public Builder gte(String field, Object value) {
             if (!StringUtils.hasText(field)) {
                 throw new IllegalArgumentException("Query: the field name of condition 'gte' cannot be empty");
             }
@@ -282,6 +426,57 @@ public class Query {
             this.filters.put(field.trim(), LogicOp.GTE.apply(value));
 
             return this;
+        }
+
+        public <T> Builder gte(SFunction<T, ?> column, Object value) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.gte(propName, value);
+        }
+
+        /**
+         * 在指定取值范围之内. [minValue, maxValue).
+         *
+         * <br>
+         * 注: 取值范围左闭右开.
+         *
+         * <pre>
+         *     例如:
+         *     // 查询年龄在 15 - 30 岁之间的用户. 不包括 30 岁
+         *     Query query = Query.newBuilder()
+         *          .select(User.class)
+         *          .between("age", 15, 30)
+         *          .build();
+         *
+         *     // 查询 2020 年新注册的用户数
+         *     Query query = Query.newBuilder()
+         *          .groupField("count(id) as count")
+         *          .between("createTime", "2020-01-01 00:00:00", "2021-01-01 00:00:00")
+         *          .build();
+         * </pre>
+         *
+         * @param field    字段名
+         * @param minValue 最小值. 包含最小值
+         * @param maxValue 最大值. 不含最大值
+         */
+        public Builder between(String field, Object minValue, Object maxValue) {
+            if (!StringUtils.hasText(field)) {
+                throw new IllegalArgumentException("Query: the field name of condition 'gte' cannot be empty");
+            }
+
+            if (minValue == null || maxValue == null) {
+                throw new IllegalArgumentException("Query: the field[" + field + "] range value [" + minValue + "," + maxValue + "] of condition 'between' cannot be null");
+            }
+
+            this.checkOrCreateFilters();
+
+            this.filters.put(field.trim(), LogicOp.BETWEEN.apply(minValue, maxValue));
+
+            return this;
+        }
+
+        public <T> Builder between(SFunction<T, ?> column, Object minValue, Object maxValue) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.between(propName, minValue, maxValue);
         }
 
         /**
@@ -317,6 +512,17 @@ public class Query {
             return this.orderAsc(Arrays.asList(fields));
         }
 
+        public <T> Builder orderAsc(SFunction<T, ?>... fields) {
+            if (fields == null || fields.length == 0) {
+                return this;
+            }
+
+            List<String> columns = Arrays.stream(fields)
+                    .map(BuilderUtils::getPropertyName).collect(Collectors.toCollection(() -> new ArrayList<>(fields.length)));
+
+            return this.orderAsc(columns);
+        }
+
 
         /**
          * @see #orderDesc(Collection)
@@ -326,6 +532,17 @@ public class Query {
                 return this;
             }
             return this.orderDesc(Arrays.asList(fields));
+        }
+
+        public <T> Builder orderDesc(SFunction<T, ?>... fields) {
+            if (fields == null || fields.length == 0) {
+                return this;
+            }
+
+            List<String> columns = Arrays.stream(fields)
+                    .map(BuilderUtils::getPropertyName).collect(Collectors.toCollection(() -> new ArrayList<>(fields.length)));
+
+            return this.orderDesc(columns);
         }
 
         /**
@@ -387,14 +604,17 @@ public class Query {
         }
 
         public Query build() {
-            return new Query(this.projects, this.filters, this.groupBys, this.groupFields, this.sort, this.skip, this.limit, this.withCount);
+            return new Query(this.projects, this.filters,
+                    this.groupBys, this.groupFields, this.sort,
+                    this.skip, this.limit, this.withCount,
+                    this);
         }
     }
 
     private Query(Map<String, Object> project, Map<String, Object> filter,
                   Map<String, Object> groupBy, Map<String, Object> groupFields,
                   Map<String, Integer> sort, Integer skip, Integer limit,
-                  Boolean withCount) {
+                  Boolean withCount, Builder builder) {
         this.project = project;
         this.filter = filter;
         this.groupBy = groupBy;
@@ -403,17 +623,22 @@ public class Query {
         this.skip = skip;
         this.limit = limit;
         this.withCount = withCount;
+        this.builder = builder;
     }
 
     public static Builder newBuilder() {
         return new Builder();
     }
 
-    public byte[] toBytes() {
-        return this.toBytes(StandardCharsets.UTF_8);
+    public Builder toBuilder() {
+        return this.builder;
     }
 
-    public byte[] toBytes(Charset charset) {
-        return GSON.toJson(this).getBytes(charset);
+    public byte[] serialize() {
+        return GSON.toJson(this).getBytes(StandardCharsets.UTF_8);
+    }
+
+    public byte[] serializeFilter() {
+        return GSON.toJson(this.filter).getBytes(StandardCharsets.UTF_8);
     }
 }

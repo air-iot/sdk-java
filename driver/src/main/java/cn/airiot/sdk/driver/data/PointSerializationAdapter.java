@@ -1,6 +1,7 @@
 package cn.airiot.sdk.driver.data;
 
 import cn.airiot.sdk.driver.data.model.Field;
+import cn.airiot.sdk.driver.data.model.FieldType;
 import cn.airiot.sdk.driver.data.model.Point;
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
@@ -59,18 +60,18 @@ public class PointSerializationAdapter extends TypeAdapter<Point> {
             }
         }
         out.endObject();
-        
+
         out.name("source").value("device");
         out.name("cid").value(point.getCid());
         out.name("time").value(point.getTime());
         out.name("fieldTypes").beginObject();
 
-        Map<String, String> fieldTypes = point.getFieldTypes();
+        Map<String, FieldType> fieldTypes = point.getFieldTypes();
         if (fieldTypes == null) {
             out.nullValue();
         } else if (!fieldTypes.isEmpty()) {
-            for (Map.Entry<String, String> entry : fieldTypes.entrySet()) {
-                out.name(entry.getKey()).value(entry.getValue());
+            for (Map.Entry<String, FieldType> entry : fieldTypes.entrySet()) {
+                out.name(entry.getKey()).value(entry.getValue().getValue());
             }
         }
 

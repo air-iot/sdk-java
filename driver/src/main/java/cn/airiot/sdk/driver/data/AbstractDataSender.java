@@ -225,6 +225,12 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
     }
 
     @Override
+    public void writePoint(String deviceId, long time, Map<String, Object> tagValues) {
+        Point point = this.globalContext.createPoint(deviceId, time, tagValues);
+        this.writePoint(point);
+    }
+
+    @Override
     public void writePoint(Point point) {
         if (log.isDebugEnabled()) {
             log.debug("上报数据: {}", point);

@@ -14,4 +14,12 @@ public class InsertResult {
     public String getInsertedID() {
         return InsertedID;
     }
+
+    @Override
+    public String toString() {
+        return "InsertResult{" +
+                "InsertedID='" + InsertedID + '\'' +
+                ", insertedID='" + getInsertedID() + '\'' +
+                '}';
+    }
 }

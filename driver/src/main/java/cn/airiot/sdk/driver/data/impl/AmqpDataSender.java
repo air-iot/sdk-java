@@ -1,7 +1,7 @@
 package cn.airiot.sdk.driver.data.impl;
 
 import cn.airiot.sdk.driver.GlobalContext;
-import cn.airiot.sdk.driver.configuration.properties.DriverDataProperties;
+import cn.airiot.sdk.driver.configuration.properties.DriverMQProperties;
 import cn.airiot.sdk.driver.data.AbstractDataSender;
 import cn.airiot.sdk.driver.data.DataHandlerChain;
 import cn.airiot.sdk.driver.data.LogSenderException;
@@ -24,7 +24,7 @@ import java.nio.charset.StandardCharsets;
 public class AmqpDataSender extends AbstractDataSender {
 
     private final Logger log = LoggerFactory.getLogger(AmqpDataSender.class);
-    private final DriverDataProperties.Amqp amqpProperties;
+    private final DriverMQProperties.Amqp amqpProperties;
     private final ThreadLocal<Channel> channel = ThreadLocal.withInitial(this::createChannel);
     private Connection connection;
 
@@ -41,7 +41,7 @@ public class AmqpDataSender extends AbstractDataSender {
     }
 
     public AmqpDataSender(String projectId, DataHandlerChain chain,
-                          DriverDataProperties.Amqp amqpProperties,
+                          DriverMQProperties.Amqp amqpProperties,
                           GlobalContext globalContext,
                           DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
         super(projectId, globalContext, chain, driverGrpcClient);

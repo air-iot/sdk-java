@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: sdk-client-dubbo
+dubbo:
+  application:
+    name: ${spring.application.name}
+    register-consumer: false
+  registry:
+    id: etcd
+    address: etcd://root:dell123@121.89.244.23:2379
+airiot:
+  client:
+    authorization:
+      type: tenant
+      app-key: 138dd03b-d3ee-4230-d3d2-520feb580bfe
+      app-secret: 138dd03b-d3ee-4230-d3d2-520feb580bfd
+    default-config:
+      selectors:
+        - metadata:
+            env: aliyun
+    services:
+      core:
+        enabled: true
+      spm:
+        enabled: true
+      #        selectors:
+      #          - metadata:
+      #              env: local2
+      data-service:
+        enabled: true
+
+logging:
+  level:
+    cn.airiot.sdk.client.dubbo: DEBUG

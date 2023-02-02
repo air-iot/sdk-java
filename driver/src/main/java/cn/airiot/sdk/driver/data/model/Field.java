@@ -1,8 +1,6 @@
 package cn.airiot.sdk.driver.data.model;
 
 
-import cn.airiot.sdk.driver.model.Tag;
-
 public class Field {
     
     private Tag tag;

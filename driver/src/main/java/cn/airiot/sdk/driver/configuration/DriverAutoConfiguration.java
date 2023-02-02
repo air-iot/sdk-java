@@ -6,6 +6,7 @@ import cn.airiot.sdk.driver.GlobalContext;
 import cn.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import cn.airiot.sdk.driver.configuration.properties.DriverDataProperties;
 import cn.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
+import cn.airiot.sdk.driver.configuration.properties.DriverMQProperties;
 import cn.airiot.sdk.driver.data.DataHandler;
 import cn.airiot.sdk.driver.data.DataHandlerChain;
 import cn.airiot.sdk.driver.data.DataSender;
@@ -33,8 +34,7 @@ import java.util.stream.Collectors;
  * 驱动配置类
  */
 @Configuration
-@ConditionalOnProperty(prefix = "airiot.driver", name = "enabled", havingValue = "true", matchIfMissing = true)
-@EnableConfigurationProperties({DriverAppProperties.class, DriverDataProperties.class, DriverListenerProperties.class,})
+@EnableConfigurationProperties({DriverAppProperties.class, DriverDataProperties.class, DriverMQProperties.class, DriverListenerProperties.class,})
 public class DriverAutoConfiguration {
 
     @Bean
@@ -50,7 +50,6 @@ public class DriverAutoConfiguration {
     }
 
     @Configuration
-    @ConditionalOnProperty(prefix = "airiot.driver", name = "enabled", havingValue = "true", matchIfMissing = true)
     static class DriverEventListenerConfiguration {
 
         @Bean
@@ -84,14 +83,13 @@ public class DriverAutoConfiguration {
     }
 
     @Configuration
-    @ConditionalOnProperty(prefix = "airiot.driver", name = "enabled", havingValue = "true", matchIfMissing = true)
     static class DriverDataSenderConfiguration {
 
         @Bean
-        @ConditionalOnProperty(prefix = "airiot.driver.data", name = "type", havingValue = "mqtt", matchIfMissing = true)
+        @ConditionalOnProperty(prefix = "mq", name = "type", havingValue = "mqtt", matchIfMissing = true)
         @ConditionalOnMissingBean(DataSender.class)
         public DataSender mqttDataSender(DriverAppProperties driverAppProperties,
-                                         DriverDataProperties properties,
+                                         DriverMQProperties properties,
                                          DataHandlerChain dataHandlerChain, GlobalContext globalContext,
                                          DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
             return new MQTTDataSender(dataHandlerChain, driverAppProperties,
@@ -99,9 +97,9 @@ public class DriverAutoConfiguration {
         }
 
         @Bean
-        @ConditionalOnProperty(prefix = "airiot.driver.data", name = "type", havingValue = "amqp")
+        @ConditionalOnProperty(prefix = "mq", name = "type", havingValue = "amqp")
         @ConditionalOnMissingBean(DataSender.class)
-        public DataSender amqpDataSender(DriverAppProperties appProperties, DriverDataProperties dataProperties,
+        public DataSender amqpDataSender(DriverAppProperties appProperties, DriverMQProperties dataProperties,
                                          DataHandlerChain dataHandlerChain, GlobalContext globalContext,
                                          DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
             return new AmqpDataSender(appProperties.getProjectId(),

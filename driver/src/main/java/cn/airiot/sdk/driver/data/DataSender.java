@@ -25,7 +25,19 @@ public interface DataSender extends SmartLifecycle {
      * @throws DataSenderException   如果上报数据时发生异常
      */
     void writePoint(Point point) throws DataSenderException;
-    
+
+    /**
+     * 上报资产采集到的数据. 部分信息会自动填充
+     *
+     * @param deviceId  设备标识
+     * @param time      数据产生的时间. unix时间戳(ms)
+     * @param tagValues 数据点的值
+     * @throws IllegalStateException    如果连接未建立或已断开
+     * @throws IllegalArgumentException 如果设备不存在或者数据点信息不正确
+     * @throws DataSenderException      如果上报数据时发生异常
+     */
+    void writePoint(String deviceId, long time, Map<String, Object> tagValues) throws DataSenderException;
+
     /**
      * 发送事件
      *

@@ -1,6 +1,7 @@
 package cn.airiot.sdk.driver.configuration.properties;
 
 
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -13,7 +14,7 @@ import javax.validation.constraints.NotBlank;
  */
 @Validated
 @ConfigurationProperties(prefix = "airiot.driver")
-public class DriverAppProperties {
+public class DriverAppProperties implements InitializingBean {
 
     /**
      * 当前驱动实例所属项目ID, 默认由平台注入
@@ -33,8 +34,6 @@ public class DriverAppProperties {
     private String name;
     /**
      * 驱动实例ID, 该信息由命令行参数 {@code serviceId} 传入
-     * <br>
-     * 默认使用 UUID 自动生成
      */
     @Value("${serviceId:}")
     private String instanceId;
@@ -90,5 +89,10 @@ public class DriverAppProperties {
                 ", instanceId='" + instanceId + '\'' +
                 ", distributed='" + distributed + '\'' +
                 '}';
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+
     }
 }

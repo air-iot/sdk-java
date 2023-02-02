@@ -1,11 +1,9 @@
 package cn.airiot.sdk.driver.listener.impl;
 
-import cn.airiot.sdk.driver.DeviceInfo;
-import cn.airiot.sdk.driver.DriverApp;
-import cn.airiot.sdk.driver.DriverConfig;
-import cn.airiot.sdk.driver.GlobalContext;
+import cn.airiot.sdk.driver.*;
 import cn.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import cn.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
+import cn.airiot.sdk.driver.data.model.Tag;
 import cn.airiot.sdk.driver.grpc.driver.Error;
 import cn.airiot.sdk.driver.grpc.driver.*;
 import cn.airiot.sdk.driver.listener.BatchCmd;
@@ -204,7 +202,7 @@ public class GrpcDriverEventListener implements DriverEventListener {
                     state.set(State.RUNNING);
                     this.reconnecting.set(false);
                 }
-                
+
                 List<Error> errors = response.getErrorsList();
                 if (!CollectionUtils.isEmpty(errors)) {
                     for (Error error : errors) {
@@ -563,23 +561,42 @@ public class GrpcDriverEventListener implements DriverEventListener {
             result.setCode(200);
             result.setResult("启动成功");
 
-            DriverConfig<Object> driverConfig = null;
             Gson gson = new Gson();
             boolean passed = true;
             try {
-                driverConfig = gson.fromJson(config, TypeToken.getParameterized(DriverConfig.class, Object.class).getType());
+                DriverConfig<BaseConfig> driverConfig = gson.fromJson(config, TypeToken.getParameterized(DriverConfig.class, BaseConfig.class).getType());
 
                 if (log.isDebugEnabled()) {
-                    log.debug("启动成功, config = {}", driverConfig);
+                    log.debug("启动驱动, config = {}", driverConfig);
                 }
 
                 String instanceId = driverConfig.getId();
                 Map<String, DeviceInfo> devices = new HashMap<>();
 
-                for (DriverConfig.Table<?> table : driverConfig.getTables()) {
+                Map<String, Tag> driverInstanceTags = new HashMap<>();
+                if (driverConfig.getConfig() != null && !CollectionUtils.isEmpty(driverConfig.getConfig().getTags())) {
+                    for (Tag tag : driverConfig.getConfig().getTags()) {
+                        driverInstanceTags.put(tag.getId(), tag);
+                    }
+                }
+                
+                for (DriverConfig.Table<BaseConfig> table : driverConfig.getTables()) {
                     String tableId = table.getId();
-                    DeviceInfo info = new DeviceInfo(tableId, instanceId);
-                    for (DriverConfig.Device<?> device : table.getDevices()) {
+                    Map<String, Tag> tableTags = new HashMap<>(driverInstanceTags);
+                    if (table.getConfig() != null && !CollectionUtils.isEmpty(table.getConfig().getTags())) {
+                        for (Tag tag : table.getConfig().getTags()) {
+                            tableTags.put(tag.getId(), tag);
+                        }
+                    }
+
+                    for (DriverConfig.Device<BaseConfig> device : table.getDevices()) {
+                        Map<String, Tag> deviceTags = new HashMap<>(tableTags);
+                        if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
+                            for (Tag tag : device.getConfig().getTags()) {
+                                deviceTags.put(tag.getId(), tag);
+                            }
+                        }
+                        DeviceInfo info = new DeviceInfo(tableId, instanceId, deviceTags);
                         devices.put(device.getId(), info);
                     }
                 }
