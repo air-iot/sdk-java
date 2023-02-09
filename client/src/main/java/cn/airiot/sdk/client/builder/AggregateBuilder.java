@@ -2,6 +2,8 @@ package cn.airiot.sdk.client.builder;
 
 import org.springframework.util.StringUtils;
 
+import java.util.Collections;
+
 public class AggregateBuilder {
 
     private final Query.Builder builder;
@@ -15,11 +17,19 @@ public class AggregateBuilder {
         this.field = field;
     }
 
+    private Query.Builder op(String op, String alias) {
+        return this.builder.summary(Collections.singletonMap(alias, Collections.singletonMap(op, this.field)));
+    }
+
+    private Query.Builder op(String op) {
+        return op(op, this.field);
+    }
+
     /**
      * 统计行数
      */
     public Query.Builder count() {
-        return builder.select(AggregateOp.COUNT.apply(field, field));
+        return this.op("$count");
     }
 
     /**
@@ -31,14 +41,14 @@ public class AggregateBuilder {
         if (!StringUtils.hasText(alias)) {
             throw new IllegalArgumentException("the 'alias' of count(" + field + ") cannot be null or empty");
         }
-        return builder.select(AggregateOp.COUNT.apply(field, alias));
+        return this.op("$count", alias);
     }
 
     /**
      * 最小值
      */
     public Query.Builder min() {
-        return builder.select(AggregateOp.MIN.apply(field, field));
+        return this.op("$min");
     }
 
     /**
@@ -50,14 +60,14 @@ public class AggregateBuilder {
         if (!StringUtils.hasText(alias)) {
             throw new IllegalArgumentException("the 'alias' of min(" + field + ") cannot be null or empty");
         }
-        return builder.select(AggregateOp.MIN.apply(field, alias));
+        return this.op("$min", alias);
     }
 
     /**
      * 最大值
      */
     public Query.Builder max() {
-        return builder.select(AggregateOp.MAX.apply(field));
+        return this.op("$max");
     }
 
     /**
@@ -69,14 +79,14 @@ public class AggregateBuilder {
         if (!StringUtils.hasText(alias)) {
             throw new IllegalArgumentException("the 'alias' of max(" + field + ") cannot be null or empty");
         }
-        return builder.select(AggregateOp.MAX.apply(field, alias));
+        return this.op("$max", alias);
     }
 
     /**
      * 平均值
      */
     public Query.Builder avg() {
-        return builder.select(AggregateOp.AVG.apply(field));
+        return this.op("$avg");
     }
 
     /**
@@ -88,14 +98,14 @@ public class AggregateBuilder {
         if (!StringUtils.hasText(alias)) {
             throw new IllegalArgumentException("the 'alias' of avg(" + field + ") cannot be null or empty");
         }
-        return builder.select(AggregateOp.AVG.apply(field, alias));
+        return this.op("$avg", alias);
     }
 
     /**
      * 求和
      */
     public Query.Builder sum() {
-        return builder.select(AggregateOp.SUM.apply(field));
+        return this.op("$sum");
     }
 
     /**
@@ -107,14 +117,14 @@ public class AggregateBuilder {
         if (!StringUtils.hasText(alias)) {
             throw new IllegalArgumentException("the 'alias' of sum(" + field + ") cannot be null or empty");
         }
-        return builder.select(AggregateOp.SUM.apply(field, alias));
+        return this.op("$sum", alias);
     }
 
     /**
      * 第一个值
      */
     public Query.Builder first() {
-        return builder.select(AggregateOp.FIRST.apply(field));
+        return this.op("$first");
     }
 
     /**
@@ -126,14 +136,14 @@ public class AggregateBuilder {
         if (!StringUtils.hasText(alias)) {
             throw new IllegalArgumentException("the 'alias' of first(" + field + ") cannot be null or empty");
         }
-        return builder.select(AggregateOp.FIRST.apply(field, alias));
+        return this.op("$first", alias);
     }
 
     /**
      * 最后一个值
      */
     public Query.Builder last() {
-        return builder.select(AggregateOp.LAST.apply(field));
+        return this.op("$last");
     }
 
     /**
@@ -145,6 +155,6 @@ public class AggregateBuilder {
         if (!StringUtils.hasText(alias)) {
             throw new IllegalArgumentException("the 'alias' of last(" + field + ") cannot be null or empty");
         }
-        return builder.select(AggregateOp.LAST.apply(field, alias));
+        return this.op("$last", alias);
     }
 }

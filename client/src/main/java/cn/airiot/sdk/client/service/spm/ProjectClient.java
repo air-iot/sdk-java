@@ -9,6 +9,7 @@ import cn.airiot.sdk.client.service.PlatformClient;
 import cn.airiot.sdk.client.service.spm.dto.LicenseContent;
 import cn.airiot.sdk.client.service.spm.dto.Project;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 /**
@@ -23,7 +24,7 @@ public interface ProjectClient extends PlatformClient {
      * @param project 项目信息
      * @return 项目信息或错误信息
      */
-    Response<InsertResult> create(Project project);
+    Response<InsertResult> create(@Nonnull Project project);
 
 
     /**
@@ -32,7 +33,7 @@ public interface ProjectClient extends PlatformClient {
      * @param query 查询条件
      * @return 项目信息
      */
-    Response<List<Project>> query(Query query);
+    Response<List<Project>> query(@Nonnull Query query);
 
     /**
      * 查询全部项目信息
@@ -47,7 +48,7 @@ public interface ProjectClient extends PlatformClient {
      * @param projectId 项目ID
      * @return 项目信息
      */
-    Response<Project> queryById(String projectId);
+    Response<Project> queryById(@Nonnull String projectId);
 
     /**
      * 更新项目信息
@@ -57,7 +58,7 @@ public interface ProjectClient extends PlatformClient {
      * @param project 更新后的项目信息
      * @return 更新结果
      */
-    Response<Void> update(Project project);
+    Response<Void> update(@Nonnull Project project);
 
     /**
      * 更新项目的授权信息
@@ -66,7 +67,7 @@ public interface ProjectClient extends PlatformClient {
      * @param license   授权信息
      * @return 更新结果
      */
-    Response<Void> updateLicense(String projectId, LicenseContent license);
+    Response<Void> updateLicense(@Nonnull String projectId, @Nonnull LicenseContent license);
 
     /**
      * 替换项目信息
@@ -74,7 +75,7 @@ public interface ProjectClient extends PlatformClient {
      * @param project 替换后的项目信息
      * @return 替换结果
      */
-    Response<Void> replace(Project project);
+    Response<Void> replace(@Nonnull Project project);
 
     /**
      * 删除项目
@@ -82,5 +83,5 @@ public interface ProjectClient extends PlatformClient {
      * @param projectId 项目ID
      * @return 删除结果
      */
-    Response<Void> deleteById(String projectId);
+    Response<Void> deleteById(@Nonnull String projectId);
 }

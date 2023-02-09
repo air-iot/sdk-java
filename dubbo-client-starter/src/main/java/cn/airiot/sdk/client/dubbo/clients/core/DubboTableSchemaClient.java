@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 @Component
@@ -27,11 +28,7 @@ public class DubboTableSchemaClient implements TableSchemaClient {
     }
 
     @Override
-    public Response<List<TableSchema>> query(Query query) {
-        if (query == null) {
-            throw new IllegalArgumentException("'query' cannot be null");
-        }
-
+    public Response<List<TableSchema>> query(@Nonnull Query query) {
         byte[] queryData = query.serialize();
         if (logger.isDebugEnabled()) {
             logger.debug("查询工作表定义: query = {}", new String(queryData));
@@ -67,12 +64,12 @@ public class DubboTableSchemaClient implements TableSchemaClient {
         if (logger.isDebugEnabled()) {
             logger.debug("查询全部工作表定义: query = {}, response = {}", new String(queryData), DubboClientUtils.toString(response));
         }
-        
+
         return DubboClientUtils.deserializeList(TableSchema.class, response);
     }
 
     @Override
-    public Response<TableSchema> queryById(String tableId) {
+    public Response<TableSchema> queryById(@Nonnull String tableId) {
         if (!StringUtils.hasText(tableId)) {
             throw new IllegalArgumentException("'tableId' cannot be null or empty");
         }

@@ -6,6 +6,8 @@ import cn.airiot.sdk.client.service.PlatformClient;
 import cn.airiot.sdk.client.service.core.dto.SystemVariable;
 import cn.airiot.sdk.client.dto.Response;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -19,7 +21,7 @@ public interface SystemVariableClient extends PlatformClient {
      * @param query 查询条件
      * @return 系统变量信息
      */
-    Response<List<SystemVariable>> query(Query query);
+    Response<List<SystemVariable>> query(@Nonnull Query query);
 
     /**
      * 根据系统变量编号查询系统变量信息
@@ -27,7 +29,7 @@ public interface SystemVariableClient extends PlatformClient {
      * @param uid 系统变量编号
      * @return 系统变量信息
      */
-    Response<SystemVariable> queryByUId(String uid);
+    Response<SystemVariable> queryByUId(@Nonnull String uid);
 
     /**
      * 根据系统变量ID查询系统变量信息
@@ -35,6 +37,6 @@ public interface SystemVariableClient extends PlatformClient {
      * @param id 系统变量ID
      * @return 系统变量信息
      */
-    Response<SystemVariable> queryById(String id);
+    Response<SystemVariable> queryById(@Nonnull String id);
 
 }

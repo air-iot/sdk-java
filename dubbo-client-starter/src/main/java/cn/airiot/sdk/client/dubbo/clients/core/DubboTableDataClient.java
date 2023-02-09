@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 
@@ -39,14 +40,10 @@ public class DubboTableDataClient implements TableDataClient {
             throw new IllegalArgumentException("'rowId' cannot be null or empty");
         }
     }
-    
-    @Override
-    public <T> Response<InsertResult> create(String tableId, T row) {
-        this.checkTableId(tableId);
 
-        if (row == null) {
-            throw new IllegalArgumentException("the 'row' cannot be null");
-        }
+    @Override
+    public <T> Response<InsertResult> create(@Nonnull String tableId, @Nonnull T row) {
+        this.checkTableId(tableId);
 
         ByteString rowData = DubboClientUtils.serialize(row);
 
@@ -68,7 +65,7 @@ public class DubboTableDataClient implements TableDataClient {
     }
 
     @Override
-    public <T> Response<BatchInsertResult> create(String tableId, List<T> rows) {
+    public <T> Response<BatchInsertResult> create(@Nonnull String tableId, @Nonnull List<T> rows) {
         this.checkTableId(tableId);
         if (CollectionUtils.isEmpty(rows)) {
             throw new IllegalArgumentException("the 'rows' cannot be null");
@@ -94,12 +91,9 @@ public class DubboTableDataClient implements TableDataClient {
     }
 
     @Override
-    public <T> Response<Void> update(String tableId, String rowId, T data) {
+    public <T> Response<Void> update(@Nonnull String tableId, @Nonnull String rowId, @Nonnull T data) {
         this.checkTableId(tableId);
         this.checkTableId(rowId);
-        if (data == null) {
-            throw new IllegalArgumentException("the update 'data' cannot be null");
-        }
 
         logger.debug("更新工作表记录: tableId = {}, rowId = {}, data = {}", tableId, rowId, data);
 
@@ -118,14 +112,8 @@ public class DubboTableDataClient implements TableDataClient {
     }
 
     @Override
-    public <T> Response<Void> update(String tableId, Query query, T data) {
+    public <T> Response<Void> update(@Nonnull String tableId, @Nonnull Query query, @Nonnull T data) {
         this.checkTableId(tableId);
-        if (query == null) {
-            throw new IllegalArgumentException("the update condition 'query' cannot be null");
-        }
-        if (data == null) {
-            throw new IllegalArgumentException("the update 'data' cannot be null");
-        }
 
         byte[] queryData = query.serialize();
 
@@ -148,12 +136,9 @@ public class DubboTableDataClient implements TableDataClient {
     }
 
     @Override
-    public <T> Response<Void> replace(String tableId, String rowId, T data) {
+    public <T> Response<Void> replace(@Nonnull String tableId, @Nonnull String rowId, @Nonnull T data) {
         this.checkTableId(tableId);
         this.checkTableId(rowId);
-        if (data == null) {
-            throw new IllegalArgumentException("the replace 'data' cannot be null");
-        }
 
         logger.debug("替换工作表记录: tableId = {}, rowId = {}, data = {}", tableId, rowId, data);
 
@@ -172,11 +157,11 @@ public class DubboTableDataClient implements TableDataClient {
     }
 
     @Override
-    public Response<Void> deleteById(String tableId, String rowId) {
-        logger.debug("删除工作表记录: tableId = {}, rowId = {}", tableId, rowId);
-
+    public Response<Void> deleteById(@Nonnull String tableId, @Nonnull String rowId) {
         this.checkTableId(tableId);
         this.checkRowId(rowId);
+
+        logger.debug("删除工作表记录: tableId = {}, rowId = {}", tableId, rowId);
 
         cn.airiot.sdk.client.dubbo.grpc.api.Response response = this.tableDataService.delete(GetOrDeleteDataRequest.newBuilder()
                 .setTable(tableId)
@@ -191,7 +176,7 @@ public class DubboTableDataClient implements TableDataClient {
     }
 
     @Override
-    public Response<Void> deleteByQuery(String tableId, Query query) {
+    public Response<Void> deleteByQuery(@Nonnull String tableId, @Nonnull Query query) {
         this.checkTableId(tableId);
 
         byte[] filter = query.serializeFilter();
@@ -212,7 +197,7 @@ public class DubboTableDataClient implements TableDataClient {
     }
 
     @Override
-    public <T> Response<List<T>> query(Class<T> tClass, String tableId, Query query) {
+    public <T> Response<List<T>> query(@Nonnull Class<T> tClass, @Nonnull String tableId, @Nonnull Query query) {
         byte[] filter = query.serialize();
         if (logger.isDebugEnabled()) {
             logger.debug("查询工作表记录: tableId = {}, query = {}", tableId, new String(filter));
@@ -231,13 +216,9 @@ public class DubboTableDataClient implements TableDataClient {
     }
 
     @Override
-    public <T> Response<T> getById(Class<T> tClass, String tableId, String rowId) {
+    public <T> Response<T> queryById(@Nonnull Class<T> tClass, @Nonnull String tableId, @Nonnull String rowId) {
         this.checkTableId(tableId);
         this.checkRowId(rowId);
-
-        if (tClass == null) {
-            throw new IllegalArgumentException("the class of table cannot be null");
-        }
 
         logger.debug("查询工作表记录: tableId = {}, rowId = {}, returnType = {}", tableId, rowId, tClass.getName());
 

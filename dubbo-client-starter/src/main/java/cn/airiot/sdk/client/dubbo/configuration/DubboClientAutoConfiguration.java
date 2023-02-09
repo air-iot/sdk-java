@@ -3,9 +3,13 @@ package cn.airiot.sdk.client.dubbo.configuration;
 
 import cn.airiot.sdk.client.dubbo.clients.DubboProjectAuthorizationClient;
 import cn.airiot.sdk.client.dubbo.clients.DubboTenantAuthorizationClient;
+import cn.airiot.sdk.client.dubbo.clients.core.DubboAppClient;
+import cn.airiot.sdk.client.dubbo.clients.spm.DubboSpmUserClient;
 import cn.airiot.sdk.client.dubbo.grpc.core.*;
 import cn.airiot.sdk.client.dubbo.grpc.datasource.DubboDataServiceGrpc;
 import cn.airiot.sdk.client.dubbo.grpc.spm.DubboProjectServiceGrpc;
+import cn.airiot.sdk.client.dubbo.grpc.warning.DubboRuleServiceGrpc;
+import cn.airiot.sdk.client.dubbo.grpc.warning.DubboWarnServiceGrpc;
 import cn.airiot.sdk.client.dubbo.utils.DubboClientUtils;
 import cn.airiot.sdk.client.interceptor.EnableClientInterceptors;
 import cn.airiot.sdk.client.properties.AuthorizationProperties;
@@ -14,6 +18,8 @@ import cn.airiot.sdk.client.properties.ServiceConfig;
 import cn.airiot.sdk.client.properties.ServiceType;
 import cn.airiot.sdk.client.properties.condition.ConditionalOnServiceEnabled;
 import cn.airiot.sdk.client.service.AuthorizationClient;
+import cn.airiot.sdk.client.service.core.AppClient;
+import cn.airiot.sdk.client.service.spm.SpmUserClient;
 import org.apache.dubbo.common.constants.LoadbalanceRules;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.apache.dubbo.config.spring.ReferenceBean;
@@ -34,7 +40,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 @EnableConfigurationProperties({ClientProperties.class, AuthorizationProperties.class})
 @Configuration
 public class DubboClientAutoConfiguration {
-
+    
     /**
      * 项目级授权
      */
@@ -56,6 +62,11 @@ public class DubboClientAutoConfiguration {
         )
         public ReferenceBean<DubboAppServiceGrpc.IAppService> dubboAppService() {
             return new ReferenceBean<>();
+        }
+
+        @Bean
+        public AppClient dubboAppClient(DubboAppServiceGrpc.IAppService appService) {
+            return new DubboAppClient(appService);
         }
 
         @Bean
@@ -85,6 +96,11 @@ public class DubboClientAutoConfiguration {
         )
         public ReferenceBean<cn.airiot.sdk.client.dubbo.grpc.spm.DubboUserServiceGrpc.IUserService> dubboSpmUserService() {
             return new ReferenceBean<>();
+        }
+
+        @Bean
+        public SpmUserClient spmUserClient(cn.airiot.sdk.client.dubbo.grpc.spm.DubboUserServiceGrpc.IUserService userService) {
+            return new DubboSpmUserClient(userService);
         }
 
         @Bean
@@ -161,14 +177,14 @@ public class DubboClientAutoConfiguration {
      * 数据接口服务
      */
     @Configuration
-    @ConditionalOnServiceEnabled(ServiceType.DataService)
+    @ConditionalOnServiceEnabled(ServiceType.DATA_SERVICE)
     @ComponentScan(basePackages = "cn.airiot.sdk.client.dubbo.clients.ds")
     public static class DubboDataServiceClientConfiguration {
 
         private final ServiceConfig serviceConfig;
 
         public DubboDataServiceClientConfiguration(ClientProperties properties) {
-            this.serviceConfig = properties.getServices().getOrDefault(ServiceType.DataService, properties.getDefaultConfig());
+            this.serviceConfig = properties.getServices().getOrDefault(ServiceType.DATA_SERVICE, properties.getDefaultConfig());
         }
 
         /**
@@ -176,7 +192,38 @@ public class DubboClientAutoConfiguration {
          */
         @Bean
         public ReferenceBean<DubboDataServiceGrpc.IDataService> dubboDataService() {
-            return DubboClientUtils.createDubboReference(ServiceType.DataService, this.serviceConfig, DubboDataServiceGrpc.IDataService.class);
+            return DubboClientUtils.createDubboReference(ServiceType.DATA_SERVICE, this.serviceConfig, DubboDataServiceGrpc.IDataService.class);
+        }
+    }
+
+    /**
+     * 告警客户端配置类
+     */
+    @Configuration
+    @ConditionalOnServiceEnabled(ServiceType.WARNING)
+    @ComponentScan(basePackages = "cn.airiot.sdk.client.dubbo.clients.warning")
+    public static class DubboWarningClientConfiguration {
+
+        private final ServiceConfig serviceConfig;
+
+        public DubboWarningClientConfiguration(ClientProperties properties) {
+            this.serviceConfig = properties.getServices().getOrDefault(ServiceType.WARNING, properties.getDefaultConfig());
+        }
+
+        /**
+         * 告警信息客户端
+         */
+        @Bean
+        public ReferenceBean<DubboWarnServiceGrpc.IWarnService> dubboWarningService() {
+            return DubboClientUtils.createDubboReference(ServiceType.WARNING, this.serviceConfig, DubboWarnServiceGrpc.IWarnService.class);
+        }
+
+        /**
+         * 告警规则客户端
+         */
+        @Bean
+        public ReferenceBean<DubboRuleServiceGrpc.IRuleService> dubboWarningRuleService() {
+            return DubboClientUtils.createDubboReference(ServiceType.WARNING, this.serviceConfig, DubboRuleServiceGrpc.IRuleService.class);
         }
     }
 

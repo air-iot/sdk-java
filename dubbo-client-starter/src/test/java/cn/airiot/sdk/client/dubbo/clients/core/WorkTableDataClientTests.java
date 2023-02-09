@@ -59,7 +59,7 @@ public class WorkTableDataClientTests {
     @Test
     @Order(2)
     void getById() {
-        Response<Employee> employee = this.tableDataClient.getById(Employee.class, testTableId, testRowId);
+        Response<Employee> employee = this.tableDataClient.queryById(Employee.class, testTableId, testRowId);
         Assert.isTrue(employee.isSuccess(), employee.getFullMessage());
         Assert.notNull(employee.getData(), "未查询到数据");
         Assert.isTrue(this.testRowId.equals(employee.getData().id), "返回数据的 rowId 与 " + this.testRowId + " 不匹配");
@@ -146,17 +146,20 @@ public class WorkTableDataClientTests {
     void countAge() {
         Response<List<Map<String, Object>>> response = this.tableDataClient.query(testTableId, Query.newBuilder()
                 .select("id", "name")
-//                .aggregate(Employee::getAge).count()
-                .aggregate(Employee::getAge).sum("count")
+                .summary(Employee::getAge).count("countAge")
+                .summary(Employee::getAge).sum("sumAge")
+                .summary(Employee::getAge).min("minAge")
+                .summary(Employee::getAge).max("maxAge")
+                .groupBy(Employee::getName).sameToField()
                 .build());
         System.out.println(response);
         Assertions.assertTrue(response.isSuccess(), response.getFullMessage());
     }
 
     @Test
-    @Order(8)
+    @Order(9)
     void replace() {
-        Employee employee = this.tableDataClient.getById(Employee.class, this.testTableId, this.testRowId).unwrap();
+        Employee employee = this.tableDataClient.queryById(Employee.class, this.testTableId, this.testRowId).unwrap();
 
         employee.setName("replaced-" + employee.name);
         employee.setAge(employee.getAge() + 100);
@@ -164,7 +167,7 @@ public class WorkTableDataClientTests {
         Response<Void> response = this.tableDataClient.replace(this.testTableId, this.testRowId, employee);
         Assert.isTrue(response.isSuccess(), response.getFullMessage());
 
-        Employee employeeNew = this.tableDataClient.getById(Employee.class, this.testTableId, this.testRowId).unwrap();
+        Employee employeeNew = this.tableDataClient.queryById(Employee.class, this.testTableId, this.testRowId).unwrap();
         Assert.isTrue(employeeNew.getName().equals(employee.getName()), "替换后的名称不匹配");
         Assert.isTrue(employeeNew.getAge().equals(employee.getAge()), "替换后的年龄不匹配");
     }

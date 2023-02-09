@@ -1,16 +1,18 @@
 package cn.airiot.sdk.client.dubbo.clients.ds;
 
-import cn.airiot.sdk.client.service.ds.DataServiceClient;
 import cn.airiot.sdk.client.dto.Response;
 import cn.airiot.sdk.client.dubbo.grpc.datasource.DubboDataServiceGrpc;
 import cn.airiot.sdk.client.dubbo.grpc.datasource.Request;
 import cn.airiot.sdk.client.dubbo.utils.DubboClientUtils;
+import cn.airiot.sdk.client.service.ds.DataServiceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Map;
 
 @Component
@@ -25,13 +27,9 @@ public class DubboDataServiceClient implements DataServiceClient {
     }
 
     @Override
-    public <T> Response<T> call(Class<T> tClass, String dsId, Map<String, Object> params) {
+    public <T> Response<T> call(@Nonnull Class<T> tClass, @Nonnull String dsId, @Nullable Map<String, Object> params) {
         if (!StringUtils.hasText(dsId)) {
             throw new IllegalArgumentException("'dsId' cannot be null or empty");
-        }
-
-        if (tClass == null) {
-            throw new IllegalArgumentException("'tClass' cannot be null");
         }
 
         if (logger.isDebugEnabled()) {

@@ -7,6 +7,8 @@ import cn.airiot.sdk.client.dto.InsertResult;
 import cn.airiot.sdk.client.dto.Response;
 import cn.airiot.sdk.client.service.PlatformClient;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +26,7 @@ public interface TableDataClient extends PlatformClient {
      * @param row     记录
      * @param <T>     工作表对应实体类泛型
      */
-    <T> Response<InsertResult> create(String tableId, T row);
+    <T> Response<InsertResult> create(@Nonnull String tableId, @Nonnull T row);
 
     /**
      * 向工作表中批量添加记录
@@ -33,7 +35,7 @@ public interface TableDataClient extends PlatformClient {
      * @param rows    记录列表
      * @param <T>     工作表对应实体类泛型
      */
-    <T> Response<BatchInsertResult> create(String tableId, List<T> rows);
+    <T> Response<BatchInsertResult> create(@Nonnull String tableId, @Nonnull List<T> rows);
 
     /**
      * 更新工作表记录
@@ -42,7 +44,7 @@ public interface TableDataClient extends PlatformClient {
      * @param rowId   记录ID
      * @param data    要更新的记录
      */
-    <T> Response<Void> update(String tableId, String rowId, T data);
+    <T> Response<Void> update(@Nonnull String tableId, @Nonnull String rowId, @Nonnull T data);
 
     /**
      * 批量更新工作表记录.
@@ -53,7 +55,7 @@ public interface TableDataClient extends PlatformClient {
      * @param query   更新条件
      * @param data    要更新的数据
      */
-    <T> Response<Void> update(String tableId, Query query, T data);
+    <T> Response<Void> update(@Nonnull String tableId, @Nonnull Query query, @Nonnull T data);
 
     /**
      * 替换记录全部信息
@@ -62,7 +64,7 @@ public interface TableDataClient extends PlatformClient {
      * @param rowId   记录ID
      * @param data    替换后的记录信息
      */
-    <T> Response<Void> replace(String tableId, String rowId, T data);
+    <T> Response<Void> replace(@Nonnull String tableId, @Nonnull String rowId, @Nonnull T data);
 
     /**
      * 根据记录ID删除数据
@@ -70,7 +72,7 @@ public interface TableDataClient extends PlatformClient {
      * @param tableId 工作表标识
      * @param rowId   记录ID
      */
-    Response<Void> deleteById(String tableId, String rowId);
+    Response<Void> deleteById(@Nonnull String tableId, @Nonnull String rowId);
 
     /**
      * 批量删除工作表记录
@@ -78,7 +80,7 @@ public interface TableDataClient extends PlatformClient {
      * @param tableId 工作表标识
      * @param query   删除条件
      */
-    Response<Void> deleteByQuery(String tableId, Query query);
+    Response<Void> deleteByQuery(@Nonnull String tableId, @Nonnull Query query);
 
     /**
      * 根据条件查询用户信息
@@ -88,9 +90,9 @@ public interface TableDataClient extends PlatformClient {
      * @param query   查询条件
      * @return 用户信息或错误信息
      */
-    <T> Response<List<T>> query(Class<T> tClass, String tableId, Query query);
+    <T> Response<List<T>> query(@Nonnull Class<T> tClass, @Nonnull String tableId, @Nonnull Query query);
 
-    default Response<List<Map<String, Object>>> query(String tableId, Query query) {
+    default Response<List<Map<String, Object>>> query(@Nonnull String tableId, @Nonnull Query query) {
         return this.query(MAP_TYPE, tableId, query);
     }
     
@@ -102,5 +104,5 @@ public interface TableDataClient extends PlatformClient {
      * @param rowId   记录ID
      * @return 记录信息或错误信息
      */
-    <T> Response<T> getById(Class<T> tClass, String tableId, String rowId);
+    <T> Response<T> queryById(@Nonnull Class<T> tClass, @Nonnull String tableId, @Nonnull  String rowId);
 }

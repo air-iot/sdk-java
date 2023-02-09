@@ -6,6 +6,8 @@ import cn.airiot.sdk.client.dto.Response;
 import cn.airiot.sdk.client.service.PlatformClient;
 import cn.airiot.sdk.client.service.core.dto.table.TableSchema;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -18,7 +20,7 @@ public interface TableSchemaClient extends PlatformClient {
      *
      * @return 工作表定义信息
      */
-    Response<List<TableSchema>> query(Query query);
+    Response<List<TableSchema>> query(@Nonnull Query query);
 
     /**
      * 查询全部工作表定义
@@ -33,5 +35,5 @@ public interface TableSchemaClient extends PlatformClient {
      * @param tableId 表标识
      * @return 工作表定义信息
      */
-    Response<TableSchema> queryById(String tableId);
+    Response<TableSchema> queryById(@Nonnull String tableId);
 }

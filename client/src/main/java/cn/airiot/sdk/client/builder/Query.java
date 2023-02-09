@@ -58,6 +58,7 @@ public class Query {
         private static final int ASC = 1;
         private static final int DESC = -1;
 
+        private final Set<String> excludeProjects = new HashSet<>();
         private Map<String, Object> projects;
         private Map<String, Object> filters;
         private Map<String, Object> groupBys;
@@ -78,6 +79,13 @@ public class Query {
             return this.containsSelectField(BuilderUtils.getPropertyName(column));
         }
 
+        private void checkOrCreateFilters() {
+            if (this.filters != null) {
+                return;
+            }
+            this.filters = new HashMap<>();
+        }
+
         /**
          * @see #select(Collection)
          */
@@ -85,40 +93,6 @@ public class Query {
             return this.select(Arrays.asList(fields));
         }
 
-        protected Builder select(Map<String, Object> field) {
-            if (field == null) {
-                throw new IllegalArgumentException("the select 'field' cannot be null or empty");
-            }
-
-            if (field.isEmpty()) {
-                return this;
-            }
-
-            if (this.groupFields == null) {
-                this.groupFields = new HashMap<>(1);
-            }
-
-            this.groupFields.putAll(field);
-            return this;
-        }
-
-        /**
-         * 聚合查询字段
-         *
-         * @param field 字段名
-         */
-        public AggregateBuilder aggregate(String field) {
-            return new AggregateBuilder(this, field);
-        }
-
-        /**
-         * 聚合查询字段
-         *
-         * @param column 列
-         */
-        public <T> AggregateBuilder aggregate(SFunction<T, ?> column) {
-            return this.aggregate(BuilderUtils.getPropertyName(column));
-        }
 
         public <T> Builder select(SFunction<T, ?>... columns) {
             if (columns == null || columns.length == 0) {
@@ -160,8 +134,9 @@ public class Query {
             for (String field : fields) {
                 if (!StringUtils.hasText(field)) {
                     throw new IllegalArgumentException("Query: the select field cannot be empty");
+                } else if (this.excludeProjects.contains(field)) {
+                    continue;
                 }
-
                 this.projects.put(field.trim(), 1);
             }
 
@@ -182,6 +157,8 @@ public class Query {
             for (String column : columns) {
                 this.projects.remove(column);
             }
+
+            this.excludeProjects.addAll(columns);
 
             return this;
         }
@@ -206,12 +183,67 @@ public class Query {
             return this.exclude(columnNames);
         }
 
-
-        private void checkOrCreateFilters() {
-            if (this.filters != null) {
-                return;
+        protected Builder summary(Map<String, Object> field) {
+            if (field == null) {
+                throw new IllegalArgumentException("the select 'field' cannot be null or empty");
             }
-            this.filters = new HashMap<>();
+
+            if (field.isEmpty()) {
+                return this;
+            }
+            if (this.groupFields == null) {
+                this.groupFields = new HashMap<>(1);
+            }
+
+            this.groupFields.putAll(field);
+            return this;
+        }
+
+        /**
+         * 汇总查询字段
+         *
+         * @param field 字段名
+         */
+        public AggregateBuilder summary(String field) {
+            return new AggregateBuilder(this, field);
+        }
+
+        /**
+         * 汇总查询字段
+         *
+         * @param column 列
+         */
+        public <T> AggregateBuilder summary(SFunction<T, ?> column) {
+            return this.summary(BuilderUtils.getPropertyName(column));
+        }
+
+        /**
+         * 分组
+         *
+         * @param field 字段名
+         */
+        public GroupByBuilder groupBy(String field) {
+            return new GroupByBuilder(this, field);
+        }
+
+        /**
+         * 分组汇总
+         */
+        protected Builder groupBy(Map<String, Object> field) {
+            if (this.groupBys == null) {
+                this.groupBys = new HashMap<>();
+            }
+            this.groupBys.putAll(field);
+            return this;
+        }
+
+        /**
+         * 分组汇总
+         *
+         * @param column 列
+         */
+        public <T> GroupByBuilder groupBy(SFunction<T, ?> column) {
+            return this.groupBy(BuilderUtils.getPropertyName(column));
         }
 
         /**
@@ -632,6 +664,23 @@ public class Query {
 
     public Builder toBuilder() {
         return this.builder;
+    }
+
+    /**
+     * 判断是否定义了查询字段
+     *
+     * @return 如果未定义则返回 {@code false}
+     */
+    public boolean hasSelectFields() {
+        return !CollectionUtils.isEmpty(this.project);
+    }
+
+    /**
+     * 判断是否定义了筛选条件
+     * @return 如果未定义则返回 {@code false}
+     */
+    public boolean hasFilters() {
+        return !CollectionUtils.isEmpty(this.filter);
     }
 
     public byte[] serialize() {

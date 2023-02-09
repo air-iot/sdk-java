@@ -1,8 +1,6 @@
 package cn.airiot.sdk.client.dubbo.clients.core;
 
 import cn.airiot.sdk.client.builder.Query;
-import cn.airiot.sdk.client.service.core.UserClient;
-import cn.airiot.sdk.client.service.core.dto.User;
 import cn.airiot.sdk.client.dto.Response;
 import cn.airiot.sdk.client.dubbo.grpc.api.CreateRequest;
 import cn.airiot.sdk.client.dubbo.grpc.api.GetOrDeleteRequest;
@@ -10,12 +8,15 @@ import cn.airiot.sdk.client.dubbo.grpc.api.QueryRequest;
 import cn.airiot.sdk.client.dubbo.grpc.api.UpdateRequest;
 import cn.airiot.sdk.client.dubbo.grpc.core.DubboUserServiceGrpc;
 import cn.airiot.sdk.client.dubbo.utils.DubboClientUtils;
+import cn.airiot.sdk.client.service.core.UserClient;
+import cn.airiot.sdk.client.service.core.dto.User;
 import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Nonnull;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -32,7 +33,7 @@ public class DubboUserClient implements UserClient {
     }
 
     @Override
-    public Response<User> create(User user) {
+    public Response<User> create(@Nonnull User user) {
         logger.debug("创建用户: {}", user);
         cn.airiot.sdk.client.dubbo.grpc.api.Response response = this.userService.create(CreateRequest.newBuilder()
                 .setData(DubboClientUtils.serialize(user))
@@ -47,7 +48,7 @@ public class DubboUserClient implements UserClient {
     }
 
     @Override
-    public Response<Void> update(User user) {
+    public Response<Void> update(@Nonnull User user) {
         if (logger.isDebugEnabled()) {
             logger.debug("更新用户信息: {}", user);
         }
@@ -78,7 +79,7 @@ public class DubboUserClient implements UserClient {
     }
 
     @Override
-    public Response<Void> replace(User user) {
+    public Response<Void> replace(@Nonnull User user) {
         if (logger.isDebugEnabled()) {
             logger.debug("替换用户信息: {}", user);
         }
@@ -109,7 +110,7 @@ public class DubboUserClient implements UserClient {
     }
 
     @Override
-    public Response<Void> deleteById(String userId) {
+    public Response<Void> deleteById(@Nonnull String userId) {
         logger.debug("删除用户: {}", userId);
         cn.airiot.sdk.client.dubbo.grpc.api.Response response = this.userService.delete(
                 GetOrDeleteRequest.newBuilder().setId(userId).build()
@@ -123,7 +124,7 @@ public class DubboUserClient implements UserClient {
     }
 
     @Override
-    public Response<List<User>> query(Query query) {
+    public Response<List<User>> query(@Nonnull Query query) {
         byte[] queryData = query.serialize();
         if (logger.isDebugEnabled()) {
             logger.debug("查询用户: {}", new String(queryData, StandardCharsets.UTF_8));
@@ -141,7 +142,7 @@ public class DubboUserClient implements UserClient {
     }
 
     @Override
-    public Response<User> getById(String userId) {
+    public Response<User> getById(@Nonnull String userId) {
         logger.debug("查询用户: userId = {}", userId);
         cn.airiot.sdk.client.dubbo.grpc.api.Response response = this.userService.get(GetOrDeleteRequest.newBuilder()
                 .setId(userId)

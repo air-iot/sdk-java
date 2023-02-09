@@ -81,7 +81,7 @@ public class DubboClientUtils {
             }
         }
 
-        return new Response<>(response.getStatus(), response.getCode(), response.getInfo(), response.getDetail(), result);
+        return new Response<>(response.getStatus(), response.getCount(), response.getCode(), response.getInfo(), response.getDetail(), result);
     }
 
     public static <T> Response<T> deserialize(Class<T> returnType, cn.airiot.sdk.client.dubbo.grpc.api.Response response) {
@@ -102,7 +102,7 @@ public class DubboClientUtils {
             }
         }
 
-        return new Response<>(response.getStatus(), response.getCode(), response.getInfo(), response.getDetail(), result);
+        return new Response<>(response.getStatus(), response.getCount(), response.getCode(), response.getInfo(), response.getDetail(), result);
     }
 
     public static <T> String format(Response<T> response) {

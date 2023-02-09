@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
 
@@ -28,7 +29,7 @@ public class DubboDepartmentClient implements DepartmentClient {
     }
 
     @Override
-    public Response<List<Department>> query(Query query) {
+    public Response<List<Department>> query(@Nullable Query query) {
         if (query == null) {
             throw new IllegalArgumentException("the 'query' cannot be null");
         }
@@ -50,7 +51,7 @@ public class DubboDepartmentClient implements DepartmentClient {
     }
 
     @Override
-    public Response<Department> queryById(String departmentId) {
+    public Response<Department> queryById(@Nullable String departmentId) {
         if (!StringUtils.hasText(departmentId)) {
             throw new IllegalArgumentException("the 'departmentId' cannot be null or empty");
         }

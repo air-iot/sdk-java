@@ -16,6 +16,12 @@ public class Response<T> {
      */
     private boolean success;
     /**
+     * 总记录数
+     * <br>
+     * 当分页查询时, 即 {@code cn.airiot.sdk.client.builder.Query#withCount} 为 {@code true} 时, 该字段为匹配的记录数量.
+     */
+    private long count;
+    /**
      * 请求响应码
      */
     private int code;
@@ -34,6 +40,10 @@ public class Response<T> {
 
     public boolean isSuccess() {
         return success;
+    }
+
+    public long getCount() {
+        return count;
     }
 
     public int getCode() {
@@ -57,6 +67,16 @@ public class Response<T> {
 
     public Response(boolean success, int code, String message, String detail, T data) {
         this.success = success;
+        this.count = 0;
+        this.code = code;
+        this.message = message;
+        this.detail = detail;
+        this.data = data;
+    }
+
+    public Response(boolean success, long count, int code, String message, String detail, T data) {
+        this.success = success;
+        this.count = count;
         this.code = code;
         this.message = message;
         this.detail = detail;
@@ -67,10 +87,13 @@ public class Response<T> {
     public String toString() {
         return "Response{" +
                 "success=" + success +
+                ", count=" + count +
                 ", code=" + code +
                 ", message='" + message + '\'' +
                 ", detail='" + detail + '\'' +
                 ", data=" + data +
+                ", fullMessage='" + getFullMessage() + '\'' +
+                ", unwrap=" + unwrap() +
                 '}';
     }
 

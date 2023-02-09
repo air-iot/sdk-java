@@ -2,8 +2,11 @@ package cn.airiot.sdk.client.service.core;
 
 
 import cn.airiot.sdk.client.annotation.DisableAuth;
+import cn.airiot.sdk.client.dto.Response;
 import cn.airiot.sdk.client.dto.Token;
 import cn.airiot.sdk.client.service.PlatformClient;
+
+import javax.annotation.Nonnull;
 
 /**
  * 扩展应用客户端
@@ -18,6 +21,6 @@ public interface AppClient extends PlatformClient {
      * @return token
      */
     @DisableAuth
-    Token getToken(String appKey, String appSecret);
+    Response<Token> getToken(@Nonnull String appKey, @Nonnull String appSecret);
 
 }

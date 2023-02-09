@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 
@@ -33,11 +34,7 @@ public class DubboProjectClient implements ProjectClient {
     }
 
     @Override
-    public Response<InsertResult> create(Project project) {
-        if (project == null) {
-            throw new IllegalArgumentException("'project' cannot be null");
-        }
-
+    public Response<InsertResult> create(@Nonnull Project project) {
         if (logger.isDebugEnabled()) {
             logger.debug("创建项目: project = {}", project);
         }
@@ -60,11 +57,7 @@ public class DubboProjectClient implements ProjectClient {
     }
 
     @Override
-    public Response<List<Project>> query(Query query) {
-        if (query == null) {
-            throw new IllegalArgumentException("'query' cannot be null");
-        }
-
+    public Response<List<Project>> query(@Nonnull Query query) {
         byte[] queryData = query.serialize();
 
         if (logger.isDebugEnabled()) {
@@ -105,7 +98,7 @@ public class DubboProjectClient implements ProjectClient {
     }
 
     @Override
-    public Response<Project> queryById(String projectId) {
+    public Response<Project> queryById(@Nonnull String projectId) {
         if (!StringUtils.hasText(projectId)) {
             throw new IllegalArgumentException("'projectId' cannot be null or empty");
         }
@@ -126,11 +119,7 @@ public class DubboProjectClient implements ProjectClient {
     }
 
     @Override
-    public Response<Void> update(Project project) {
-        if (project == null) {
-            throw new IllegalArgumentException("'project' cannot be null");
-        }
-
+    public Response<Void> update(@Nonnull Project project) {
         if (!StringUtils.hasText(project.getId())) {
             throw new IllegalArgumentException("the project id cannot be null or empty");
         }
@@ -161,13 +150,9 @@ public class DubboProjectClient implements ProjectClient {
     }
 
     @Override
-    public Response<Void> updateLicense(String projectId, LicenseContent license) {
+    public Response<Void> updateLicense(@Nonnull String projectId, @Nonnull LicenseContent license) {
         if (!StringUtils.hasText(projectId)) {
             throw new IllegalArgumentException("the project id cannot be null or empty");
-        }
-
-        if (license == null) {
-            throw new IllegalArgumentException("'license' cannot be null");
         }
 
         if (logger.isDebugEnabled()) {
@@ -196,11 +181,7 @@ public class DubboProjectClient implements ProjectClient {
     }
 
     @Override
-    public Response<Void> replace(Project project) {
-        if (project == null) {
-            throw new IllegalArgumentException("'project' cannot be null");
-        }
-
+    public Response<Void> replace(@Nonnull Project project) {
         if (!StringUtils.hasText(project.getId())) {
             throw new IllegalArgumentException("the project id cannot be null or empty");
         }
@@ -231,7 +212,7 @@ public class DubboProjectClient implements ProjectClient {
     }
 
     @Override
-    public Response<Void> deleteById(String projectId) {
+    public Response<Void> deleteById(@Nonnull String projectId) {
         if (!StringUtils.hasText(projectId)) {
             throw new IllegalArgumentException("'projectId' cannot be null or empty");
         }

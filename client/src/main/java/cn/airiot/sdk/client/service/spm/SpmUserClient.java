@@ -2,8 +2,11 @@ package cn.airiot.sdk.client.service.spm;
 
 import cn.airiot.sdk.client.annotation.DisableAuth;
 import cn.airiot.sdk.client.annotation.NonProject;
+import cn.airiot.sdk.client.dto.Response;
 import cn.airiot.sdk.client.dto.Token;
 import cn.airiot.sdk.client.service.PlatformClient;
+
+import javax.annotation.Nonnull;
 
 /**
  * 空间管理-用户客(租户)户端
@@ -19,6 +22,6 @@ public interface SpmUserClient extends PlatformClient {
      * @return token
      */
     @DisableAuth
-    Token getToken(String appKey, String appSecret);
+    Response<Token> getToken(@Nonnull String appKey, @Nonnull String appSecret);
 
 }

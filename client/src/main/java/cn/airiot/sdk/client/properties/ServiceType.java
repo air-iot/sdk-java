@@ -10,7 +10,12 @@ public enum ServiceType {
     /**
      * 数据接口服务
      */
-    DataService("data-service"),
+    DATA_SERVICE("data-service"),
+
+    /**
+     * 告警服务
+     */
+    WARNING("warning"),
 
     /**
      * 空间管理服务
@@ -26,7 +31,7 @@ public enum ServiceType {
     ServiceType(String name) {
         this.name = name;
     }
-    
+
     public static ServiceType of(String serviceName) {
         return ServiceType.valueOf(serviceName.toUpperCase());
     }
