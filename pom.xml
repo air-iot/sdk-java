@@ -2,20 +2,20 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>cn.airiot</groupId>
-    <artifactId>sdk</artifactId>
+    <groupId>cn.airiot.sdk</groupId>
+    <artifactId>parent</artifactId>
     <version>${revision}</version>
     <name>sdk</name>
     <description>AIRIOT 物联网平台二次开发 SDK</description>
-    <modules>
-        <module>driver</module>
-        <module>client</module>
-        <module>dubbo-client-starter</module>
-        <module>archetypes</module>
-        <module>dependencies</module>
-        <module>initializer</module>
-    </modules>
     <packaging>pom</packaging>
+    
+    <modules>
+        <module>sdk-driver-starter</module>
+        <module>sdk-client-api</module>
+        <module>sdk-client-grpc-starter</module>
+        <module>sdk-archetypes</module>
+        <module>sdk-dependencies</module>
+    </modules>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -46,7 +46,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
@@ -68,7 +67,6 @@
                 <artifactId>commons-codec</artifactId>
                 <version>1.15</version>
             </dependency>
-
             <dependency>
                 <groupId>org.yaml</groupId>
                 <artifactId>snakeyaml</artifactId>
