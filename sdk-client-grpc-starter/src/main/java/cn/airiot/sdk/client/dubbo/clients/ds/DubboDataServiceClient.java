@@ -7,7 +7,6 @@ import cn.airiot.sdk.client.dubbo.utils.DubboClientUtils;
 import cn.airiot.sdk.client.service.ds.DataServiceClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -15,7 +14,6 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Map;
 
-@Component
 public class DubboDataServiceClient implements DataServiceClient {
 
     private final Logger logger = LoggerFactory.getLogger(DubboDataServiceClient.class);

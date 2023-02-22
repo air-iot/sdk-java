@@ -11,13 +11,11 @@ import cn.airiot.sdk.client.service.core.dto.table.TableSchema;
 import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Nonnull;
 import java.util.List;
 
-@Component
 public class DubboTableSchemaClient implements TableSchemaClient {
 
     private final Logger logger = LoggerFactory.getLogger(DubboTableSchemaClient.class);

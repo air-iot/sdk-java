@@ -1,6 +1,7 @@
 package cn.airiot.sdk.client.dubbo.clients.spm;
 
 
+import cn.airiot.sdk.client.builder.Query;
 import cn.airiot.sdk.client.dto.Response;
 import cn.airiot.sdk.client.service.spm.dto.Project;
 import org.junit.jupiter.api.*;
@@ -28,14 +29,19 @@ public class ProjectClientTests {
         Assertions.assertTrue(response.isSuccess(), response.getFullMessage());
     }
 
-//    @Test
-//    void queryByName() {
-//        Response<List<Project>> response = this.projectClient.query(Query.newBuilder()
-//                .eq(Project::getName, "zq测试")
-//                .build());
-//
-//        Assertions.assertTrue(response.isStatus(), response.getFullMessage());
-//        Assertions.assertNotNull(response.getData(), "未查询到项目");
-//        Assertions.assertFalse(response.getData().isEmpty(), "未查询到项目");
-//    }
+    @Test
+    void queryByName() {
+        Response<List<Project>> response = this.projectClient.query(Query.newBuilder()
+                .eq(Project::getName, "zq测试")
+                .build());
+
+        Assertions.assertTrue(response.isSuccess(), response.getFullMessage());
+        Assertions.assertNotNull(response.getData(), "未查询到项目");
+        Assertions.assertFalse(response.getData().isEmpty(), "未查询到项目");
+    }
+
+    @Test
+    void createProject() {
+        
+    }
 }

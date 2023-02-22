@@ -11,14 +11,12 @@ import cn.airiot.sdk.client.service.core.dto.Department;
 import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Nullable;
 import java.util.List;
 
 
-@Component
 public class DubboDepartmentClient implements DepartmentClient {
 
     private final Logger logger = LoggerFactory.getLogger(DubboDepartmentClient.class);

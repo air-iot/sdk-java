@@ -28,6 +28,8 @@ airiot:
         enabled: false
       data-service:
         enabled: false
+      warning:
+        enabled: false
 
 logging:
   level:

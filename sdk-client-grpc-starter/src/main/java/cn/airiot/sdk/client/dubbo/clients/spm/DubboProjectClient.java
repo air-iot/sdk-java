@@ -15,14 +15,12 @@ import cn.airiot.sdk.client.service.spm.dto.Project;
 import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Nonnull;
 import java.util.List;
 
 
-@Component
 public class DubboProjectClient implements ProjectClient {
 
     private final Logger logger = LoggerFactory.getLogger(DubboProjectClient.class);
@@ -58,6 +56,10 @@ public class DubboProjectClient implements ProjectClient {
 
     @Override
     public Response<List<Project>> query(@Nonnull Query query) {
+        if (!query.hasSelectFields()) {
+            query = query.toBuilder().select(Project.class).build();
+        }
+
         byte[] queryData = query.serialize();
 
         if (logger.isDebugEnabled()) {

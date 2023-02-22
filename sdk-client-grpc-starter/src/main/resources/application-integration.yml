@@ -7,7 +7,10 @@ dubbo:
     register-consumer: false
   registry:
     id: etcd
-    address: etcd://root:dell123@121.89.244.23:2379
+    address: etcd://@121.89.244.23:2379
+    username: root
+    password: dell123
+    timeout: 15000
 airiot:
   client:
     authorization:
@@ -23,12 +26,8 @@ airiot:
         enabled: true
       spm:
         enabled: true
-      #        selectors:
-      #          - metadata:
-      #              env: local2
       data-service:
         enabled: true
-
 logging:
   level:
     cn.airiot.sdk.client.dubbo: DEBUG

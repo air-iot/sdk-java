@@ -6,7 +6,7 @@ import cn.airiot.sdk.client.dto.Response;
 import cn.airiot.sdk.client.service.PlatformClient;
 import cn.airiot.sdk.client.service.core.dto.Role;
 
-import javax.annotation.Nullable;
+import javax.annotation.Nonnull;
 import java.util.List;
 
 /**
@@ -20,7 +20,7 @@ public interface RoleClient extends PlatformClient {
      * @param query 查询条件
      * @return 角色信息
      */
-    Response<List<Role>> query(@Nullable Query query);
+    Response<List<Role>> query(@Nonnull Query query);
 
     /**
      * 根据角色ID查询角色信息
@@ -28,5 +28,5 @@ public interface RoleClient extends PlatformClient {
      * @param roleId 角色ID
      * @return 角色信息
      */
-    Response<Role> queryById(@Nullable String roleId);
+    Response<Role> queryById(@Nonnull String roleId);
 }

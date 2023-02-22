@@ -28,13 +28,13 @@
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>cn.airiot</groupId>
-            <artifactId>sdk-driver</artifactId>
+            <groupId>cn.airiot.sdk</groupId>
+            <artifactId>sdk-driver-starter</artifactId>
         </dependency>
     #if (${enableClient} == "true")
         <dependency>
-            <groupId>cn.airiot</groupId>
-            <artifactId>sdk-client-dubbo-starter</artifactId>
+            <groupId>cn.airiot.sdk</groupId>
+            <artifactId>sdk-client-grpc-starter</artifactId>
         </dependency>
     #end
     </dependencies>
@@ -49,7 +49,7 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>cn.airiot</groupId>
+                <groupId>cn.airiot.sdk</groupId>
                 <artifactId>sdk-dependencies</artifactId>
                 <version>${sdk.version}</version>
                 <type>pom</type>

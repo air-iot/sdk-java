@@ -3,8 +3,12 @@ package cn.airiot.sdk.client.dubbo.configuration;
 
 import cn.airiot.sdk.client.dubbo.clients.DubboProjectAuthorizationClient;
 import cn.airiot.sdk.client.dubbo.clients.DubboTenantAuthorizationClient;
-import cn.airiot.sdk.client.dubbo.clients.core.DubboAppClient;
+import cn.airiot.sdk.client.dubbo.clients.core.*;
+import cn.airiot.sdk.client.dubbo.clients.ds.DubboDataServiceClient;
+import cn.airiot.sdk.client.dubbo.clients.spm.DubboProjectClient;
 import cn.airiot.sdk.client.dubbo.clients.spm.DubboSpmUserClient;
+import cn.airiot.sdk.client.dubbo.clients.warning.DubboRuleClient;
+import cn.airiot.sdk.client.dubbo.clients.warning.DubboWarnClient;
 import cn.airiot.sdk.client.dubbo.grpc.core.*;
 import cn.airiot.sdk.client.dubbo.grpc.datasource.DubboDataServiceGrpc;
 import cn.airiot.sdk.client.dubbo.grpc.spm.DubboProjectServiceGrpc;
@@ -27,7 +31,6 @@ import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
@@ -40,7 +43,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 @EnableConfigurationProperties({ClientProperties.class, AuthorizationProperties.class})
 @Configuration
 public class DubboClientAutoConfiguration {
-    
+
     /**
      * 项目级授权
      */
@@ -114,7 +117,7 @@ public class DubboClientAutoConfiguration {
      * 核心服务
      */
     @Configuration
-    @ComponentScan("cn.airiot.sdk.client.dubbo.clients.core")
+//    @ComponentScan("cn.airiot.sdk.client.dubbo.clients.core")
     @ConditionalOnServiceEnabled(ServiceType.CORE)
     public static class DubboCoreClientConfiguration {
 
@@ -122,6 +125,36 @@ public class DubboClientAutoConfiguration {
 
         public DubboCoreClientConfiguration(ClientProperties properties) {
             this.serviceConfig = properties.getServices().getOrDefault(ServiceType.CORE, properties.getDefaultConfig());
+        }
+
+        @Bean
+        public DubboDepartmentClient dubboDepartmentClient(DubboDeptServiceGrpc.IDeptService deptService) {
+            return new DubboDepartmentClient(deptService);
+        }
+
+        @Bean
+        public DubboUserClient dubboUserClient(DubboUserServiceGrpc.IUserService userService) {
+            return new DubboUserClient(userService);
+        }
+
+        @Bean
+        public DubboRoleClient dubboRoleClient(DubboRoleServiceGrpc.IRoleService roleService) {
+            return new DubboRoleClient(roleService);
+        }
+
+        @Bean
+        public DubboTableSchemaClient dubboTableSchemaClient(DubboTableSchemaServiceGrpc.ITableSchemaService tableSchemaService) {
+            return new DubboTableSchemaClient(tableSchemaService);
+        }
+
+        @Bean
+        public DubboTableDataClient dubboTableDataClient(DubboTableDataServiceGrpc.ITableDataService dataService) {
+            return new DubboTableDataClient(dataService);
+        }
+
+        @Bean
+        public DubboSystemVariableClient dubboSystemVariableClient(DubboSystemVariableServiceGrpc.ISystemVariableService systemVariableService) {
+            return new DubboSystemVariableClient(systemVariableService);
         }
 
         /**
@@ -178,13 +211,18 @@ public class DubboClientAutoConfiguration {
      */
     @Configuration
     @ConditionalOnServiceEnabled(ServiceType.DATA_SERVICE)
-    @ComponentScan(basePackages = "cn.airiot.sdk.client.dubbo.clients.ds")
+//    @ComponentScan(basePackages = "cn.airiot.sdk.client.dubbo.clients.ds")
     public static class DubboDataServiceClientConfiguration {
 
         private final ServiceConfig serviceConfig;
 
         public DubboDataServiceClientConfiguration(ClientProperties properties) {
             this.serviceConfig = properties.getServices().getOrDefault(ServiceType.DATA_SERVICE, properties.getDefaultConfig());
+        }
+
+        @Bean
+        public DubboDataServiceClient dubboDataServiceClient(DubboDataServiceGrpc.IDataService dataService) {
+            return new DubboDataServiceClient(dataService);
         }
 
         /**
@@ -201,13 +239,23 @@ public class DubboClientAutoConfiguration {
      */
     @Configuration
     @ConditionalOnServiceEnabled(ServiceType.WARNING)
-    @ComponentScan(basePackages = "cn.airiot.sdk.client.dubbo.clients.warning")
+    // @ComponentScan(basePackages = "cn.airiot.sdk.client.dubbo.clients.warning")
     public static class DubboWarningClientConfiguration {
 
         private final ServiceConfig serviceConfig;
 
         public DubboWarningClientConfiguration(ClientProperties properties) {
             this.serviceConfig = properties.getServices().getOrDefault(ServiceType.WARNING, properties.getDefaultConfig());
+        }
+
+        @Bean
+        public DubboRuleClient dubboRuleClient(DubboRuleServiceGrpc.IRuleService ruleService) {
+            return new DubboRuleClient(ruleService);
+        }
+
+        @Bean
+        public DubboWarnClient dubboWarnClient(DubboWarnServiceGrpc.IWarnService warnService) {
+            return new DubboWarnClient(warnService);
         }
 
         /**
@@ -232,13 +280,18 @@ public class DubboClientAutoConfiguration {
      */
     @Configuration
     @ConditionalOnServiceEnabled(ServiceType.SPM)
-    @ComponentScan(basePackages = "cn.airiot.sdk.client.dubbo.clients.spm")
+//    @ComponentScan(basePackages = "cn.airiot.sdk.client.dubbo.clients.spm")
     public static class DubboSpmClientConfiguration {
 
         private final ServiceConfig serviceConfig;
 
         public DubboSpmClientConfiguration(ClientProperties properties) {
             this.serviceConfig = properties.getServices().getOrDefault(ServiceType.SPM, properties.getDefaultConfig());
+        }
+
+        @Bean
+        public DubboProjectClient dubboProjectClient(DubboProjectServiceGrpc.IProjectService projectService) {
+            return new DubboProjectClient(projectService);
         }
 
         /**

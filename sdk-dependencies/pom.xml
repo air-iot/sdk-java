@@ -23,7 +23,7 @@
         <dependencies>
             <dependency>
                 <groupId>cn.airiot.sdk</groupId>
-                <artifactId>sdk-driver</artifactId>
+                <artifactId>sdk-driver-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

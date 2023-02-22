@@ -11,7 +11,9 @@ dubbo:
     register-consumer: false
   registry:
     id: etcd
-    address: etcd://root:dell123@127.0.0.1:2379
+    address: etcd://127.0.0.1:2379
+    username: root
+    password: dell123
 #end
 
 airiot:
@@ -31,10 +33,15 @@ airiot:
         enabled: false
       data-service:
         enabled: false
+      warning:
+        enabled: false
 #end
 mq:
   mqtt:
     host: 127.0.0.1
+
+driver-grpc:
+  host: 127.0.0.1
 
 logging:
   level:

@@ -22,7 +22,7 @@ public class OnServiceEnabledCondition extends SpringBootCondition {
     public ConditionOutcome getMatchOutcome(ConditionContext context, AnnotatedTypeMetadata metadata) {
         Map<String, Object> annotationAttributes = metadata.getAnnotationAttributes(ConditionalOnServiceEnabled.class.getName());
         ServiceType value = (ServiceType) annotationAttributes.get("value");
-        String serviceName = value.name().toLowerCase();
+        String serviceName = value.getName().toLowerCase();
         boolean enabled = context.getEnvironment()
                 .getProperty(String.format("%s.services.%s.enabled", ClientProperties.PREFIX, serviceName), Boolean.class, false);
         if (enabled) {

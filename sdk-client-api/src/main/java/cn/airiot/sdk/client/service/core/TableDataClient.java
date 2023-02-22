@@ -8,7 +8,6 @@ import cn.airiot.sdk.client.dto.Response;
 import cn.airiot.sdk.client.service.PlatformClient;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +24,7 @@ public interface TableDataClient extends PlatformClient {
      * @param tableId 工作表标识
      * @param row     记录
      * @param <T>     工作表对应实体类泛型
+     * @return 数据添加结果
      */
     <T> Response<InsertResult> create(@Nonnull String tableId, @Nonnull T row);
 
@@ -34,6 +34,7 @@ public interface TableDataClient extends PlatformClient {
      * @param tableId 工作表标识
      * @param rows    记录列表
      * @param <T>     工作表对应实体类泛型
+     * @return 数据添加结果
      */
     <T> Response<BatchInsertResult> create(@Nonnull String tableId, @Nonnull List<T> rows);
 
@@ -43,6 +44,7 @@ public interface TableDataClient extends PlatformClient {
      * @param tableId 工作表标识
      * @param rowId   记录ID
      * @param data    要更新的记录
+     * @return 数据更新结果
      */
     <T> Response<Void> update(@Nonnull String tableId, @Nonnull String rowId, @Nonnull T data);
 
@@ -54,6 +56,7 @@ public interface TableDataClient extends PlatformClient {
      * @param tableId 工作表标识
      * @param query   更新条件
      * @param data    要更新的数据
+     * @return 数据更新结果
      */
     <T> Response<Void> update(@Nonnull String tableId, @Nonnull Query query, @Nonnull T data);
 
@@ -71,6 +74,7 @@ public interface TableDataClient extends PlatformClient {
      *
      * @param tableId 工作表标识
      * @param rowId   记录ID
+     * @return 数据删除结果
      */
     Response<Void> deleteById(@Nonnull String tableId, @Nonnull String rowId);
 
@@ -79,6 +83,7 @@ public interface TableDataClient extends PlatformClient {
      *
      * @param tableId 工作表标识
      * @param query   删除条件
+     * @return 数据删除结果
      */
     Response<Void> deleteByQuery(@Nonnull String tableId, @Nonnull Query query);
 
@@ -95,7 +100,7 @@ public interface TableDataClient extends PlatformClient {
     default Response<List<Map<String, Object>>> query(@Nonnull String tableId, @Nonnull Query query) {
         return this.query(MAP_TYPE, tableId, query);
     }
-    
+
     /**
      * 根据ID查询记录信息
      *
@@ -104,5 +109,5 @@ public interface TableDataClient extends PlatformClient {
      * @param rowId   记录ID
      * @return 记录信息或错误信息
      */
-    <T> Response<T> queryById(@Nonnull Class<T> tClass, @Nonnull String tableId, @Nonnull  String rowId);
+    <T> Response<T> queryById(@Nonnull Class<T> tClass, @Nonnull String tableId, @Nonnull String rowId);
 }
