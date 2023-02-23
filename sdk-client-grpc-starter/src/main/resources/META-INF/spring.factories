@@ -1,2 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-  cn.airiot.sdk.client.dubbo.configuration.DubboClientAutoConfiguration
+  com.github.airiot.sdk.client.dubbo.configuration.DubboClientAutoConfiguration

@@ -4,6 +4,8 @@ target/
 mvnw
 mvnw.cmd
 .flattened-pom.xml
+application-*.yml
+application-*.yaml
 !**/src/main/**/target/
 !**/src/test/**/target/
 
