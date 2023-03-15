@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.github.airiot.sdk.client.service.spm.dto;
 
 import java.util.List;
@@ -17,14 +34,20 @@ public class LicenseContent {
     private String licenseType;
     /**
      * 授权开始时间
+     * <br>
+     * 创建授权时必填
      */
     private String startTime;
     /**
      * 有效期
+     * <br>
+     * 创建授权时必填
      */
     private Integer validityPeriod;
     /**
      * 用户数
+     * <br>
+     * 创建授权时必填
      */
     private Integer userCount;
     /**
@@ -40,40 +63,44 @@ public class LicenseContent {
      */
     private Boolean status;
     /**
-     * 数据采集与控制引擎
+     * 数据采集与控制引擎授权信息
      */
     private LicenseDataGathering dataGathering;
     /**
-     * 可视化组态引擎
+     * 可视化组态引擎授权信息
      */
     private LicenseVisual visual;
     /**
-     * 数据分析引擎
+     * 数据分析引擎授权信息
      */
     private LicenseDataAnalysis dataAnalysis;
     /**
-     * 业务流引擎
+     * 业务流引擎授权信息
      */
     private LicenseFlow flow;
     /**
-     * 二次开发引擎
+     * 二次开发引擎授权信息
      */
     private LicenseSDK sdk;
+
+    public LicenseContent() {
+    }
+
+    /**
+     * 创建基本授权所需的信息
+     */
+    public LicenseContent(String startTime, Integer validityPeriod, Integer userCount) {
+        this.startTime = startTime;
+        this.validityPeriod = validityPeriod;
+        this.userCount = userCount;
+    }
 
     public List<String> getMacAddr() {
         return macAddr;
     }
 
-    public void setMacAddr(List<String> macAddr) {
-        this.macAddr = macAddr;
-    }
-
     public String getLicenseType() {
         return licenseType;
-    }
-
-    public void setLicenseType(String licenseType) {
-        this.licenseType = licenseType;
     }
 
     public String getStartTime() {
@@ -104,18 +131,10 @@ public class LicenseContent {
         return remainingTime;
     }
 
-    public void setRemainingTime(Integer remainingTime) {
-        this.remainingTime = remainingTime;
-    }
-
     public String getVersion() {
         return version;
     }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
+    
     public Boolean getStatus() {
         return status;
     }

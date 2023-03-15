@@ -1,5 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.github.airiot.sdk.client.service.warning.dto;
 
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * 告警规则
@@ -24,15 +44,15 @@ public class Rule {
     /**
      * 应用范围
      */
-    private String range;
+    private Map<String, Object> range;
     /**
      * 报警规则配置
      */
-    private String settings;
+    private Map<String, Object> settings;
     /**
      * 报警类型
      */
-    private String warnType;
+    private List<String> warnType;
     /**
      * 报警级别
      */
@@ -40,7 +60,7 @@ public class Rule {
     /**
      * warnIntervalObj
      */
-    private String warnIntervalObj;
+    private Map<String, Object> warnIntervalObj;
 
     public String getId() {
         return id;
@@ -74,27 +94,27 @@ public class Rule {
         this.description = description;
     }
 
-    public String getRange() {
+    public Map<String, Object> getRange() {
         return range;
     }
 
-    public void setRange(String range) {
+    public void setRange(Map<String, Object> range) {
         this.range = range;
     }
 
-    public String getSettings() {
+    public Map<String, Object> getSettings() {
         return settings;
     }
 
-    public void setSettings(String settings) {
+    public void setSettings(Map<String, Object> settings) {
         this.settings = settings;
     }
 
-    public String getWarnType() {
+    public List<String> getWarnType() {
         return warnType;
     }
 
-    public void setWarnType(String warnType) {
+    public void setWarnType(List<String> warnType) {
         this.warnType = warnType;
     }
 
@@ -106,11 +126,11 @@ public class Rule {
         this.level = level;
     }
 
-    public String getWarnIntervalObj() {
+    public Map<String, Object> getWarnIntervalObj() {
         return warnIntervalObj;
     }
-
-    public void setWarnIntervalObj(String warnIntervalObj) {
+    
+    public void setWarnIntervalObj(Map<String, Object> warnIntervalObj) {
         this.warnIntervalObj = warnIntervalObj;
     }
 

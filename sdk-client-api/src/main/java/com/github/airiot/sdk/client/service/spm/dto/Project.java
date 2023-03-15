@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.github.airiot.sdk.client.service.spm.dto;
 
 import java.util.Date;
@@ -47,7 +64,7 @@ public class Project {
      * 创建项目时无须填写
      */
     private Date createTime;
-    
+
     /**
      * 用于设定项目管理卡片展示时，卡片的背景色
      */
@@ -59,7 +76,9 @@ public class Project {
     private String projectType;
 
     /**
-     * 状态
+     * 项目启用状态
+     * <br>
+     * true: 启用, false: 禁用
      */
     private Boolean status;
 
@@ -99,10 +118,6 @@ public class Project {
         return user;
     }
 
-    public void setUser(User user) {
-        this.user = user;
-    }
-
     public String getIndustry() {
         return industry;
     }
@@ -131,10 +146,6 @@ public class Project {
         return createTime;
     }
 
-    public void setCreateTime(Date createTime) {
-        this.createTime = createTime;
-    }
-
     public String getBgColor() {
         return bgColor;
     }
@@ -161,10 +172,6 @@ public class Project {
 
     public LicenseContent getLicense() {
         return license;
-    }
-
-    public void setLicense(LicenseContent license) {
-        this.license = license;
     }
 
     @Override

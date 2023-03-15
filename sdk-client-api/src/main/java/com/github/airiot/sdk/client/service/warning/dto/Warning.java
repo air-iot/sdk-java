@@ -1,6 +1,23 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.github.airiot.sdk.client.service.warning.dto;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 public class Warning {
     /**
@@ -16,7 +33,7 @@ public class Warning {
      */
     private String uid;
     /**
-     * 报警类型
+     * 报警类型ID
      */
     private String type;
     /**
@@ -50,11 +67,11 @@ public class Warning {
     /**
      * 工作表ID
      */
-    private String table;
+    private String tableId;
     /**
      * 工作表记录ID
      */
-    private String tableData;
+    private String tableDataId;
     /**
      * 报警数据
      */
@@ -66,19 +83,19 @@ public class Warning {
     /**
      * 创建时间
      */
-    private Date time;
+    private LocalDateTime time;
     /**
      * 报警恢复时间
      */
-    private Date recoveryTime;
+    private LocalDateTime recoveryTime;
     /**
      * 报警确认时间
      */
-    private Date confirmTime;
+    private LocalDateTime confirmTime;
     /**
      * 报警处理时间
      */
-    private Date handleTime;
+    private LocalDateTime handleTime;
     /**
      * 其他数据
      */
@@ -196,20 +213,20 @@ public class Warning {
         this.remark = remark;
     }
 
-    public String getTable() {
-        return table;
+    public String getTableId() {
+        return tableId;
     }
 
-    public void setTable(String table) {
-        this.table = table;
+    public void setTableId(String tableId) {
+        this.tableId = tableId;
     }
 
-    public String getTableData() {
-        return tableData;
+    public String getTableDataId() {
+        return tableDataId;
     }
 
-    public void setTableData(String tableData) {
-        this.tableData = tableData;
+    public void setTableDataId(String tableDataId) {
+        this.tableDataId = tableDataId;
     }
 
     public String getFields() {
@@ -228,35 +245,35 @@ public class Warning {
         this.recoveryFields = recoveryFields;
     }
 
-    public Date getTime() {
+    public LocalDateTime getTime() {
         return time;
     }
 
-    public void setTime(Date time) {
+    public void setTime(LocalDateTime time) {
         this.time = time;
     }
 
-    public Date getRecoveryTime() {
+    public LocalDateTime getRecoveryTime() {
         return recoveryTime;
     }
 
-    public void setRecoveryTime(Date recoveryTime) {
+    public void setRecoveryTime(LocalDateTime recoveryTime) {
         this.recoveryTime = recoveryTime;
     }
 
-    public Date getConfirmTime() {
+    public LocalDateTime getConfirmTime() {
         return confirmTime;
     }
 
-    public void setConfirmTime(Date confirmTime) {
+    public void setConfirmTime(LocalDateTime confirmTime) {
         this.confirmTime = confirmTime;
     }
 
-    public Date getHandleTime() {
+    public LocalDateTime getHandleTime() {
         return handleTime;
     }
 
-    public void setHandleTime(Date handleTime) {
+    public void setHandleTime(LocalDateTime handleTime) {
         this.handleTime = handleTime;
     }
 
@@ -330,8 +347,8 @@ public class Warning {
                 ", interval=" + interval +
                 ", ruleid='" + ruleid + '\'' +
                 ", remark='" + remark + '\'' +
-                ", table='" + table + '\'' +
-                ", tableData='" + tableData + '\'' +
+                ", table='" + tableId + '\'' +
+                ", tableData='" + tableDataId + '\'' +
                 ", fields='" + fields + '\'' +
                 ", recoveryFields='" + recoveryFields + '\'' +
                 ", time=" + time +

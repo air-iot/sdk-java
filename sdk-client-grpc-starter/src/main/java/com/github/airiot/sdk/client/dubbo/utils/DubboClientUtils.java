@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.github.airiot.sdk.client.dubbo.utils;
 
 import com.github.airiot.sdk.client.dto.Response;
@@ -5,20 +22,58 @@ import com.github.airiot.sdk.client.properties.ServiceConfig;
 import com.github.airiot.sdk.client.properties.ServiceType;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.GeneratedMessageV3;
 import org.apache.dubbo.common.constants.LoadbalanceRules;
 import org.apache.dubbo.config.spring.ReferenceBean;
 import org.apache.dubbo.config.spring.reference.ReferenceBeanBuilder;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class DubboClientUtils {
 
+    public static class LocalDateTimeAdapter extends TypeAdapter<LocalDateTime> {
+
+        private final DateTimeFormatter serializerFormatter;
+        private final DateTimeFormatter deserializerFormatter;
+
+        public LocalDateTimeAdapter(DateTimeFormatter formatter) {
+            this(formatter, formatter);
+        }
+
+        public LocalDateTimeAdapter(DateTimeFormatter serializer, DateTimeFormatter deserializer) {
+            this.serializerFormatter = serializer;
+            this.deserializerFormatter = deserializer;
+        }
+
+        @Override
+        public void write(JsonWriter out, LocalDateTime value) throws IOException {
+            if (value == null) {
+                out.nullValue();
+            } else {
+                out.value(value.format(this.serializerFormatter));
+            }
+        }
+
+        @Override
+        public LocalDateTime read(JsonReader in) throws IOException {
+            String value = in.nextString();
+            return LocalDateTime.parse(value, this.deserializerFormatter);
+        }
+    }
+
     private static final Gson GSON = new GsonBuilder()
-            .setDateFormat("yyyy-MM-dd HH:mm:ss+HH:mm")
-            .create();
+//            .setDateFormat("yyyy-MM-dd HH:mm:ss+HH:mm")
+            .registerTypeHierarchyAdapter(
+                    LocalDateTime.class,
+                    new LocalDateTimeAdapter(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss+HH:mm"), DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+            ).create();
     private static final Gson GSON_WITHOUT_ID = new GsonBuilder()
             .addSerializationExclusionStrategy(new ExclusionByFieldNameStrategy("id"))
             .create();
@@ -86,19 +141,19 @@ public class DubboClientUtils {
 
     public static <T> Response<T> deserialize(Class<T> returnType, com.github.airiot.sdk.client.dubbo.grpc.api.Response response) {
         T result = null;
-        if (response.getStatus()) {
+        if (response.getStatus() && !Void.class.equals(returnType)) {
             if (response.getResult().isEmpty()) {
-                throw new IllegalStateException("处理新增记录响应结果: 请求成功, 但 result 为空");
+                throw new IllegalStateException("处理响应结果: 请求成功, 但 result 为空");
             }
 
             try {
                 result = GSON.fromJson(response.getResult().toString(StandardCharsets.UTF_8), returnType);
             } catch (JsonSyntaxException e) {
-                throw new IllegalStateException("处理新增记录响应结果: 请求成功, 但解析 result 失败, result = " + response.getResult().toString(StandardCharsets.UTF_8), e);
+                throw new IllegalStateException("处理响应结果: 请求成功, 但解析 result 失败, result = " + response.getResult().toString(StandardCharsets.UTF_8), e);
             }
 
             if (result == null) {
-                throw new IllegalStateException("处理新增记录响应结果: 请求成功, 但解析 result 失败");
+                throw new IllegalStateException("处理响应结果: 请求成功, 但解析 result 失败");
             }
         }
 

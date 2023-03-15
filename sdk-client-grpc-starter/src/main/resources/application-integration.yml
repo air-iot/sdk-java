@@ -21,12 +21,15 @@ airiot:
       selectors:
         - metadata:
             env: aliyun
+      timeout: 60m
     services:
       core:
         enabled: true
       spm:
         enabled: true
       data-service:
+        enabled: true
+      warning:
         enabled: true
 logging:
   level:
