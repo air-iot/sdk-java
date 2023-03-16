@@ -11,7 +11,7 @@ package spm;
 import "api.proto";
 
 option go_package = "./spm;spm";
-option java_package = "com.github.airiot.sdk.client.dubbo.grpc.spm";
+option java_package = "io.github.airiot.sdk.client.dubbo.grpc.spm";
 option java_multiple_files = true;
 option java_generate_equals_and_hash = true;
 option java_generic_services = true;

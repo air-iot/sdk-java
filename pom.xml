@@ -7,6 +7,8 @@
     <version>${revision}</version>
     <name>sdk</name>
     <description>AIRIOT 物联网平台二次开发 SDK</description>
+    <url>https://github.com/air-iot/sdk-java</url>
+    
     <packaging>pom</packaging>
 
     <modules>

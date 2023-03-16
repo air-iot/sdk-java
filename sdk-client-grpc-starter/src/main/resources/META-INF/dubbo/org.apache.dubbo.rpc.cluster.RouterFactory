@@ -1,1 +1,1 @@
-nodeSelector=com.github.airiot.sdk.client.dubbo.extension.router.NodeSelectorRouterFactory
+nodeSelector=router.extension.io.github.airiot.sdk.client.dubbo.NodeSelectorRouterFactory

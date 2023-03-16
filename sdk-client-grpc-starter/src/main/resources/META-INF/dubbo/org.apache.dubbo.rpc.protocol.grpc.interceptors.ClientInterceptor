@@ -1,1 +1,1 @@
-metadata=com.github.airiot.sdk.client.dubbo.extension.interceptor.MetadataClientInterceptor
+metadata=interceptor.extension.io.github.airiot.sdk.client.dubbo.MetadataClientInterceptor

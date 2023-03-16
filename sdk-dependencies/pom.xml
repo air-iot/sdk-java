@@ -22,17 +22,17 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>com.github.airiot</groupId>
+                <groupId>io.github.air-iot</groupId>
                 <artifactId>sdk-driver-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.github.airiot</groupId>
+                <groupId>io.github.airiot</groupId>
                 <artifactId>sdk-client-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.github.airiot</groupId>
+                <groupId>io.github.air-iot</groupId>
                 <artifactId>sdk-client-grpc-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>

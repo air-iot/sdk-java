@@ -1,0 +1,114 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.github.airiot.sdk.client.dubbo.clients.warning;
+
+import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.dto.InsertResult;
+import io.github.airiot.sdk.client.dto.ResponseDTO;
+import io.github.airiot.sdk.client.dubbo.grpc.api.CreateRequest;
+import io.github.airiot.sdk.client.dubbo.grpc.api.Response;
+import io.github.airiot.sdk.client.dubbo.grpc.warning.DubboWarnServiceGrpc;
+import io.github.airiot.sdk.client.dubbo.grpc.warning.GetOrDeleteWarningRequest;
+import io.github.airiot.sdk.client.dubbo.grpc.warning.QueryWarningRequest;
+import io.github.airiot.sdk.client.dubbo.utils.DubboClientUtils;
+import io.github.airiot.sdk.client.service.warning.WarnClient;
+import io.github.airiot.sdk.client.service.warning.dto.Warning;
+import com.google.protobuf.ByteString;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
+
+import javax.annotation.Nonnull;
+import java.util.List;
+
+
+public class DubboWarnClient implements WarnClient {
+
+    private final Logger logger = LoggerFactory.getLogger(DubboWarnClient.class);
+
+    private final DubboWarnServiceGrpc.IWarnService warnService;
+
+    public DubboWarnClient(DubboWarnServiceGrpc.IWarnService warnService) {
+        this.warnService = warnService;
+    }
+
+    @Override
+    public ResponseDTO<List<Warning>> query(@Nonnull Query query, String archive) {
+        if (!query.hasSelectFields()) {
+            query = query.toBuilder().select(Warning.class).build();
+        }
+
+        byte[] queryData = query.serialize();
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("查询告警信息: query = {}, archive = {}", new String(queryData), archive);
+        }
+
+        Response response = this.warnService.query(
+                QueryWarningRequest.newBuilder()
+                        .setQuery(ByteString.copyFrom(queryData))
+                        .setArchive(archive)
+                        .build()
+        );
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("查询告警信息: query = {}, archive = {}, response = {}", new String(queryData), archive, DubboClientUtils.toString(response));
+        }
+
+        return DubboClientUtils.deserializeList(Warning.class, response);
+    }
+
+    @Override
+    public ResponseDTO<Warning> queryById(@Nonnull String warningId, String archive) {
+        if (!StringUtils.hasText(warningId)) {
+            throw new IllegalArgumentException("'warningId' cannot be null or empty");
+        }
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("查询告警信息: warningId = {}, archive = {}", warningId, archive);
+        }
+
+        Response response = this.warnService.get(
+                GetOrDeleteWarningRequest.newBuilder()
+                        .setId(warningId)
+                        .setArchive(archive)
+                        .build()
+        );
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("查询告警信息: warningId = {}, archive = {}, response = {}", warningId, archive, DubboClientUtils.toString(response));
+        }
+
+        return DubboClientUtils.deserialize(Warning.class, response);
+    }
+
+    @Override
+    public ResponseDTO<InsertResult> create(@Nonnull Warning warning) {
+        logger.debug("创建告警: {}", warning);
+
+        Response response = this.warnService.create(CreateRequest.newBuilder()
+                .setData(DubboClientUtils.serialize(warning))
+                .build());
+        
+        if (logger.isDebugEnabled()) {
+            logger.debug("创建告警: warning = {}, response = {}", warning, response);
+        }
+
+        return DubboClientUtils.deserialize(InsertResult.class, response);
+    }
+}

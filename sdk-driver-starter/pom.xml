@@ -17,17 +17,7 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <java.version>8</java.version>
-        <spring-boot.version>2.7.8</spring-boot.version>
-
-        <maven.compiler.version>3.8.1</maven.compiler.version>
-        <maven-jar-plugin>3.2.0</maven-jar-plugin>
-        <maven-flatten-plugin.version>1.2.7</maven-flatten-plugin.version>
-        <maven-source-plugin.version>2.2.1</maven-source-plugin.version>
-        <maven-javadoc-plugin.version>3.3.1</maven-javadoc-plugin.version>
-        <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
-
+        
         <grpc.version>1.53.0</grpc.version>
         <protoc.version>3.19.4</protoc.version>
     </properties>
