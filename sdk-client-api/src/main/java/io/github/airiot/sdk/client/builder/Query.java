@@ -86,6 +86,74 @@ public class Query {
         private Integer limit;
         private Boolean withCount;
 
+        public Set<String> getExcludeProjects() {
+            return excludeProjects;
+        }
+
+        public Map<String, Object> getProjects() {
+            return projects;
+        }
+
+        public void setProjects(Map<String, Object> projects) {
+            this.projects = projects;
+        }
+
+        public Map<String, Object> getFilters() {
+            return filters;
+        }
+
+        public void setFilters(Map<String, Object> filters) {
+            this.filters = filters;
+        }
+
+        public Map<String, Object> getGroupBys() {
+            return groupBys;
+        }
+
+        public void setGroupBys(Map<String, Object> groupBys) {
+            this.groupBys = groupBys;
+        }
+
+        public Map<String, Object> getGroupFields() {
+            return groupFields;
+        }
+
+        public void setGroupFields(Map<String, Object> groupFields) {
+            this.groupFields = groupFields;
+        }
+
+        public Map<String, Integer> getSort() {
+            return sort;
+        }
+
+        public void setSort(Map<String, Integer> sort) {
+            this.sort = sort;
+        }
+
+        public Integer getSkip() {
+            return skip;
+        }
+
+        public void setSkip(Integer skip) {
+            this.skip = skip;
+        }
+
+        public Integer getLimit() {
+            return limit;
+        }
+
+        public void setLimit(Integer limit) {
+            this.limit = limit;
+        }
+
+        public Boolean getWithCount() {
+            return withCount;
+        }
+
+        public void setWithCount(Boolean withCount) {
+            this.withCount = withCount;
+        }
+
         public boolean containsSelectField(String field) {
             if (CollectionUtils.isEmpty(this.projects)) {
                 return false;
@@ -164,6 +232,8 @@ public class Query {
 
         /**
          * 排除要查询的字段列表, 即查询结果中不返回该字段
+         * <br>
+         * 通常情况下, 在使用 {@link #select(Class)} 添加所有字段后, 再使用该方法排除不需要的字段
          *
          * @param columns 要排除的字段名称列表
          */
@@ -182,6 +252,9 @@ public class Query {
         }
 
 
+        /**
+         * @see #exclude(Collection)
+         */
         public Builder exclude(String... columns) {
             if (columns == null) {
                 return this;
@@ -189,6 +262,9 @@ public class Query {
             return this.exclude(Arrays.asList(columns));
         }
 
+        /**
+         * @see #exclude(Collection)
+         */
         public <T> Builder exclude(SFunction<T, ?>... columns) {
             if (columns == null) {
                 return this;
@@ -305,6 +381,9 @@ public class Query {
             return this;
         }
 
+        /**
+         * @see #ne(String, Object)
+         */
         public <Type, T> Builder ne(SFunction<Type, ?> column, T value) {
             String propName = BuilderUtils.getPropertyName(column);
             return this.ne(propName, value);
@@ -320,7 +399,7 @@ public class Query {
         }
 
         /**
-         * 在等指列表之内
+         * 在指定列表之内
          *
          * @param field 字段名
          * @param value 字段值列表
@@ -695,6 +774,7 @@ public class Query {
 
     /**
      * 判断是否定义了筛选条件
+     *
      * @return 如果未定义则返回 {@code false}
      */
     public boolean hasFilters() {

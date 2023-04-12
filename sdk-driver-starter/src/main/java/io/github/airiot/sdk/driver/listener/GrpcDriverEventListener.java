@@ -17,6 +17,10 @@
 
 package io.github.airiot.sdk.driver.listener;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
+import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.DriverApp;
 import io.github.airiot.sdk.driver.GlobalContext;
@@ -29,10 +33,6 @@ import io.github.airiot.sdk.driver.configuration.properties.DriverListenerProper
 import io.github.airiot.sdk.driver.grpc.driver.Error;
 import io.github.airiot.sdk.driver.grpc.driver.*;
 import io.github.airiot.sdk.driver.model.Tag;
-import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
-import com.google.gson.reflect.TypeToken;
-import com.google.protobuf.ByteString;
 import io.grpc.*;
 import io.grpc.stub.MetadataUtils;
 import org.apache.commons.codec.binary.Hex;
@@ -75,7 +75,9 @@ public class GrpcDriverEventListener implements DriverEventListener {
 
     private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
-    private Thread beatHeart;
+
+    private Thread connectThread;
+    private Thread healthCheckThread;
 
     public static <T> ByteString encode(T data) {
         if (data == null) {
@@ -149,113 +151,63 @@ public class GrpcDriverEventListener implements DriverEventListener {
     }
 
     /**
-     * 连接成功后, 创建相应的 stream
+     * 启动心跳检测
      */
-    private void onConnected() {
-        Channel channel = this.driverGrpcClient.getChannel();
+    private void startHealthCheck() {
+        if (this.healthCheckThread != null) {
+            this.healthCheckThread.interrupt();
+            this.healthCheckThread = null;
+        }
 
-        // start
-        ClientCall<StartResult, StartRequest> startCall = channel.newCall(
-                DriverServiceGrpc.getStartStreamMethod(),
-                CallOptions.DEFAULT.withWaitForReady()
-        );
-        StartHandler startHandler = new StartHandler(startCall, this.driverApp, this.globalContext,
-                this.getDriverConfigType(), this.getTagType(), this::handleStreamClosed);
-        startCall.start(startHandler, metadata);
-        startCall.request(Integer.MAX_VALUE);
+        log.info("创建心跳检测线程");
 
-        // schema
-        ClientCall<SchemaResult, SchemaRequest> schemaCall = channel.newCall(
-                DriverServiceGrpc.getSchemaStreamMethod(),
-                CallOptions.DEFAULT.withWaitForReady()
-        );
-        SchemaHandler schemaHandler = new SchemaHandler(schemaCall, this.driverApp, this::handleStreamClosed);
-        schemaCall.start(schemaHandler, this.metadata);
-        schemaCall.request(Integer.MAX_VALUE);
-
-        Type commandType = this.getCommandType();
-
-        // run
-        ClientCall<RunResult, RunRequest> runCall = channel.newCall(
-                DriverServiceGrpc.getRunStreamMethod(),
-                CallOptions.DEFAULT.withWaitForReady()
-        );
-        RunHandler runHandler = new RunHandler(runCall, this.driverApp, commandType, this::handleStreamClosed);
-        runCall.start(runHandler, this.metadata);
-        runCall.request(Integer.MAX_VALUE);
-
-        // writeTag
-        ClientCall<RunResult, RunRequest> writeTagCall = channel.newCall(
-                DriverServiceGrpc.getWriteTagStreamMethod(),
-                CallOptions.DEFAULT.withWaitForReady()
-        );
-        WriteTagHandler writeTagHandler = new WriteTagHandler(writeTagCall, this.driverApp, commandType, this::handleStreamClosed);
-        writeTagCall.start(writeTagHandler, this.metadata);
-        writeTagCall.request(Integer.MAX_VALUE);
-
-        // batchRun
-        ClientCall<BatchRunResult, BatchRunRequest> batchRunCall = channel.newCall(
-                DriverServiceGrpc.getBatchRunStreamMethod(),
-                CallOptions.DEFAULT.withWaitForReady()
-        );
-        BatchRunHandler batchRunHandler = new BatchRunHandler(batchRunCall, this.driverApp, commandType, this::handleStreamClosed);
-        batchRunCall.start(batchRunHandler, this.metadata);
-        batchRunCall.request(Integer.MAX_VALUE);
-
-        // debug
-        ClientCall<Debug, Debug> debugCall = channel.newCall(
-                DriverServiceGrpc.getDebugStreamMethod(),
-                CallOptions.DEFAULT.withWaitForReady()
-        );
-        DebugHandler debugHandler = new DebugHandler(debugCall, this.driverApp, this::handleStreamClosed);
-        debugCall.start(debugHandler, this.metadata);
-        debugCall.request(Integer.MAX_VALUE);
+        this.healthCheckThread = new Thread(this::healthCheck, "healthCheck");
+        this.healthCheckThread.setDaemon(true);
+        this.healthCheckThread.start();
     }
 
     private void healthCheck() {
         long keepalive = this.grpcProperties.getKeepalive().toMillis();
-        while (true) {
-            if (State.CLOSED.equals(state.get()) || State.CLOSING.equals(state.get())) {
-                break;
-            }
+        log.info("心跳检测已启动, 心跳间隔 {}ms", keepalive);
+        while (State.RUNNING.equals(this.state.get())) {
 
-            log.debug("心跳检测: 发送中");
+            log.info("心跳检测: 发送心跳");
 
             try {
                 HealthCheckResponse response = this.driverGrpcClient.healthCheck(HealthCheckRequest.newBuilder()
                         .setService(this.driverInstanceId)
                         .build());
-                log.debug("心跳检测: status = {}", response.getStatus());
-
-                if (HealthCheckResponse.ServingStatus.SERVING.equals(response.getStatus())) {
-                    if (state.get().isConnecting()) {
-                        log.info("心跳检测: 连接成功, {} -> {}", state.get(), State.RUNNING);
-                        this.onConnected();
-                    }
-                    state.set(State.RUNNING);
-                    this.reconnecting.set(false);
-                }
+                log.info("心跳检测: 接收到心跳响应, status = {}", response.getStatus());
 
                 List<Error> errors = response.getErrorsList();
                 if (!CollectionUtils.isEmpty(errors)) {
                     for (Error error : errors) {
-                        log.error("{}: {}", error.getCode(), error.getMessage());
+                        log.error("心跳检测: 接收到错误信息, code = {}, message = {}", error.getCode(), error.getMessage());
                     }
                 }
+
+                if (!HealthCheckResponse.ServingStatus.SERVING.equals(response.getStatus())) {
+                    log.error("心跳检测: 响应状态不是 SERVING, {}", response.getStatus());
+                    break;
+                }
             } catch (StatusRuntimeException e) {
-                log.error("心跳检测: 发送失败, {} -> {}", state.get(), State.RECONNECTING, e);
-                state.set(State.RECONNECTING);
+                log.error("心跳检测: 心跳检测异常", e);
+                break;
             }
 
             try {
                 TimeUnit.MILLISECONDS.sleep(keepalive);
             } catch (InterruptedException e) {
-                log.info("心跳检测: interrupted");
-                break;
+                log.info("心跳检测: 被终止");
+                return;
             }
         }
 
-        this.beatHeart = null;
+        if (!this.state.get().isRunning()) {
+            log.info("重新连接 Driver 服务");
+            this.state.set(State.RECONNECTING);
+            this.connect();
+        }
     }
 
     @Override
@@ -264,24 +216,151 @@ public class GrpcDriverEventListener implements DriverEventListener {
             return;
         }
 
-        // start health check
-        this.beatHeart = new Thread(this::healthCheck);
-        this.beatHeart.setName("healthCheck");
-        this.beatHeart.setDaemon(false);
-        this.beatHeart.start();
+        this.connect();
     }
 
     @Override
     public void stop() {
-        if (state.get().equals(State.CLOSED)) {
+        if (!state.get().isRunning()) {
+            log.info("驱动已停止");
             return;
         }
+
+        log.info("停止驱动");
+
         state.set(State.CLOSING);
 
-        // close driver
-        this.driverApp.stop();
+
+        if (this.healthCheckThread != null) {
+            this.healthCheckThread.interrupt();
+            this.healthCheckThread = null;
+        }
+
+        if (this.connectThread != null) {
+            this.connectThread.interrupt();
+            this.connectThread = null;
+        }
+
+        try {
+            // close driver
+            this.driverApp.stop();
+        } catch (Exception e) {
+            log.warn("停止驱动异常", e);
+        }
 
         state.set(State.CLOSED);
+        log.info("驱动已停止");
+    }
+
+    /**
+     * 连接 Driver 服务
+     */
+    private void connect() {
+        if (this.connectThread != null) {
+            this.connectThread.interrupt();
+            this.connectThread = null;
+        }
+
+        log.info("创建连接 Driver 服务线程");
+        this.connectThread = new Thread(this::connectTask);
+        this.connectThread.setName("connectTask");
+        this.connectThread.setDaemon(true);
+        this.connectThread.start();
+    }
+
+    /**
+     * 连接平台
+     */
+    private void connectTask() {
+        Channel channel = this.driverGrpcClient.getChannel();
+        int retryTimes = 0;
+        long retryInterval = this.grpcProperties.getReconnectInterval().toMillis();
+
+        log.info("连接 Driver 服务线程已启动, 重连间隔 {}ms", retryInterval);
+
+        while (this.state.get().isRunning()) {
+            retryTimes++;
+
+            log.info("连接 Driver 服务: 第 {} 次连接", retryTimes);
+
+            try {
+                // start
+                ClientCall<StartResult, StartRequest> startCall = channel.newCall(
+                        DriverServiceGrpc.getStartStreamMethod(),
+                        CallOptions.DEFAULT.withWaitForReady()
+                );
+                StartHandler startHandler = new StartHandler(startCall, this.driverApp, this.globalContext,
+                        this.getDriverConfigType(), this.getTagType(), this::handleStreamClosed);
+                startCall.start(startHandler, metadata);
+                startCall.request(Integer.MAX_VALUE);
+
+                // schema
+                ClientCall<SchemaResult, SchemaRequest> schemaCall = channel.newCall(
+                        DriverServiceGrpc.getSchemaStreamMethod(),
+                        CallOptions.DEFAULT.withWaitForReady()
+                );
+                SchemaHandler schemaHandler = new SchemaHandler(schemaCall, this.driverApp, this::handleStreamClosed);
+                schemaCall.start(schemaHandler, this.metadata);
+                schemaCall.request(Integer.MAX_VALUE);
+
+                Type commandType = this.getCommandType();
+
+                // run
+                ClientCall<RunResult, RunRequest> runCall = channel.newCall(
+                        DriverServiceGrpc.getRunStreamMethod(),
+                        CallOptions.DEFAULT.withWaitForReady()
+                );
+                RunHandler runHandler = new RunHandler(runCall, this.driverApp, commandType, this::handleStreamClosed);
+                runCall.start(runHandler, this.metadata);
+                runCall.request(Integer.MAX_VALUE);
+
+                // writeTag
+                ClientCall<RunResult, RunRequest> writeTagCall = channel.newCall(
+                        DriverServiceGrpc.getWriteTagStreamMethod(),
+                        CallOptions.DEFAULT.withWaitForReady()
+                );
+                WriteTagHandler writeTagHandler = new WriteTagHandler(writeTagCall, this.driverApp, commandType, this::handleStreamClosed);
+                writeTagCall.start(writeTagHandler, this.metadata);
+                writeTagCall.request(Integer.MAX_VALUE);
+
+                // batchRun
+                ClientCall<BatchRunResult, BatchRunRequest> batchRunCall = channel.newCall(
+                        DriverServiceGrpc.getBatchRunStreamMethod(),
+                        CallOptions.DEFAULT.withWaitForReady()
+                );
+                BatchRunHandler batchRunHandler = new BatchRunHandler(batchRunCall, this.driverApp, commandType, this::handleStreamClosed);
+                batchRunCall.start(batchRunHandler, this.metadata);
+                batchRunCall.request(Integer.MAX_VALUE);
+
+                // debug
+                ClientCall<Debug, Debug> debugCall = channel.newCall(
+                        DriverServiceGrpc.getDebugStreamMethod(),
+                        CallOptions.DEFAULT.withWaitForReady()
+                );
+                DebugHandler debugHandler = new DebugHandler(debugCall, this.driverApp, this::handleStreamClosed);
+                debugCall.start(debugHandler, this.metadata);
+                debugCall.request(Integer.MAX_VALUE);
+
+                this.state.set(State.RUNNING);
+
+                log.info("连接 Driver 服务: 第 {} 次连接成功", retryTimes);
+
+                break;
+            } catch (Exception e) {
+                log.error("连接 Driver 服务: 第 {} 次连接失败", retryTimes, e);
+            }
+
+            try {
+                TimeUnit.MILLISECONDS.sleep(retryInterval);
+            } catch (InterruptedException e) {
+                log.info("连接 Driver 服务: 被终止");
+                return;
+            }
+        }
+
+        if (State.RUNNING.equals(this.state.get())) {
+            this.startHealthCheck();
+        }
     }
 
     @Override
@@ -290,10 +369,10 @@ public class GrpcDriverEventListener implements DriverEventListener {
     }
 
     private void handleStreamClosed(Status status, Metadata trailers) {
-        if (this.reconnecting.compareAndSet(false, true)) {
-            log.warn("stream closed, reconnecting, status = {}, metadata = {}", status, trailers);
-            this.state.set(State.RECONNECTING);
-        }
+//        if (this.reconnecting.compareAndSet(false, true)) {
+//            log.warn("stream closed, reconnecting, status = {}, metadata = {}", status, trailers);
+//            this.state.set(State.CONNECTING);
+//        }
     }
 
     static class RunHandler extends ClientCall.Listener<RunRequest> {
@@ -739,6 +818,10 @@ public class GrpcDriverEventListener implements DriverEventListener {
 
         public boolean isConnecting() {
             return State.CONNECTING.equals(this) || State.RECONNECTING.equals(this);
+        }
+
+        public boolean isRunning() {
+            return !State.CLOSING.equals(this) && !State.CLOSED.equals(this);
         }
     }
 }

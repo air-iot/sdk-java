@@ -108,13 +108,19 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
         if (handlers.isEmpty()) {
             return point;
         }
-
+        
         String tableId = point.getTable();
         String deviceId = point.getId();
         List<Field<? extends Tag>> finalFields = new ArrayList<>(point.getFields().size());
         for (Field<? extends Tag> field : point.getFields()) {
             if (field == null || field.getTag() == null) {
                 logger.warn("数据处理: 数据中存在 tag 信息为 null 的数据. point = {}", point);
+                continue;
+            }
+
+            if (field.getValue() == null) {
+                logger.warn("数据处理: 数据点的值为 null 的数据, 丢掉该数据点. table = {}, device = {}, field = {}",
+                        tableId, deviceId, field);
                 continue;
             }
 
@@ -127,7 +133,14 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
             finalFields.add(new Field<>(field.getTag(), newValue));
         }
 
-        point.setFields(finalFields);
-        return point;
+        Point newPoint = new Point();
+        newPoint.setTable(tableId);
+        newPoint.setId(deviceId);
+        newPoint.setCid(point.getCid());
+        newPoint.setFields(finalFields);
+        newPoint.setTime(point.getTime());
+        newPoint.setFieldTypes(point.getFieldTypes());
+
+        return newPoint;
     }
 }

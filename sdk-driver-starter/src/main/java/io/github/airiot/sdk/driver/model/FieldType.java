@@ -17,6 +17,10 @@
 
 package io.github.airiot.sdk.driver.model;
 
+import org.springframework.util.StringUtils;
+
+import java.util.Optional;
+
 public enum FieldType {
     STRING("string"),
     INTEGER("integer"),
@@ -36,6 +40,25 @@ public enum FieldType {
 
     public String getValue() {
         return value;
+    }
+    
+    public static Optional<FieldType> fromString(String type) {
+        if (!StringUtils.hasText(type)) {
+            return Optional.empty();
+        }
+
+        switch (type.toLowerCase()) {
+            case "string":
+                return Optional.of(STRING);
+            case "integer":
+                return Optional.of(INTEGER);
+            case "float":
+                return Optional.of(FLOAT);
+            case "boolean":
+                return Optional.of(BOOLEAN);
+            default:
+                return Optional.empty();
+        }
     }
 }
 

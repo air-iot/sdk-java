@@ -16,6 +16,7 @@
         <module>sdk-client-api</module>
         <module>sdk-client-grpc-starter</module>
         <module>sdk-dependencies</module>
+        <module>sdk-flow-plugin-starter</module>
     </modules>
 
     <properties>

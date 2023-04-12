@@ -17,6 +17,9 @@
 
 package io.github.airiot.sdk.driver.data;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.GlobalContext;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
@@ -24,9 +27,6 @@ import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.grpc.driver.Request;
 import io.github.airiot.sdk.driver.grpc.driver.Response;
 import io.github.airiot.sdk.driver.model.*;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -40,10 +40,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public abstract class AbstractDataSender implements DataSender, InitializingBean {
 
@@ -274,7 +273,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
             this.dataHandlerOnConnectionLost.accept(point);
             return;
         }
-
+        
         // 如果未提供 table 信息则自动填充
         if (!StringUtils.hasText(point.getTable())) {
             Optional<DeviceInfo<? extends Tag>> deviceInfo = this.globalContext.getDevice(point.getId());
@@ -289,18 +288,68 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
         try {
             newPoint = this.chain.handle(point);
             if (log.isDebugEnabled()) {
-                log.debug("采集数据处理: 原始数据[{}], 处理后数据[{}]", point, newPoint);
+                log.debug("采集数据处理: 原始数据: {}, 处理后数据: {}", point, newPoint);
+            }
+
+            if (CollectionUtils.isEmpty(newPoint.getFields())) {
+                log.warn("采集数据处理: 处理后数据点列表为空, 原始数据: {}, 处理后数据: {}", point, newPoint);
+                return;
+            }
+
+            if (point.getFields().size() > newPoint.getFields().size()) {
+                log.debug("采集数据处理: 数据处理后数据点数量减少, 由 {} 减少到 {}. 处理前: {}, 处理后: {}",
+                        point.getFields().size(), newPoint.getFields().size(), point, newPoint);
+
+                // 处理后剩余的数据点列表
+                Set<String> retainFields = newPoint.getFields().stream()
+                        .filter(Objects::nonNull)
+                        .filter(field -> field.getTag() != null)
+                        .map(field -> field.getTag().getId())
+                        .collect(Collectors.toSet());
+
+                Map<String, Object> droppedFields = new HashMap<>(point.getFields().size() - newPoint.getFields().size());
+                for (Field<?> field : point.getFields()) {
+                    if (field == null || field.getTag() == null) {
+                        log.warn("采集数据处理: 数据点的 field 或 tag 信息为 null, point = {}, field = {}", point, field);
+                        continue;
+                    }
+
+                    if (!retainFields.contains(field.getTag().getId())) {
+                        droppedFields.put(field.getTag().getId(), field.getValue());
+                    }
+                }
+
+                log.warn("采集数据处理: 处理后部分数据点数据被丢弃, dropped = {}", droppedFields);
+            } else if (point.getFields().size() < newPoint.getFields().size()) {
+                log.debug("采集数据处理: 数据处理后数据点数量增加, 由 {} 增加到 {}. 处理前: {}, 处理后: {}",
+                        point.getFields().size(), newPoint.getFields().size(), point, newPoint);
+
+                // 处理前的数据点列表
+                Set<String> oldFields = point.getFields().stream()
+                        .filter(Objects::nonNull)
+                        .filter(field -> field.getTag() != null)
+                        .map(field -> field.getTag().getId())
+                        .collect(Collectors.toSet());
+
+                Map<String, Object> addedFields = new HashMap<>(newPoint.getFields().size() - point.getFields().size());
+                for (Field<?> field : newPoint.getFields()) {
+                    if (field == null || field.getTag() == null) {
+                        log.warn("采集数据处理: 数据点的 field 或 tag 信息为 null, point = {}, field = {}", point, field);
+                        continue;
+                    }
+
+                    if (!oldFields.contains(field.getTag().getId())) {
+                        addedFields.put(field.getTag().getId(), field.getValue());
+                    }
+                }
+
+                log.warn("采集数据处理: 处理后增加了数据点, added = {}", addedFields);
             }
         } catch (Exception e) {
             log.error("采集数据处理: 数据处理失败, point = {}", point, e);
             throw new DataSenderException(point, "数据处理失败", e);
         }
 
-        if (newPoint == null || CollectionUtils.isEmpty(newPoint.getFields())) {
-            log.warn("采集数据处理: 无效的数据, {}", point);
-            return;
-        }
-        
         try {
             if (!setTableIfAbsent(newPoint.getId(), newPoint::setTable)) {
                 log.warn("采集数据处理: 未找到设备对应的表, device = {}", newPoint.getId());
