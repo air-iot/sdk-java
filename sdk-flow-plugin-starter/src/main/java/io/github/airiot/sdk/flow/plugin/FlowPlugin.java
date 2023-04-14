@@ -75,8 +75,8 @@ public interface FlowPlugin<Request> {
      * 如果抛出异常则视为请求执行失败. 否则视为请求执行成功.
      *
      * @param task 任务信息
-     * @return 请求处理结果. 返回结果必须为 Map 或 Object, 该结果可以被后续节点使用
+     * @return 请求处理结果.
      * @throws FlowPluginException 如果请求执行失败
      */
-    Object execute(FlowTask<Request> task) throws FlowPluginException;
+    FlowTaskResult execute(FlowTask<Request> task) throws FlowPluginException;
 }

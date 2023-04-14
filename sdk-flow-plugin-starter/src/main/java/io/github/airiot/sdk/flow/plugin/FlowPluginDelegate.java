@@ -67,11 +67,11 @@ class FlowPluginDelegate implements FlowPlugin<Object> {
     }
 
     @Override
-    public Object execute(FlowTask<Object> request) throws FlowPluginException {
+    public FlowTaskResult execute(FlowTask<Object> request) throws FlowPluginException {
         return this.delegate.execute(request);
     }
 
-    public Object execute(FlowRequest request) throws FlowPluginException {
+    public FlowTaskResult execute(FlowRequest request) throws FlowPluginException {
         Object config;
         if (this.requestType == Void.class) {
             config = null;

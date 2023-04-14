@@ -44,6 +44,7 @@ public class FlowPluginManagement implements SmartLifecycle {
     private final FlowPluginProperties properties;
     private final PluginServiceGrpc.PluginServiceBlockingStub flowPluginService;
     private final List<FlowPluginDelegate> plugins;
+    private final List<FlowPluginHandler> handlers;
 
     private final Channel channel;
 
@@ -77,6 +78,8 @@ public class FlowPluginManagement implements SmartLifecycle {
             this.plugins.add(new FlowPluginDelegate(plugin));
         }
 
+        this.handlers = new ArrayList<>(plugins.size());
+
         this.channel = ManagedChannelBuilder.forAddress(properties.getHost(), properties.getPort())
                 .usePlaintext()
                 .build();
@@ -97,6 +100,11 @@ public class FlowPluginManagement implements SmartLifecycle {
     @Override
     public void stop() {
         this.running.set(false);
+
+        for (FlowPluginHandler handler : this.handlers) {
+            handler.close();
+        }
+        this.handlers.clear();
 
         // 执行各个插件的 onStop 方法
         for (FlowPluginDelegate plugin : this.plugins) {
@@ -123,6 +131,16 @@ public class FlowPluginManagement implements SmartLifecycle {
      * 重新连接流程引擎服务
      */
     private void reconnect() {
+        if (!this.running.get()) {
+            logger.warn("服务已停止, 无法重连");
+            return;
+        }
+
+        for (FlowPluginHandler handler : this.handlers) {
+            handler.close();
+        }
+        this.handlers.clear();
+
         // 执行状态变更回调函数
         for (FlowPluginDelegate value : this.plugins) {
             value.onConnectionStateChange(false);
@@ -173,15 +191,18 @@ public class FlowPluginManagement implements SmartLifecycle {
                     call.start(startHandler, metadata);
                     call.request(Integer.MAX_VALUE);
 
-                    logger.info("注册插件: 成功, name={}, mode={}", plugin.getName(), plugin.getPluginType());
+                    this.handlers.add(startHandler);
 
-                    this.startHeartbeat();
+                    logger.info("注册插件: 成功, name={}, mode={}", plugin.getName(), plugin.getPluginType());
                 }
 
                 // 所有插件都注册成功后, 执行回调函数
                 for (FlowPluginDelegate plugin : this.plugins) {
                     plugin.onConnectionStateChange(true);
                 }
+
+                // 开启心跳
+                this.startHeartbeat();
 
                 break;
             } catch (Exception e) {
@@ -215,33 +236,43 @@ public class FlowPluginManagement implements SmartLifecycle {
      */
     private void heartbeat() {
         long heartbeatInterval = this.properties.getHeartbeatInterval().toMillis();
-        String pluginName = this.plugins.get(0).getName();
 
         logger.info("心跳任务已启动, 心跳间隔 {}ms", heartbeatInterval);
 
         int failureTimes = 0;
         while (this.running.get()) {
-            logger.info("发送心跳: name={}", pluginName);
             try {
-                HealthCheckResponse response = this.flowPluginService.healthCheck(HealthCheckRequest.newBuilder()
-                        .setName(pluginName)
-                        .build());
-                logger.info("接收到心跳响应, name={}, status={}", pluginName, response.getStatus());
+                TimeUnit.MILLISECONDS.sleep(heartbeatInterval);
+            } catch (InterruptedException e) {
+                logger.info("发送心跳任务被中断");
+                return;
+            }
 
-                if (!response.getErrorsList().isEmpty()) {
-                    for (Error error : response.getErrorsList()) {
-                        logger.error("心跳响应错误, code={}, message={}", error.getCode(), error.getMessage());
+            try {
+                for (FlowPluginDelegate plugin : this.plugins) {
+                    String pluginName = plugin.getName();
+                    logger.info("发送心跳: name={}", pluginName);
+
+                    HealthCheckResponse response = this.flowPluginService.healthCheck(HealthCheckRequest.newBuilder()
+                            .setName(pluginName)
+                            .build());
+                    logger.info("接收到心跳响应, name={}, status={}", pluginName, response.getStatus());
+
+                    if (!response.getErrorsList().isEmpty()) {
+                        for (Error error : response.getErrorsList()) {
+                            logger.error("心跳响应错误, code={}, message={}", error.getCode(), error.getMessage());
+                        }
                     }
-                }
 
-                // 如果心跳响应不是 SERVING, 则表明服务出现问题, 重新连接
-                if (!HealthCheckResponse.ServingStatus.SERVING.equals(response.getStatus())) {
-                    logger.error("心跳检测到服务状态异常, 重新连接. status={}", response.getStatus());
-                    this.reconnect();
-                    return;
-                }
+                    // 如果心跳响应不是 SERVING, 则表明服务出现问题, 重新连接
+                    if (!HealthCheckResponse.ServingStatus.SERVING.equals(response.getStatus())) {
+                        logger.error("心跳检测到服务状态异常, 重新连接. status={}", response.getStatus());
+                        this.reconnect();
+                        return;
+                    }
 
-                failureTimes = 0;
+                    failureTimes = 0;
+                }
             } catch (Exception e) {
                 logger.error("发送心跳异常:", e);
                 failureTimes++;
@@ -250,13 +281,6 @@ public class FlowPluginManagement implements SmartLifecycle {
                     this.reconnect();
                     return;
                 }
-            }
-
-            try {
-                TimeUnit.MILLISECONDS.sleep(heartbeatInterval);
-            } catch (InterruptedException e) {
-                logger.info("发送心跳任务被中断");
-                break;
             }
         }
     }

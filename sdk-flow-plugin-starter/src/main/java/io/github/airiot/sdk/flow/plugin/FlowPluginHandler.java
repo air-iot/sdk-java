@@ -46,6 +46,10 @@ class FlowPluginHandler extends ClientCall.Listener<FlowRequest> {
         this.mode = plugin.getPluginType().getType();
     }
 
+    public void close() {
+        this.call.cancel("主动关闭", null);
+    }
+
     @Override
     public void onClose(Status status, Metadata trailers) {
         logger.warn("流程插件已关闭, name={}, mode={}", name, mode);
@@ -65,13 +69,13 @@ class FlowPluginHandler extends ClientCall.Listener<FlowRequest> {
 
         FlowResponse response = null;
         try {
-            Object result = this.plugin.execute(request);
+            FlowTaskResult result = this.plugin.execute(request);
             response = FlowResponse.newBuilder()
                     .setStatus(true)
-                    .setInfo("ok")
-                    .setDetail("")
+                    .setInfo(result.getMessage())
+                    .setDetail(result.getDetails())
                     .setElementJob(request.getElementJob())
-                    .setResult(ByteString.copyFrom(gson.toJson(result), StandardCharsets.UTF_8))
+                    .setResult(ByteString.copyFrom(gson.toJson(result.getData()), StandardCharsets.UTF_8))
                     .build();
 
             logger.info("流程插件[{}-{}]: 处理结果, project={}, flowId={}, job={}, elementId={}, elementJob={}, result={}",
@@ -100,7 +104,7 @@ class FlowPluginHandler extends ClientCall.Listener<FlowRequest> {
                     .setElementJob(request.getElementJob())
                     .build();
         }
-        
+
         try {
             this.call.sendMessage(response);
             logger.info("流程插件[{}-{}]: 处理结果已发送, project={}, flowId={}, job={}, elementId={}, elementJob={}",
