@@ -246,7 +246,7 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
 
     @Override
     public void connectionLost(Throwable e) {
-        log.info("MQTTDataSender: 连接断开");
+        log.error("MQTTDataSender: 连接断开", e);
     }
 
     @Override

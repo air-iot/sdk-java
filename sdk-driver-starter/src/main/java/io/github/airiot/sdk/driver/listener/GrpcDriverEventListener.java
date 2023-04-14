@@ -194,7 +194,7 @@ public class GrpcDriverEventListener implements DriverEventListener {
                 }
 
                 if (!HealthCheckResponse.ServingStatus.SERVING.equals(response.getStatus())) {
-                    log.error("心跳检测: 响应状态不是 SERVING, {}", response.getStatus());
+                    log.error("心跳检测: 响应状态不是 SERVING, 重新连接, status = {}", response.getStatus());
                     break;
                 }
             } catch (StatusRuntimeException e) {
@@ -202,8 +202,8 @@ public class GrpcDriverEventListener implements DriverEventListener {
                 break;
             }
         }
-
-        if (!this.state.get().isRunning()) {
+        
+        if (this.state.get().isRunning()) {
             log.info("重新连接 Driver 服务");
             this.state.set(State.RECONNECTING);
             this.connect();
@@ -352,7 +352,7 @@ public class GrpcDriverEventListener implements DriverEventListener {
                         this.getDriverConfigType(), this.getTagType(), this::handleStreamClosed);
                 startCall.start(startHandler, startMetadata);
                 startCall.request(Integer.MAX_VALUE);
-                
+
                 this.state.set(State.RUNNING);
 
                 log.info("连接 Driver 服务: 第 {} 次连接成功", retryTimes);
