@@ -18,18 +18,33 @@
 package io.github.airiot.sdk.driver.model;
 
 
-import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
-
 /**
- * 指令执行日志, 驱动上报平台下发的执行执行结果
+ * 指令执行日志, 上报到平台的执令的执行日志.
  * <br>
- *
- * @see DriverServiceGrpc#getCommandLogMethod()
+ * 每个指令可以发送多条执行日志.
+ * <br>
+ * 该信息会被上报到和存储到平台, 可以在 '指令状态管理' 页面中查看
  */
 public class RunLog {
+    /**
+     * 平台指令序号
+     * <br>
+     * 每次下发的指令都有唯一的序号
+     */
     private String serialNo;
+    /**
+     * 指令执行状态
+     * <br>
+     * 该信息可根据自身业务进行定义
+     */
     private String status;
+    /**
+     * 指令日志产生的时间(ms)
+     */
     private long time;
+    /**
+     * 指令日志详细信息
+     */
     private String desc;
 
     public RunLog() {

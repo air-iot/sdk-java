@@ -31,7 +31,7 @@ public class DriverListenerProperties {
 
     private String host = "driver";
     private int port = 9224;
-    private Duration keepalive = Duration.ofSeconds(5);
+    private Duration keepalive = Duration.ofSeconds(30);
     private Duration reconnectInterval = Duration.ofSeconds(15);
 
     public String getHost() {

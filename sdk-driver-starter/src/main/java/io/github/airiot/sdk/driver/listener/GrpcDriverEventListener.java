@@ -17,16 +17,17 @@
 
 package io.github.airiot.sdk.driver.listener;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.TypeReference;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
-import com.google.gson.reflect.TypeToken;
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.DriverApp;
 import io.github.airiot.sdk.driver.GlobalContext;
 import io.github.airiot.sdk.driver.config.BasicConfig;
 import io.github.airiot.sdk.driver.config.Device;
-import io.github.airiot.sdk.driver.config.DriverSingleConfig;
+import io.github.airiot.sdk.driver.config.DriverConfig;
 import io.github.airiot.sdk.driver.config.Model;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
@@ -170,6 +171,12 @@ public class GrpcDriverEventListener implements DriverEventListener {
         long keepalive = this.grpcProperties.getKeepalive().toMillis();
         log.info("心跳检测已启动, 心跳间隔 {}ms", keepalive);
         while (State.RUNNING.equals(this.state.get())) {
+            try {
+                TimeUnit.MILLISECONDS.sleep(keepalive);
+            } catch (InterruptedException e) {
+                log.info("心跳检测: 被终止");
+                return;
+            }
 
             log.info("心跳检测: 发送心跳");
 
@@ -193,13 +200,6 @@ public class GrpcDriverEventListener implements DriverEventListener {
             } catch (StatusRuntimeException e) {
                 log.error("心跳检测: 心跳检测异常", e);
                 break;
-            }
-
-            try {
-                TimeUnit.MILLISECONDS.sleep(keepalive);
-            } catch (InterruptedException e) {
-                log.info("心跳检测: 被终止");
-                return;
             }
         }
 
@@ -284,23 +284,15 @@ public class GrpcDriverEventListener implements DriverEventListener {
             log.info("连接 Driver 服务: 第 {} 次连接", retryTimes);
 
             try {
-                // start
-                ClientCall<StartResult, StartRequest> startCall = channel.newCall(
-                        DriverServiceGrpc.getStartStreamMethod(),
-                        CallOptions.DEFAULT.withWaitForReady()
-                );
-                StartHandler startHandler = new StartHandler(startCall, this.driverApp, this.globalContext,
-                        this.getDriverConfigType(), this.getTagType(), this::handleStreamClosed);
-                startCall.start(startHandler, metadata);
-                startCall.request(Integer.MAX_VALUE);
-
                 // schema
                 ClientCall<SchemaResult, SchemaRequest> schemaCall = channel.newCall(
                         DriverServiceGrpc.getSchemaStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
+                Metadata schemaMetadata = new Metadata();
+                schemaMetadata.merge(this.metadata);
                 SchemaHandler schemaHandler = new SchemaHandler(schemaCall, this.driverApp, this::handleStreamClosed);
-                schemaCall.start(schemaHandler, this.metadata);
+                schemaCall.start(schemaHandler, schemaMetadata);
                 schemaCall.request(Integer.MAX_VALUE);
 
                 Type commandType = this.getCommandType();
@@ -310,8 +302,10 @@ public class GrpcDriverEventListener implements DriverEventListener {
                         DriverServiceGrpc.getRunStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
+                Metadata runMetadata = new Metadata();
+                runMetadata.merge(this.metadata);
                 RunHandler runHandler = new RunHandler(runCall, this.driverApp, commandType, this::handleStreamClosed);
-                runCall.start(runHandler, this.metadata);
+                runCall.start(runHandler, runMetadata);
                 runCall.request(Integer.MAX_VALUE);
 
                 // writeTag
@@ -319,8 +313,10 @@ public class GrpcDriverEventListener implements DriverEventListener {
                         DriverServiceGrpc.getWriteTagStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
+                Metadata writeTagMetadata = new Metadata();
+                writeTagMetadata.merge(this.metadata);
                 WriteTagHandler writeTagHandler = new WriteTagHandler(writeTagCall, this.driverApp, commandType, this::handleStreamClosed);
-                writeTagCall.start(writeTagHandler, this.metadata);
+                writeTagCall.start(writeTagHandler, writeTagMetadata);
                 writeTagCall.request(Integer.MAX_VALUE);
 
                 // batchRun
@@ -328,8 +324,10 @@ public class GrpcDriverEventListener implements DriverEventListener {
                         DriverServiceGrpc.getBatchRunStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
+                Metadata batchRunMetadata = new Metadata();
+                batchRunMetadata.merge(this.metadata);
                 BatchRunHandler batchRunHandler = new BatchRunHandler(batchRunCall, this.driverApp, commandType, this::handleStreamClosed);
-                batchRunCall.start(batchRunHandler, this.metadata);
+                batchRunCall.start(batchRunHandler, batchRunMetadata);
                 batchRunCall.request(Integer.MAX_VALUE);
 
                 // debug
@@ -337,10 +335,24 @@ public class GrpcDriverEventListener implements DriverEventListener {
                         DriverServiceGrpc.getDebugStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
+                Metadata debugRunMetadata = new Metadata();
+                debugRunMetadata.merge(this.metadata);
                 DebugHandler debugHandler = new DebugHandler(debugCall, this.driverApp, this::handleStreamClosed);
-                debugCall.start(debugHandler, this.metadata);
+                debugCall.start(debugHandler, debugRunMetadata);
                 debugCall.request(Integer.MAX_VALUE);
 
+                // start
+                ClientCall<StartResult, StartRequest> startCall = channel.newCall(
+                        DriverServiceGrpc.getStartStreamMethod(),
+                        CallOptions.DEFAULT.withWaitForReady()
+                );
+                Metadata startMetadata = new Metadata();
+                startMetadata.merge(this.metadata);
+                StartHandler startHandler = new StartHandler(startCall, this.driverApp, this.globalContext,
+                        this.getDriverConfigType(), this.getTagType(), this::handleStreamClosed);
+                startCall.start(startHandler, startMetadata);
+                startCall.request(Integer.MAX_VALUE);
+                
                 this.state.set(State.RUNNING);
 
                 log.info("连接 Driver 服务: 第 {} 次连接成功", retryTimes);
@@ -676,14 +688,12 @@ public class GrpcDriverEventListener implements DriverEventListener {
             result.setCode(200);
             result.setResult("启动成功");
 
-            Gson gson = new Gson();
             boolean passed = true;
             try {
-                Type baseConfigType = TypeToken.getParameterized(
-                        DriverSingleConfig.class,
-                        TypeToken.getParameterized(BasicConfig.class, this.tagType).getType()
-                ).getType();
-                DriverSingleConfig<BasicConfig<? extends Tag>> driverConfig = gson.fromJson(config, baseConfigType);
+                Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
+                Type driverConfigType = TypeReference.parametricType(DriverConfig.class, baseConfigType, baseConfigType, baseConfigType);
+
+                DriverConfig<BasicConfig<? extends Tag>, BasicConfig<? extends Tag>, BasicConfig<? extends Tag>> driverConfig = JSON.parseObject(config, driverConfigType);
 
                 if (log.isDebugEnabled()) {
                     log.debug("启动驱动, config = {}", driverConfig);
@@ -736,7 +746,7 @@ public class GrpcDriverEventListener implements DriverEventListener {
 
             if (passed) {
                 try {
-                    Object drvConfig = gson.fromJson(config, this.driverConfigType);
+                    Object drvConfig = JSON.parseObject(config, this.driverConfigType);
                     this.driverApp.start(drvConfig);
                 } catch (Exception e) {
                     log.error("启动驱动:", e);

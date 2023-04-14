@@ -31,7 +31,7 @@ public class DriverConfig<DriverConfig, ModelConfig, DeviceConfig> {
      */
     private String id;
     /**
-     * 驱动名称
+     * 驱动实例名称
      */
     private String name;
     /**

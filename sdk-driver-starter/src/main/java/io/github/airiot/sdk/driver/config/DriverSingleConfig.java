@@ -58,7 +58,7 @@ public class DriverSingleConfig<Config> {
     /**
      * 模型和设备均使用父类的配置泛型类型
      */
-    public class Model extends io.github.airiot.sdk.driver.config.Model<Config, Config> {
+    public static class Model<MConfig> extends io.github.airiot.sdk.driver.config.Model<MConfig, MConfig> {
 
     }
 
@@ -82,7 +82,7 @@ public class DriverSingleConfig<Config> {
     /**
      * 驱动下模型列表(工作表)
      */
-    private List<Model> tables;
+    private List<Model<Config>> tables;
 
     public String getId() {
         return id;
@@ -116,14 +116,14 @@ public class DriverSingleConfig<Config> {
         this.config = config;
     }
 
-    public List<Model> getTables() {
+    public List<Model<Config>> getTables() {
         return tables;
     }
 
-    public void setTables(List<Model> tables) {
+    public void setTables(List<Model<Config>> tables) {
         this.tables = tables;
     }
-
+    
     @Override
     public String toString() {
         return "DriverSingleConfig{" +
