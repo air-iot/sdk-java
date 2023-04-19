@@ -28,14 +28,14 @@ import java.util.Map;
 
 
 /**
- * 数据传输接口
+ * 驱动与平台交互接口
  * <br>
- * 主要用于向平台上报采集到的数据, 运行过程中的重要事件, 日志等信息
+ * 主要用于驱动向平台上报采集到的数据, 运行过程中的重要事件, 日志等信息
  */
 public interface DataSender extends SmartLifecycle {
 
     /**
-     * 上报资产采集到的数据
+     * 上报驱动采集到的数据
      *
      * @param point 数据点
      * @throws IllegalStateException 如果连接未建立或已断开
@@ -56,6 +56,16 @@ public interface DataSender extends SmartLifecycle {
      */
     void writePoint(String tableId, String deviceId, long time, Map<String, Object> tagValues) throws DataSenderException;
 
+    /**
+     * 上报资产采集到的数据. 部分信息会自动填充. 使用服务器接收到数据的时间作为数据产生时间
+     *
+     * @param tableId   设备所属工作表标识
+     * @param deviceId  设备编号
+     * @param tagValues 数据点的值. value 为 {@code null}的数据点不会上报
+     * @throws IllegalStateException    如果连接未建立或已断开
+     * @throws IllegalArgumentException 如果设备不存在或者数据点信息不正确
+     * @throws DataSenderException      如果上报数据时发生异常
+     */
     default void writePoint(String tableId, String deviceId, Map<String, Object> tagValues) throws DataSenderException {
         this.writePoint(tableId, deviceId, 0L, tagValues);
     }
@@ -71,7 +81,9 @@ public interface DataSender extends SmartLifecycle {
     Response writeEvent(Event event) throws EventSenderException;
 
     /**
-     * 上报指令执行结果日志
+     * 上报指令执行结果日志.
+     * <br>
+     * 一条指令可以产生多条日志
      *
      * @param runLog 日志
      * @return 上报结果

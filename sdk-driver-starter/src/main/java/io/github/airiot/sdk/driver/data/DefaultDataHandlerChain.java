@@ -17,6 +17,7 @@
 
 package io.github.airiot.sdk.driver.data;
 
+import io.github.airiot.sdk.driver.data.handlers.BooleanToIntegerHandler;
 import io.github.airiot.sdk.driver.data.handlers.ConvertValueHandler;
 import io.github.airiot.sdk.driver.data.handlers.RangeValueHandler;
 import io.github.airiot.sdk.driver.data.handlers.RoundAndScaleValueHandler;
@@ -71,11 +72,13 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
      * 1. 数值转换 <br>
      * 2. 小数位数和缩放比例 <br>
      * 3. 有效范围
+     * 4. 将 boolean 转换为 0 或 1
      */
     public void registerDefaultHandlers() {
         this.handlers.add(new ConvertValueHandler());
         this.handlers.add(new RoundAndScaleValueHandler());
         this.handlers.add(new RangeValueHandler());
+        this.handlers.add(new BooleanToIntegerHandler());
     }
 
     @Override
@@ -108,7 +111,7 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
         if (handlers.isEmpty()) {
             return point;
         }
-        
+
         String tableId = point.getTable();
         String deviceId = point.getId();
         List<Field<? extends Tag>> finalFields = new ArrayList<>(point.getFields().size());

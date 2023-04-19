@@ -24,6 +24,8 @@ public interface FlowPlugin<Request> {
 
     /**
      * 获取插件名称
+     * <br>
+     * 插件名称在整个平台中必须唯一, 流程引擎根据插件名称来区分不同的插件.
      *
      * @return 插件名称
      */

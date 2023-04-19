@@ -85,7 +85,7 @@ public class ConvertValueHandler implements DataHandler {
         }
 
         TagValue mapping = tag.getTagValue();
-        boolean matched = mapping.getMinValue() != null && mapping.getMaxValue() != null
+        boolean matched = mapping != null && mapping.getMinValue() != null && mapping.getMaxValue() != null
                 && mapping.getMinRaw() != null && mapping.getMaxRaw() != null;
 
         logger.debug("数据点数据处理器: 数值转换, table = {}, device = {}, tag = {}, mapping = {}, value = {}, match = {}",
