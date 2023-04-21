@@ -210,16 +210,9 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
     @Override
     public void doWritePoint(Point point) throws Exception {
         this.checkRunState();
-
         byte[] payload = this.encode(point);
-        MqttMessage msg = new MqttMessage(payload);
-        msg.setQos(this.qos);
-
-        String deviceId = point.getId();
-        String topic = deviceTopicCache.computeIfAbsent(deviceId,
-                dId -> String.format("data/%s/%s/%s", this.projectId, point.getTable(), point.getId()));
-        MqttTopic tp = this.mqttClient.getTopic(topic);
-        tp.publish(msg).waitForCompletion(this.publishTimeoutMs);
+        String topic = String.format("data/%s/%s/%s", this.projectId, point.getTable(), point.getId());
+        this.mqttClient.publish(topic, payload, this.qos, false);
     }
 
     @Override
@@ -228,12 +221,8 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
             throw new LogSenderException(tableId, deviceId, level, message, "未连接或连接中断");
         }
 
-        MqttMessage m = new MqttMessage();
-        m.setQos(0);
-        m.setPayload(message.getBytes(StandardCharsets.UTF_8));
-        MqttTopic tp = this.mqttClient.getTopic(String.format("logs/%s/%s/%s/%s", this.projectId, level, tableId, deviceId));
         try {
-            tp.publish(m).waitForCompletion(this.publishTimeoutMs);
+            this.mqttClient.publish(String.format("logs/%s/%s/%s/%s", this.projectId, level, tableId, deviceId), message.getBytes(StandardCharsets.UTF_8), this.qos, false);
         } catch (MqttException e) {
             throw new LogSenderException(tableId, deviceId, level, message, e);
         }

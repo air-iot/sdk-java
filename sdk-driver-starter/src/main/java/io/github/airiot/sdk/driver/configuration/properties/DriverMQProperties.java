@@ -66,7 +66,7 @@ public class DriverMQProperties {
     public void setAmqp(Rabbit rabbit) {
         this.rabbit = rabbit;
     }
-    
+
     public static class Mqtt {
         private String host = "mqtt";
         private int port = 1883;
@@ -96,9 +96,9 @@ public class DriverMQProperties {
          *
          * @see MqttClient#getTimeToWait()
          * <br>
-         * 默认: 10s
+         * 默认: 1s
          */
-        private Duration actionTimeout = Duration.ofSeconds(10);
+        private Duration actionTimeout = Duration.ofSeconds(1);
         /**
          * 发布消息超时
          */

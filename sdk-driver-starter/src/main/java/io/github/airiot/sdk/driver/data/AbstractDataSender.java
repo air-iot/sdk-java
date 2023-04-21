@@ -273,7 +273,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
             this.dataHandlerOnConnectionLost.accept(point);
             return;
         }
-        
+
         // 如果未提供 table 信息则自动填充
         if (!StringUtils.hasText(point.getTable())) {
             Optional<DeviceInfo<? extends Tag>> deviceInfo = this.globalContext.getDevice(point.getId());
@@ -282,6 +282,9 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
             }
             point.setTable(deviceInfo.get().getTableId());
         }
+
+        String tableId = point.getTable();
+        String deviceId = point.getId();
 
         Point newPoint = null;
 
@@ -297,8 +300,8 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
             }
 
             if (point.getFields().size() > newPoint.getFields().size()) {
-                log.debug("采集数据处理: 数据处理后数据点数量减少, 由 {} 减少到 {}. 处理前: {}, 处理后: {}",
-                        point.getFields().size(), newPoint.getFields().size(), point, newPoint);
+                log.debug("采集数据处理: 数据处理后数据点数量减少, table={}, device={}, 由 {} 减少到 {}. 处理前: {}, 处理后: {}",
+                        tableId, deviceId, point.getFields().size(), newPoint.getFields().size(), point, newPoint);
 
                 // 处理后剩余的数据点列表
                 Set<String> retainFields = newPoint.getFields().stream()
@@ -319,10 +322,11 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                     }
                 }
 
-                log.warn("采集数据处理: 处理后部分数据点数据被丢弃, dropped = {}", droppedFields);
+                log.warn("采集数据处理: 处理后部分数据点数据被丢弃, table={}, device={}, dropped = {}",
+                        tableId, deviceId, droppedFields);
             } else if (point.getFields().size() < newPoint.getFields().size()) {
-                log.debug("采集数据处理: 数据处理后数据点数量增加, 由 {} 增加到 {}. 处理前: {}, 处理后: {}",
-                        point.getFields().size(), newPoint.getFields().size(), point, newPoint);
+                log.debug("采集数据处理: 数据处理后数据点数量增加, table={}, device={}, 由 {} 增加到 {}. 处理前: {}, 处理后: {}",
+                        tableId, deviceId, point.getFields().size(), newPoint.getFields().size(), point, newPoint);
 
                 // 处理前的数据点列表
                 Set<String> oldFields = point.getFields().stream()
@@ -343,7 +347,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                     }
                 }
 
-                log.warn("采集数据处理: 处理后增加了数据点, added = {}", addedFields);
+                log.warn("采集数据处理: 处理后增加了数据点, table={}, device={}, added = {}", tableId, deviceId, addedFields);
             }
         } catch (Exception e) {
             log.error("采集数据处理: 数据处理失败, point = {}", point, e);
@@ -351,11 +355,6 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
         }
 
         try {
-            if (!setTableIfAbsent(newPoint.getId(), newPoint::setTable)) {
-                log.warn("采集数据处理: 未找到设备对应的表, device = {}", newPoint.getId());
-                return;
-            }
-
             this.doWritePoint(newPoint);
         } catch (Exception e) {
             throw new DataSenderException(point, "上报数据异常", e);
