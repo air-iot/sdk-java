@@ -26,6 +26,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.github.airiot.sdk.client.builder.MapUtils.entry;
+import static io.github.airiot.sdk.client.builder.MapUtils.from;
+
 public class QueryTests {
 
     @Test
@@ -87,7 +90,7 @@ public class QueryTests {
 
         Assertions.assertThat(expectFilters).isEqualTo(filters);
     }
-    
+
     @Test
     void testNotIn() {
         Map<String, Object> filters = Query.newBuilder()
@@ -102,5 +105,155 @@ public class QueryTests {
         expectFilters.put("name", Collections.singletonMap("$nin", Arrays.asList("小明", "小红")));
 
         Assertions.assertThat(expectFilters).isEqualTo(filters);
+    }
+
+    @Test
+    void testLess() {
+        Map<String, Object> filters = Query.newBuilder()
+                .notIn("id", 1)
+                .lt("age", 18)
+                .lte("score", 99)
+                .getFilters();
+
+        Map<String, Object> expectFilters = new HashMap<>();
+        expectFilters.put("id", Collections.singletonMap("$nin", Collections.singletonList(1)));
+        expectFilters.put("age", Collections.singletonMap("$lt", 18));
+        expectFilters.put("score", Collections.singletonMap("$lte", 99));
+
+        Assertions.assertThat(expectFilters).isEqualTo(filters);
+    }
+
+    @Test
+    void testGreater() {
+        Map<String, Object> filters = Query.newBuilder()
+                .notIn("id", 1)
+                .gt("age", 18)
+                .gte("score", 99)
+                .getFilters();
+
+        Map<String, Object> expectFilters = new HashMap<>();
+        expectFilters.put("id", Collections.singletonMap("$nin", Collections.singletonList(1)));
+        expectFilters.put("age", Collections.singletonMap("$gt", 18));
+        expectFilters.put("score", Collections.singletonMap("$gte", 99));
+
+        Assertions.assertThat(expectFilters).isEqualTo(filters);
+    }
+
+    @Test
+    void testBetween() {
+        Map<String, Object> filters = Query.newBuilder()
+                .notIn("id", 1)
+                .between("age", 12, 18)
+                .betweenExcludeLeft("score", 90, 100)
+                .betweenExcludeRight("grade", 1, 6)
+                .betweenExcludeAll("height", 1.2, 1.8)
+                .getFilters();
+
+        Map<String, Object> expectFilters = new HashMap<>();
+        expectFilters.put("id", Collections.singletonMap("$nin", Collections.singletonList(1)));
+        expectFilters.put("age", from(entry("$gte", 12), entry("$lte", 18)));
+        expectFilters.put("score", from(entry("$gt", 90), entry("$lte", 100)));
+        expectFilters.put("grade", from(entry("$gte", 1), entry("$lt", 6)));
+        expectFilters.put("height", from(entry("$gt", 1.2), entry("$lt", 1.8)));
+
+        Assertions.assertThat(expectFilters).isEqualTo(filters);
+    }
+
+    @Test
+    void testSum() {
+        Map<String, Object> groupFields = Query.newBuilder()
+                .summary("score").sum()
+                .summary("age").sum("sumAge")
+                .getGroupFields();
+
+        Map<String, Object> expectFilters = new HashMap<>();
+        expectFilters.put("score", from(entry("$sum", "score")));
+        expectFilters.put("sumAge", from(entry("$sum", "age")));
+
+        Assertions.assertThat(expectFilters).isEqualTo(groupFields);
+    }
+
+    @Test
+    void testMin() {
+        Map<String, Object> groupFields = Query.newBuilder()
+                .summary("score").min()
+                .summary("age").min("minAge")
+                .getGroupFields();
+
+        Map<String, Object> expectFilters = new HashMap<>();
+        expectFilters.put("score", from(entry("$min", "score")));
+        expectFilters.put("minAge", from(entry("$min", "age")));
+
+        Assertions.assertThat(expectFilters).isEqualTo(groupFields);
+    }
+
+    @Test
+    void testMax() {
+        Map<String, Object> groupFields = Query.newBuilder()
+                .summary("score").max()
+                .summary("age").max("maxAge")
+                .getGroupFields();
+
+        Map<String, Object> expectFilters = new HashMap<>();
+        expectFilters.put("score", from(entry("$max", "score")));
+        expectFilters.put("maxAge", from(entry("$max", "age")));
+
+        Assertions.assertThat(expectFilters).isEqualTo(groupFields);
+    }
+
+    @Test
+    void testAvg() {
+        Map<String, Object> groupFields = Query.newBuilder()
+                .summary("score").avg()
+                .summary("age").avg("avgAge")
+                .getGroupFields();
+
+        Map<String, Object> expectFilters = new HashMap<>();
+        expectFilters.put("score", from(entry("$avg", "score")));
+        expectFilters.put("avgAge", from(entry("$avg", "age")));
+
+        Assertions.assertThat(expectFilters).isEqualTo(groupFields);
+    }
+
+    @Test
+    void testCount() {
+        Map<String, Object> groupFields = Query.newBuilder()
+                .summary("score").count()
+                .summary("age").count("countAge")
+                .getGroupFields();
+
+        Map<String, Object> expectFilters = new HashMap<>();
+        expectFilters.put("score", from(entry("$count", "score")));
+        expectFilters.put("countAge", from(entry("$count", "age")));
+
+        Assertions.assertThat(expectFilters).isEqualTo(groupFields);
+    }
+
+    @Test
+    void testFirst() {
+        Map<String, Object> groupFields = Query.newBuilder()
+                .summary("score").first()
+                .summary("age").first("firstAge")
+                .getGroupFields();
+
+        Map<String, Object> expectFilters = new HashMap<>();
+        expectFilters.put("score", from(entry("$first", "score")));
+        expectFilters.put("firstAge", from(entry("$first", "age")));
+
+        Assertions.assertThat(expectFilters).isEqualTo(groupFields);
+    }
+    
+    @Test
+    void testLast() {
+        Map<String, Object> groupFields = Query.newBuilder()
+                .summary("score").last()
+                .summary("age").last("lastAge")
+                .getGroupFields();
+
+        Map<String, Object> expectFilters = new HashMap<>();
+        expectFilters.put("score", from(entry("$last", "score")));
+        expectFilters.put("lastAge", from(entry("$last", "age")));
+
+        Assertions.assertThat(expectFilters).isEqualTo(groupFields);
     }
 }

@@ -35,6 +35,13 @@ import io.github.airiot.sdk.driver.model.RunLog;
 public interface DriverApp<DriverConfig, Command, Tag> {
 
     /**
+     * 获取驱动的版本号
+     *
+     * @return 版本号
+     */
+    String getVersion();
+    
+    /**
      * 启动或重启驱动
      * <br>
      * 当驱动程序启动或与平台重新连接成功后, 会自动调用方法.
@@ -94,7 +101,7 @@ public interface DriverApp<DriverConfig, Command, Tag> {
     default Debug debug(Debug config) {
         return config;
     }
-    
+
     /**
      * 获取驱动配置 schema 定义
      * <br>

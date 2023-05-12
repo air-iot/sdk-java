@@ -47,7 +47,19 @@ public class Tag {
      */
     private Double mod;
 
+    /**
+     * 无效值的标识
+     */
+    public String getInvalidTagId() {
+        return String.format("%s__invalid", id);
+    }
+
     public Tag() {
+    }
+
+    public Tag(String id, String name) {
+        this.id = id;
+        this.name = name;
     }
 
     public Tag(String id, String name, TagValue tagValue, Range range, Integer fixed, Double mod) {

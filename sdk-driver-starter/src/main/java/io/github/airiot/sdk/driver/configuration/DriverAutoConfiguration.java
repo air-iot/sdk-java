@@ -28,6 +28,7 @@ import io.github.airiot.sdk.driver.data.DataHandler;
 import io.github.airiot.sdk.driver.data.DataHandlerChain;
 import io.github.airiot.sdk.driver.data.DataSender;
 import io.github.airiot.sdk.driver.data.DefaultDataHandlerChain;
+import io.github.airiot.sdk.driver.data.handlers.TagValueCache;
 import io.github.airiot.sdk.driver.data.impl.AmqpDataSender;
 import io.github.airiot.sdk.driver.data.impl.MQTTDataSender;
 import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
@@ -55,12 +56,17 @@ import java.util.stream.Collectors;
 public class DriverAutoConfiguration {
 
     @Bean
-    @ConditionalOnMissingBean(DataHandlerChain.class)
-    public DataHandlerChain dataHandlerChain(ObjectProvider<DataHandler> handlers) {
-        List<DataHandler> dataHandlers = handlers.stream().collect(Collectors.toList());
-        return new DefaultDataHandlerChain(dataHandlers);
+    public TagValueCache tagValueCache() {
+        return new TagValueCache();
     }
 
+    @Bean
+    @ConditionalOnMissingBean(DataHandlerChain.class)
+    public DataHandlerChain dataHandlerChain(TagValueCache tagValueCache, ObjectProvider<DataHandler> handlers) {
+        List<DataHandler> dataHandlers = handlers.stream().collect(Collectors.toList());
+        return new DefaultDataHandlerChain(tagValueCache, dataHandlers);
+    }
+    
     @Bean
     public GlobalContext globalContext() {
         return new GlobalContext();

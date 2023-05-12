@@ -32,8 +32,9 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("unittest")
 public class RangeValueHandlerTests {
 
-    private final RangeValueHandler handler = new RangeValueHandler();
-
+    private final TagValueCache tagValueCache = new TagValueCache();
+    private final RangeValueHandler handler = new RangeValueHandler(tagValueCache);
+    
     @Test
     void testSupports() {
         Assertions.assertFalse(handler.supports("device-001", "dataPoint-1", null, 123));

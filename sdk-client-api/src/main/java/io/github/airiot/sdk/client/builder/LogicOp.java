@@ -20,6 +20,7 @@ package io.github.airiot.sdk.client.builder;
 
 import com.google.common.collect.Maps;
 
+import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.Map;
 
@@ -56,10 +57,46 @@ public enum LogicOp {
      */
     GTE(v -> Collections.singletonMap("$gte", checkAndGetFist(v))),
 
+    /**
+     * 在指定范围内, 闭区间. [minValue, maxValue]
+     */
     BETWEEN(v -> {
         checkSize(2, v);
         Map<String, Object> data = Maps.newHashMapWithExpectedSize(2);
         data.put("$gte", v[0]);
+        data.put("$lte", v[1]);
+        return data;
+    }),
+
+    /**
+     * 在指定范围内, 左开右闭区间. (minValue, maxValue]
+     */
+    BETWEEN_EXCLUDE_LEFT(v -> {
+        checkSize(2, v);
+        Map<String, Object> data = Maps.newHashMapWithExpectedSize(2);
+        data.put("$gt", v[0]);
+        data.put("$lte", v[1]);
+        return data;
+    }),
+
+    /**
+     * 在指定范围内, 左闭右开区间. [minValue, maxValue)
+     */
+    BETWEEN_EXCLUDE_RIGHT(v -> {
+        checkSize(2, v);
+        Map<String, Object> data = Maps.newHashMapWithExpectedSize(2);
+        data.put("$gte", v[0]);
+        data.put("$lt", v[1]);
+        return data;
+    }),
+
+    /**
+     * 在指定范围内, 左开右开区间. (minValue, maxValue)
+     */
+    BETWEEN_EXCLUDE_ALL(v -> {
+        checkSize(2, v);
+        Map<String, Object> data = Maps.newHashMapWithExpectedSize(2);
+        data.put("$gt", v[0]);
         data.put("$lt", v[1]);
         return data;
     }),
@@ -106,7 +143,7 @@ public enum LogicOp {
         this.logicSegment = logicSegment;
     }
 
-    public <T> Object apply(T... values) {
+    public final <T> Object apply(@Nullable T... values) {
         return this.logicSegment.apply(values);
     }
 }

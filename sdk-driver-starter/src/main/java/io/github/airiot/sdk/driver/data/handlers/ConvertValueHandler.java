@@ -25,6 +25,8 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * 数据点-数值转换
@@ -95,12 +97,12 @@ public class ConvertValueHandler implements DataHandler {
     }
 
     @Override
-    public Object handle(String tableId, String deviceId, Tag tag, Object value) {
+    public Map<String, Object> handle(String tableId, String deviceId, Tag tag, Object value) {
         double dValue = ((Number) value).doubleValue();
         if (!Double.isFinite(dValue)) {
             logger.warn("数据点数据处理器: 数值转换, 值为 {}, 丢弃. device = {}, tag = {}",
                     value, deviceId, tag.getId());
-            return null;
+            return Collections.emptyMap();
         }
 
         TagValue tagValue = tag.getTagValue();
@@ -116,15 +118,20 @@ public class ConvertValueHandler implements DataHandler {
             logger.debug("数据点数据处理器: 数值转换, table = {}, device = {}, tag = {}, mapping = {}, value = {}, 最大值等于最小值, 无须处理",
                     tableId, deviceId, tag.getId(), tagValue, value);
 
-            return val;
+            return Collections.singletonMap(tag.getId(), val);
         }
 
         val = val.max(minRawValue);
         val = val.min(maxRawValue);
 
-        return val.subtract(minRawValue)
+        BigDecimal result = val.subtract(minRawValue)
                 .divide(maxRawValue.subtract(minRawValue), this.scale, RoundingMode.HALF_DOWN)
-                .multiply(maxValue.subtract(minValue)).add(minValue).doubleValue();
+                .multiply(maxValue.subtract(minValue)).add(minValue);
+
+        logger.debug("数据点数据处理器: 数值转换, table = {}, device = {}, tag = {}, mapping = {}, value = {}, result = {}",
+                tableId, deviceId, tag.getId(), tagValue, value, result);
+
+        return Collections.singletonMap(tag.getId(), result.doubleValue());
     }
 
     @Override

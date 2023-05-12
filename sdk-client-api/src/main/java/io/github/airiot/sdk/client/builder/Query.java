@@ -154,6 +154,12 @@ public class Query {
             this.withCount = withCount;
         }
 
+        /**
+         * 判断现有查询字段列表中是否包含指定字段
+         *
+         * @param field 字段名称
+         * @return 如果已经包含则返回 true, 否则返回 false
+         */
         public boolean containsSelectField(String field) {
             if (CollectionUtils.isEmpty(this.projects)) {
                 return false;
@@ -161,6 +167,12 @@ public class Query {
             return this.projects.containsKey(field);
         }
 
+        /**
+         * 判断现有查询字段列表中是否包含指定字段
+         *
+         * @param column 字段名称
+         * @return 如果已经包含则返回 true, 否则返回 false
+         */
         public <T> boolean containsSelectField(SFunction<T, ?> column) {
             return this.containsSelectField(BuilderUtils.getPropertyName(column));
         }
@@ -173,13 +185,19 @@ public class Query {
         }
 
         /**
+         * 添加要返回的字段列表
+         *
          * @see #select(Collection)
          */
         public Builder select(String... fields) {
             return this.select(Arrays.asList(fields));
         }
 
-
+        /**
+         * 添加要返回的字段列表
+         *
+         * @see #select(Collection)
+         */
         public <T> Builder select(SFunction<T, ?>... columns) {
             if (columns == null || columns.length == 0) {
                 return this;
@@ -253,6 +271,8 @@ public class Query {
 
 
         /**
+         * 排除要查询的字段列表
+         *
          * @see #exclude(Collection)
          */
         public Builder exclude(String... columns) {
@@ -263,6 +283,8 @@ public class Query {
         }
 
         /**
+         * 排除要查询的字段列表
+         *
          * @see #exclude(Collection)
          */
         public <T> Builder exclude(SFunction<T, ?>... columns) {
@@ -277,14 +299,39 @@ public class Query {
             return this.exclude(columnNames);
         }
 
+        /**
+         * 汇总查询
+         *
+         * <pre>
+         *     示例1: 统计匹配行数
+         *     {
+         *         "count": {
+         *             "$sum": 1
+         *         }
+         *     }
+         *
+         *     示例2: 最小值
+         *     {
+         *         "minValue": {
+         *             "$min": "$value"
+         *         }
+         *     }
+         *
+         *     示例3: 求和
+         *     {
+         *         "sum": {
+         *             "$sum": "$value"
+         *         }
+         *     }
+         * </pre>
+         *
+         * @param field 汇总字段及汇总方式
+         */
         protected Builder summary(Map<String, Object> field) {
-            if (field == null) {
+            if (field == null || field.isEmpty()) {
                 throw new IllegalArgumentException("the select 'field' cannot be null or empty");
             }
 
-            if (field.isEmpty()) {
-                return this;
-            }
             if (this.groupFields == null) {
                 this.groupFields = new HashMap<>(1);
             }
@@ -382,6 +429,8 @@ public class Query {
         }
 
         /**
+         * 不等于
+         *
          * @see #ne(String, Object)
          */
         public <Type, T> Builder ne(SFunction<Type, ?> column, T value) {
@@ -389,10 +438,20 @@ public class Query {
             return this.ne(propName, value);
         }
 
+        /**
+         * 在指定列表之内
+         *
+         * @see #in(String, Object[])
+         */
         public <T> Builder in(String field, T... value) {
             return this.in(field, Arrays.asList(value));
         }
 
+        /**
+         * 在指定列表之内
+         *
+         * @see #in(String, Object[])
+         */
         public <Type, T> Builder in(SFunction<Type, ?> column, T value) {
             String propName = BuilderUtils.getPropertyName(column);
             return this.in(propName, value);
@@ -420,6 +479,11 @@ public class Query {
             return this;
         }
 
+        /**
+         * 不在指定列表之内
+         *
+         * @see #notIn(String, Object...)
+         */
         public <T> Builder notIn(String field, T... values) {
             if (values == null || values.length == 0) {
                 throw new IllegalArgumentException("Query: the field[" + field + "] values of condition 'not in' cannot be null and empty");
@@ -427,6 +491,11 @@ public class Query {
             return this.notIn(field, Arrays.asList(values));
         }
 
+        /**
+         * 不在指定列表之内
+         *
+         * @see #notIn(String, Object...)
+         */
         public <Type, T> Builder notIn(SFunction<Type, ?> column, T... values) {
             String propName = BuilderUtils.getPropertyName(column);
             return this.notIn(propName, values);
@@ -476,6 +545,11 @@ public class Query {
             return this;
         }
 
+        /**
+         * 小于
+         *
+         * @see #lt(String, Object)
+         */
         public <T> Builder lt(SFunction<T, ?> column, Object value) {
             String propName = BuilderUtils.getPropertyName(column);
             return this.lt(propName, value);
@@ -503,6 +577,11 @@ public class Query {
             return this;
         }
 
+        /**
+         * 小于或等于
+         *
+         * @see #lte(String, Object)
+         */
         public <T> Builder lte(SFunction<T, ?> column, Object value) {
             String propName = BuilderUtils.getPropertyName(column);
             return this.lte(propName, value);
@@ -530,6 +609,11 @@ public class Query {
             return this;
         }
 
+        /**
+         * 大于
+         *
+         * @see #gt(String, Object)
+         */
         public <T> Builder gt(SFunction<T, ?> column, Object value) {
             String propName = BuilderUtils.getPropertyName(column);
             return this.gt(propName, value);
@@ -557,20 +641,22 @@ public class Query {
             return this;
         }
 
+        /**
+         * 大于或等于
+         *
+         * @see #gte(String, Object)
+         */
         public <T> Builder gte(SFunction<T, ?> column, Object value) {
             String propName = BuilderUtils.getPropertyName(column);
             return this.gte(propName, value);
         }
 
         /**
-         * 在指定取值范围之内. [minValue, maxValue).
-         *
-         * <br>
-         * 注: 取值范围左闭右开.
+         * 在指定取值范围之内, 左闭右闭. 即: [minValue, maxValue].
          *
          * <pre>
          *     例如:
-         *     // 查询年龄在 15 - 30 岁之间的用户. 不包括 30 岁
+         *     // 查询年龄在 15 - 30 岁之间的用户. 包括 30 岁
          *     Query query = Query.newBuilder()
          *          .select(User.class)
          *          .between("age", 15, 30)
@@ -579,17 +665,17 @@ public class Query {
          *     // 查询 2020 年新注册的用户数
          *     Query query = Query.newBuilder()
          *          .groupField("count(id) as count")
-         *          .between("createTime", "2020-01-01 00:00:00", "2021-01-01 00:00:00")
+         *          .between("createTime", "2020-01-01 00:00:00", "2020-12-31 23:59:59")
          *          .build();
          * </pre>
          *
          * @param field    字段名
          * @param minValue 最小值. 包含最小值
-         * @param maxValue 最大值. 不含最大值
+         * @param maxValue 最大值. 包含最大值
          */
         public Builder between(String field, Object minValue, Object maxValue) {
             if (!StringUtils.hasText(field)) {
-                throw new IllegalArgumentException("Query: the field name of condition 'gte' cannot be empty");
+                throw new IllegalArgumentException("Query: the field name of condition 'between' cannot be empty");
             }
 
             if (minValue == null || maxValue == null) {
@@ -603,9 +689,159 @@ public class Query {
             return this;
         }
 
+        /**
+         * 在指定取值范围之内, 包含最小值和最大值. 即: [minValue, maxValue].
+         *
+         * @see #between(String, Object, Object)
+         */
         public <T> Builder between(SFunction<T, ?> column, Object minValue, Object maxValue) {
             String propName = BuilderUtils.getPropertyName(column);
             return this.between(propName, minValue, maxValue);
+        }
+
+        /**
+         * 在指定取值范围之内, 左开右闭. 即: (minValue, maxValue].
+         *
+         * <pre>
+         *     例如:
+         *     // 查询年龄在 15 - 30 岁之间的用户. 不包括 15 岁
+         *     Query query = Query.newBuilder()
+         *          .select(User.class)
+         *          .between("age", 15, 30)
+         *          .build();
+         *
+         *     // 查询 2020 年新注册的用户数
+         *     Query query = Query.newBuilder()
+         *          .groupField("count(id) as count")
+         *          .between("createTime", "2020-01-01 00:00:00", "2020-12-31 23:59:59")
+         *          .build();
+         * </pre>
+         *
+         * @param field    字段名
+         * @param minValue 最小值. 不包含最小值
+         * @param maxValue 最大值. 包含最大值
+         */
+        public Builder betweenExcludeLeft(String field, Object minValue, Object maxValue) {
+            if (!StringUtils.hasText(field)) {
+                throw new IllegalArgumentException("Query: the field name of condition 'betweenExcludeLeft' cannot be empty");
+            }
+
+            if (minValue == null || maxValue == null) {
+                throw new IllegalArgumentException("Query: the field[" + field + "] range value [" + minValue + "," + maxValue + "] of condition 'between' cannot be null");
+            }
+
+            this.checkOrCreateFilters();
+
+            this.filters.put(field.trim(), LogicOp.BETWEEN_EXCLUDE_LEFT.apply(minValue, maxValue));
+
+            return this;
+        }
+
+        /**
+         * 在指定取值范围之内, 左开右闭. 即: (minValue, maxValue].
+         *
+         * @see #betweenExcludeLeft(String, Object, Object)
+         */
+        public <T> Builder betweenExcludeLeft(SFunction<T, ?> column, Object minValue, Object maxValue) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.betweenExcludeLeft(propName, minValue, maxValue);
+        }
+
+        /**
+         * 在指定取值范围之内, 左闭右开. 即: [minValue, maxValue).
+         *
+         * <pre>
+         *     例如:
+         *     // 查询年龄在 15 - 30 岁之间的用户. 不包括 30 岁
+         *     Query query = Query.newBuilder()
+         *          .select(User.class)
+         *          .between("age", 15, 30)
+         *          .build();
+         *
+         *     // 查询 2020 年新注册的用户数
+         *     Query query = Query.newBuilder()
+         *          .groupField("count(id) as count")
+         *          .between("createTime", "2020-01-01 00:00:00", "2020-12-31 23:59:59")
+         *          .build();
+         * </pre>
+         *
+         * @param field    字段名
+         * @param minValue 最小值. 包含最小值
+         * @param maxValue 最大值. 不包含最大值
+         */
+        public Builder betweenExcludeRight(String field, Object minValue, Object maxValue) {
+            if (!StringUtils.hasText(field)) {
+                throw new IllegalArgumentException("Query: the field name of condition 'betweenExcludeRight' cannot be empty");
+            }
+
+            if (minValue == null || maxValue == null) {
+                throw new IllegalArgumentException("Query: the field[" + field + "] range value [" + minValue + "," + maxValue + "] of condition 'between' cannot be null");
+            }
+
+            this.checkOrCreateFilters();
+
+            this.filters.put(field.trim(), LogicOp.BETWEEN_EXCLUDE_RIGHT.apply(minValue, maxValue));
+
+            return this;
+        }
+
+        /**
+         * 在指定取值范围之内, 左闭右开. 即: [minValue, maxValue).
+         *
+         * @see #betweenExcludeRight(String, Object, Object)
+         */
+        public <T> Builder betweenExcludeRight(SFunction<T, ?> column, Object minValue, Object maxValue) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.betweenExcludeRight(propName, minValue, maxValue);
+        }
+
+
+        /**
+         * 在指定取值范围之内, 左开右开. 即: (minValue, maxValue).
+         *
+         * <pre>
+         *     例如:
+         *     // 查询年龄在 15 - 30 岁之间的用户. 不包括 15 和 30 岁
+         *     Query query = Query.newBuilder()
+         *          .select(User.class)
+         *          .between("age", 15, 30)
+         *          .build();
+         *
+         *     // 查询 2020 年新注册的用户数
+         *     Query query = Query.newBuilder()
+         *          .groupField("count(id) as count")
+         *          .between("createTime", "2020-01-01 00:00:00", "2020-12-31 23:59:59")
+         *          .build();
+         * </pre>
+         *
+         * @param field    字段名
+         * @param minValue 最小值. 不包含最小值
+         * @param maxValue 最大值. 不包含最大值
+         */
+        public Builder betweenExcludeAll(String field, Object minValue, Object maxValue) {
+            if (!StringUtils.hasText(field)) {
+                throw new IllegalArgumentException("Query: the field name of condition 'betweenExcludeAll' cannot be empty");
+            }
+
+            if (minValue == null || maxValue == null) {
+                throw new IllegalArgumentException("Query: the field[" + field + "] range value [" + minValue + "," + maxValue + "] of condition 'between' cannot be null");
+            }
+
+            this.checkOrCreateFilters();
+
+            this.filters.put(field.trim(), LogicOp.BETWEEN_EXCLUDE_ALL.apply(minValue, maxValue));
+
+            return this;
+        }
+
+        /**
+         * 在指定取值范围之内, 左开右开. 即: (minValue, maxValue).
+         *
+         * @see #betweenExcludeAll(String, Object, Object)
+         */
+        public <T> Builder betweenExcludeAll(SFunction<T, ?> column, Object minValue, Object maxValue) {
+            String propName = BuilderUtils.getPropertyName(column);
+            return this.betweenExcludeAll(propName, minValue, maxValue);
         }
 
         /**
@@ -632,6 +868,8 @@ public class Query {
         }
 
         /**
+         * 添加升序字段
+         *
          * @see #orderAsc(Collection)
          */
         public Builder orderAsc(String... fields) {
@@ -641,6 +879,11 @@ public class Query {
             return this.orderAsc(Arrays.asList(fields));
         }
 
+        /**
+         * 添加升序字段
+         *
+         * @see #orderAsc(Collection)
+         */
         public <T> Builder orderAsc(SFunction<T, ?>... fields) {
             if (fields == null || fields.length == 0) {
                 return this;
@@ -654,6 +897,8 @@ public class Query {
 
 
         /**
+         * 添加降序字段
+         *
          * @see #orderDesc(Collection)
          */
         public Builder orderDesc(String... fields) {
@@ -663,6 +908,11 @@ public class Query {
             return this.orderDesc(Arrays.asList(fields));
         }
 
+        /**
+         * 添加降序字段
+         *
+         * @see #orderDesc(Collection)
+         */
         public <T> Builder orderDesc(SFunction<T, ?>... fields) {
             if (fields == null || fields.length == 0) {
                 return this;

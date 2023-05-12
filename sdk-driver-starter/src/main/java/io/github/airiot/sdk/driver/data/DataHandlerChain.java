@@ -20,6 +20,8 @@ package io.github.airiot.sdk.driver.data;
 import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.driver.model.Tag;
 
+import java.util.Map;
+
 /**
  * 采集数据处理链
  */
@@ -34,7 +36,7 @@ public interface DataHandlerChain {
      * @param value    采集到的数据
      * @return 处理后的结果数据. 如果返回结果为 {@code null} 则表示丢弃该数据点的数据
      */
-    <T extends Tag> Object handle(String tableId, String deviceId, T tag, Object value);
+    <T extends Tag> Map<String, Object> handle(String tableId, String deviceId, T tag, Object value);
 
     /**
      * 依次执行所有的处理器对一个资产下所有采集到的数据进行处理, 并返回最终处理结果

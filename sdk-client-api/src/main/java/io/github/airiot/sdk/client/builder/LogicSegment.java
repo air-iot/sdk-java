@@ -18,9 +18,11 @@
 package io.github.airiot.sdk.client.builder;
 
 
+import javax.annotation.Nullable;
+
 @FunctionalInterface
 public interface LogicSegment {
     
-    Object apply(Object... value);
+    Object apply(@Nullable Object... value);
 
 }
