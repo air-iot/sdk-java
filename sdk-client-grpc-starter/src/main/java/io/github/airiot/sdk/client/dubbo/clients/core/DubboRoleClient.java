@@ -19,6 +19,7 @@ package io.github.airiot.sdk.client.dubbo.clients.core;
 
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dubbo.grpc.api.GetOrDeleteRequest;
 import io.github.airiot.sdk.client.dubbo.grpc.api.QueryRequest;
@@ -43,6 +44,11 @@ public class DubboRoleClient implements RoleClient {
 
     public DubboRoleClient(DubboRoleServiceGrpc.IRoleService roleService) {
         this.roleService = roleService;
+    }
+
+    @Override
+    public ResponseDTO<InsertResult> create(Role role) {
+        throw new UnsupportedOperationException("create");
     }
 
     @Override
@@ -80,5 +86,67 @@ public class DubboRoleClient implements RoleClient {
         }
 
         return DubboClientUtils.deserialize(Role.class, response);
+    }
+
+    @Override
+    public ResponseDTO<List<Role>> queryByName(@Nonnull String roleName) {
+        Query query = Query.newBuilder()
+                .select(Role.class)
+                .filter()
+                .eq(Role::getName, roleName)
+                .end()
+                .build();
+
+        byte[] queryData = query.serialize();
+        if (logger.isDebugEnabled()) {
+            logger.debug("根据名称查询角色信息: roleName = {}, query = {}", roleName, new String(queryData));
+        }
+
+        Response response = this.roleService.query(QueryRequest.newBuilder()
+                .setQuery(ByteString.copyFrom(queryData))
+                .build());
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("查询全部角色信息: roleName = {}, query = {}, response = {}", roleName, new String(queryData), DubboClientUtils.toString(response));
+        }
+
+        return DubboClientUtils.deserializeList(Role.class, response);
+    }
+
+    @Override
+    public ResponseDTO<List<Role>> queryAll() {
+        Query query = Query.newBuilder()
+                .select(Role.class)
+                .build();
+
+        byte[] queryData = query.serialize();
+        if (logger.isDebugEnabled()) {
+            logger.debug("查询全部角色信息: query = {}", new String(queryData));
+        }
+
+        Response response = this.roleService.query(QueryRequest.newBuilder()
+                .setQuery(ByteString.copyFrom(queryData))
+                .build());
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("查询全部角色信息: query = {}, response = {}", new String(queryData), DubboClientUtils.toString(response));
+        }
+
+        return DubboClientUtils.deserializeList(Role.class, response);
+    }
+
+    @Override
+    public ResponseDTO<Void> replace(String roleId, Role role) {
+        throw new UnsupportedOperationException("replace");
+    }
+
+    @Override
+    public ResponseDTO<Void> update(String roleId, Role role) {
+        throw new UnsupportedOperationException("patch");
+    }
+
+    @Override
+    public ResponseDTO<Void> deleteById(String roleId) {
+        throw new UnsupportedOperationException("deleteById");
     }
 }

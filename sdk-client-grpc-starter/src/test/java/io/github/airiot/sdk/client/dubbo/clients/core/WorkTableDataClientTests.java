@@ -88,7 +88,9 @@ public class WorkTableDataClientTests {
     void queryById() {
         ResponseDTO<List<Employee>> responseDTO = this.tableDataClient.query(Employee.class, testTableId, Query.newBuilder()
                 .select("id", "name", "age")
+                .filter()
                 .eq("id", this.testRowId)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -102,7 +104,9 @@ public class WorkTableDataClientTests {
     void queryByIn() {
         ResponseDTO<List<Employee>> responseDTO = this.tableDataClient.query(Employee.class, testTableId, Query.newBuilder()
                 .select("id", "name", "age")
+                .filter()
                 .in("id", this.testRowId)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -127,7 +131,9 @@ public class WorkTableDataClientTests {
     void queryNotEquals() {
         ResponseDTO<List<Employee>> responseDTO = this.tableDataClient.query(Employee.class, testTableId, Query.newBuilder()
                 .select("id", "name", "age")
+                .filter()
                 .ne("id", testRowId)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -141,7 +147,9 @@ public class WorkTableDataClientTests {
         int maxValue = 32;
         ResponseDTO<List<Employee>> responseDTO = this.tableDataClient.query(Employee.class, testTableId, Query.newBuilder()
                 .select("id", "name", "age")
+                .filter()
                 .between("age", minValue, maxValue)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());

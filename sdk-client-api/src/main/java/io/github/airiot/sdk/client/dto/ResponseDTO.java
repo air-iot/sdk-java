@@ -33,13 +33,7 @@ public class ResponseDTO<T> {
      */
     private boolean success;
     /**
-     * 总记录数
-     * <br>
-     * 当分页查询时, 即 {@code cn.airiot.sdk.client.builder.Query#withCount} 为 {@code true} 时, 该字段为匹配的记录数量.
-     */
-    private long count;
-    /**
-     * 请求响应码
+     * 请求状态码
      */
     private int code;
     /**
@@ -50,6 +44,16 @@ public class ResponseDTO<T> {
      * 详细信息
      */
     private String detail;
+    /**
+     * 字段级别的错误信息
+     */
+    private String field;
+    /**
+     * 总记录数
+     * <br>
+     * 当查询请求设置了 {@code cn.airiot.sdk.client.builder.Query#withCount} 为 {@code true} 时, 该字段为匹配的记录数量.
+     */
+    private long count;
     /**
      * 响应数据
      */
@@ -100,14 +104,25 @@ public class ResponseDTO<T> {
         this.data = data;
     }
 
+    public ResponseDTO(boolean success, long count, int code, String message, String detail, String field, T data) {
+        this.success = success;
+        this.count = count;
+        this.code = code;
+        this.message = message;
+        this.detail = detail;
+        this.field = field;
+        this.data = data;
+    }
+
     @Override
     public String toString() {
-        return "Response{" +
+        return "ResponseDTO{" +
                 "success=" + success +
                 ", count=" + count +
                 ", code=" + code +
                 ", message='" + message + '\'' +
                 ", detail='" + detail + '\'' +
+                ", field='" + field + '\'' +
                 ", data=" + data +
                 ", fullMessage='" + getFullMessage() + '\'' +
                 ", unwrap=" + unwrap() +

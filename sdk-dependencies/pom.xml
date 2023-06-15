@@ -36,6 +36,11 @@
                 <artifactId>sdk-client-grpc-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.github.air-iot</groupId>
+                <artifactId>sdk-client-http-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>

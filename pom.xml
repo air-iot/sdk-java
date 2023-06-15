@@ -17,6 +17,7 @@
         <module>sdk-client-grpc-starter</module>
         <module>sdk-dependencies</module>
         <module>sdk-flow-plugin-starter</module>
+        <module>sdk-client-http-starter</module>
     </modules>
 
     <properties>
@@ -253,6 +254,7 @@
                         <artifactId>maven-javadoc-plugin</artifactId>
                         <configuration>
                             <encoding>${project.build.sourceEncoding}</encoding>
+                            <failOnError>false</failOnError>
                         </configuration>
                         <executions>
                             <execution>

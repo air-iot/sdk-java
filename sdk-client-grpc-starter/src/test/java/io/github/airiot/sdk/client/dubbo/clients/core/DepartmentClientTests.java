@@ -19,8 +19,8 @@ package io.github.airiot.sdk.client.dubbo.clients.core;
 
 
 import io.github.airiot.sdk.client.builder.Query;
-import io.github.airiot.sdk.client.service.core.dto.Department;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
+import io.github.airiot.sdk.client.service.core.dto.Department;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -57,7 +57,9 @@ public class DepartmentClientTests {
     void query() {
         ResponseDTO<List<Department>> responseDTO = this.departmentClient.query(Query.newBuilder()
                 .select(Department.class)
+                .filter()
                 .eq("name", "集成测试部门")
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());

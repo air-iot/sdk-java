@@ -24,9 +24,9 @@ import com.google.gson.stream.JsonWriter;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.GeneratedMessageV3;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
+import io.github.airiot.sdk.client.dubbo.config.ServiceConfig;
+import io.github.airiot.sdk.client.dubbo.config.ServiceType;
 import io.github.airiot.sdk.client.dubbo.grpc.api.Response;
-import io.github.airiot.sdk.client.properties.ServiceConfig;
-import io.github.airiot.sdk.client.properties.ServiceType;
 import org.apache.dubbo.common.constants.LoadbalanceRules;
 import org.apache.dubbo.config.spring.ReferenceBean;
 import org.apache.dubbo.config.spring.reference.ReferenceBeanBuilder;
@@ -87,7 +87,7 @@ public class DubboClientUtils {
                 .setLoadBalance(LoadbalanceRules.ROUND_ROBIN)
                 .setInterface(tClass)
                 .setRetries(config.getRetries())
-                .setTimeout((int) config.getTimeout().toMillis())
+                .setTimeout((int) config.getReadTimeout().toMillis())
                 .build();
     }
 

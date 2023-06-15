@@ -18,6 +18,8 @@
 package io.github.airiot.sdk.client.context;
 
 
+import org.springframework.util.StringUtils;
+
 import java.util.Stack;
 
 /**
@@ -44,13 +46,33 @@ public class RequestContext {
         RT_CONTEXT.get().pop();
     }
 
+    /**
+     * 设置当前请求的项目ID
+     * @param projectId 项目ID
+     */
     public static void setProjectId(String projectId) {
+        if(!StringUtils.hasText(projectId)) {
+            throw new IllegalArgumentException("projectId cannot be empty");
+        }
+
         ContextData data = RT_CONTEXT.get().firstElement();
         data.projectId = projectId;
     }
 
+    /**
+     * 获取当前已设置的项目ID
+     * @return 项目ID
+     */
     public static String getProjectId() {
         return RT_CONTEXT.get().firstElement().projectId;
+    }
+
+    /**
+     * 清空当前请求的项目ID
+     */
+    public static void clearProjectId() {
+        ContextData data = RT_CONTEXT.get().firstElement();
+        data.projectId = null;
     }
 
     public static void disableAuth() {

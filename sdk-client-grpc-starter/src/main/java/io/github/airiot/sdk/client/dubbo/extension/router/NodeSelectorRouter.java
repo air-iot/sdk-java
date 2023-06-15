@@ -17,11 +17,11 @@
 
 package io.github.airiot.sdk.client.dubbo.extension.router;
 
+import io.github.airiot.sdk.client.dubbo.config.ServiceConfig;
+import io.github.airiot.sdk.client.dubbo.config.ServiceType;
+import io.github.airiot.sdk.client.dubbo.configuration.properties.DubboClientProperties;
 import io.github.airiot.sdk.client.dubbo.extension.registry.ServiceConstants;
 import io.github.airiot.sdk.client.dubbo.extension.utils.DubboUtils;
-import io.github.airiot.sdk.client.properties.ClientProperties;
-import io.github.airiot.sdk.client.properties.ServiceConfig;
-import io.github.airiot.sdk.client.properties.ServiceType;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
@@ -46,9 +46,9 @@ import java.util.concurrent.ThreadLocalRandom;
 public class NodeSelectorRouter implements Router {
 
     private final URL url;
-    private final ClientProperties properties;
+    private final DubboClientProperties properties;
 
-    public NodeSelectorRouter(URL url, ClientProperties properties) {
+    public NodeSelectorRouter(URL url, DubboClientProperties properties) {
         this.url = url;
         this.properties = properties;
     }

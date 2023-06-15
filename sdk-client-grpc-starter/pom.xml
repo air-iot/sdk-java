@@ -16,10 +16,11 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
+        
         <dubbo.version>3.1.6</dubbo.version>
+        <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
-    
+
     <dependencies>
         <dependency>
             <groupId>io.github.air-iot</groupId>

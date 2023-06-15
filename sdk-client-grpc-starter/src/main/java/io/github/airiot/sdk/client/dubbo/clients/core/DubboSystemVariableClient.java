@@ -17,7 +17,9 @@
 
 package io.github.airiot.sdk.client.dubbo.clients.core;
 
+import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dubbo.grpc.api.GetOrDeleteRequest;
 import io.github.airiot.sdk.client.dubbo.grpc.api.QueryRequest;
@@ -26,7 +28,6 @@ import io.github.airiot.sdk.client.dubbo.grpc.core.DubboSystemVariableServiceGrp
 import io.github.airiot.sdk.client.dubbo.utils.DubboClientUtils;
 import io.github.airiot.sdk.client.service.core.SystemVariableClient;
 import io.github.airiot.sdk.client.service.core.dto.SystemVariable;
-import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -78,7 +79,9 @@ public class DubboSystemVariableClient implements SystemVariableClient {
 
         byte[] queryData = Query.newBuilder()
                 .select(SystemVariable.class)
+                .filter()
                 .eq(SystemVariable::getUid, uid)
+                .end()
                 .build().serialize();
 
         if (logger.isDebugEnabled()) {
@@ -115,5 +118,25 @@ public class DubboSystemVariableClient implements SystemVariableClient {
         }
 
         return DubboClientUtils.deserialize(SystemVariable.class, response);
+    }
+
+    @Override
+    public ResponseDTO<InsertResult> create(@Nonnull SystemVariable systemVariable) {
+        throw new UnsupportedOperationException("create");
+    }
+
+    @Override
+    public ResponseDTO<Void> replace(@Nonnull String id, @Nonnull SystemVariable systemVariable) {
+        throw new UnsupportedOperationException("replace");
+    }
+
+    @Override
+    public ResponseDTO<Void> update(@Nonnull String id, @Nonnull SystemVariable systemVariable) {
+        throw new UnsupportedOperationException("update");
+    }
+
+    @Override
+    public ResponseDTO<Void> deleteById(@Nonnull String id) {
+        throw new UnsupportedOperationException("deleteById");
     }
 }

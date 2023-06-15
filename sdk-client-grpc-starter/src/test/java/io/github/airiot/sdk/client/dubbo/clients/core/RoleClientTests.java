@@ -19,8 +19,8 @@ package io.github.airiot.sdk.client.dubbo.clients.core;
 
 
 import io.github.airiot.sdk.client.builder.Query;
-import io.github.airiot.sdk.client.service.core.dto.Role;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
+import io.github.airiot.sdk.client.service.core.dto.Role;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -55,13 +55,15 @@ public class RoleClientTests {
         Role role = responseDTO.getData();
         Assert.isTrue(this.testRoleName.equals(role.getName()), "角色名称不匹配");
     }
-    
+
     @Test
     @Order(3)
     void query() {
         ResponseDTO<List<Role>> responseDTO = this.roleClient.query(Query.newBuilder()
                 .select(Role.class)
+                .filter()
                 .eq("name", "超级管理员")
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());

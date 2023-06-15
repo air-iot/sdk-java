@@ -24,6 +24,31 @@ package io.github.airiot.sdk.client.service.core.dto;
 public class SystemVariable {
 
     /**
+     * 系统变量的数据类型-数值
+     */
+    public static final String NUMBER = "number";
+    /**
+     * 系统变量的数据类型-字符串
+     */
+    public static final String STRING = "string";
+    /**
+     * 系统变量的数据类型-布尔值
+     */
+    public static final String BOOLEAN = "boolean";
+    /**
+     * 系统变量的数据类型-日期
+     */
+    public static final String DATE = "date";
+    /**
+     * 系统变量的数据类型-对象
+     */
+    public static final String OBJECT = "object";
+    /**
+     * 系统变量的数据类型-数组
+     */
+    public static final String ARRAY = "array";
+
+    /**
      * 系统变量标识
      */
     private String id;
@@ -48,22 +73,42 @@ public class SystemVariable {
         return id;
     }
 
+    public void setId(String id) {
+        this.id = id;
+    }
+
     public String getUid() {
         return uid;
+    }
+
+    public void setUid(String uid) {
+        this.uid = uid;
     }
 
     public String getName() {
         return name;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public String getType() {
         return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 
     public Object getValue() {
         return value;
     }
-    
+
+    public void setValue(Object value) {
+        this.value = value;
+    }
+
     @Override
     public String toString() {
         return "SystemVariable{" +

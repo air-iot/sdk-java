@@ -18,8 +18,8 @@
 package io.github.airiot.sdk.client.service.core;
 
 
-import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.PlatformClient;
 import io.github.airiot.sdk.client.service.core.dto.User;
 
@@ -42,18 +42,20 @@ public interface UserClient extends PlatformClient {
     /**
      * 更新用户信息
      *
-     * @param user 要更新的用户信息
+     * @param userId 要更新的用户ID
+     * @param user   要更新的用户信息
      * @return 更新结果
      */
-    ResponseDTO<Void> update(@Nonnull User user);
+    ResponseDTO<Void> update(@Nonnull String userId, @Nonnull User user);
 
     /**
      * 替换用户全部信息
      *
-     * @param user 替换后的用户信息
+     * @param userId 要替换的用户ID
+     * @param user   替换后的用户信息
      * @return 替换结果
      */
-    ResponseDTO<Void> replace(@Nonnull User user);
+    ResponseDTO<Void> replace(@Nonnull String userId, @Nonnull User user);
 
     /**
      * 根据用户ID删除用户
@@ -77,5 +79,15 @@ public interface UserClient extends PlatformClient {
      * @param userId 用户ID
      * @return 用户信息或错误信息
      */
-    ResponseDTO<User> getById(@Nonnull String userId);
+    ResponseDTO<User> queryById(@Nonnull String userId);
+    
+    /**
+     * 根据用户名查询用户信息
+     *
+     * @param name 用户名
+     * @return 用户信息或错误信息
+     */
+    default ResponseDTO<List<User>> queryByName(@Nonnull String name) {
+        return query(Query.newBuilder().select(User.class).filter().eq(User::getName, name).end().build());
+    }
 }

@@ -18,9 +18,9 @@
 package io.github.airiot.sdk.client.service.core;
 
 
+import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.PlatformClient;
-import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.service.core.dto.Department;
 
 import javax.annotation.Nonnull;
@@ -46,4 +46,13 @@ public interface DepartmentClient extends PlatformClient {
      * @return 部门信息
      */
     ResponseDTO<Department> queryById(@Nonnull String departmentId);
+
+    /**
+     * 查询全部部门信息
+     *
+     * @return 部门信息列表
+     */
+    default ResponseDTO<List<Department>> queryAll() {
+        return query(Query.newBuilder().select(Department.class).build());
+    }
 }

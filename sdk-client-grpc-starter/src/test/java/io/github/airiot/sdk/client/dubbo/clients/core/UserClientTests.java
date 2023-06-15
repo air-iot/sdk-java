@@ -76,7 +76,7 @@ public class UserClientTests {
     @Test
     @Order(2)
     void getUserById() {
-        ResponseDTO<User> responseDTO = this.userClient.getById(this.testUserId);
+        ResponseDTO<User> responseDTO = this.userClient.queryById(this.testUserId);
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
         Assert.notNull(responseDTO.getData(), "未查询到用户信息");
 
@@ -89,7 +89,9 @@ public class UserClientTests {
     void queryUser() {
         ResponseDTO<List<User>> responseDTO = this.userClient.query(Query.newBuilder()
                 .select("name", "phone", "password")
+                .filter()
                 .eq(User::getId, this.testUserId)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -101,7 +103,9 @@ public class UserClientTests {
     void queryUserIn() {
         ResponseDTO<List<User>> responseDTO = this.userClient.query(Query.newBuilder()
                 .select("name", "phone", "password")
+                .filter()
                 .in("id", this.testUserId)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -113,7 +117,9 @@ public class UserClientTests {
     void queryUserNotIn() {
         ResponseDTO<List<User>> responseDTO = this.userClient.query(Query.newBuilder()
                 .select("name", "phone", "password")
+                .filter()
                 .notIn("id", this.testUserId)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -127,10 +133,10 @@ public class UserClientTests {
         user.setId(testUserId);
         user.setPhone("189****1536");
 
-        ResponseDTO<Void> responseDTO = this.userClient.update(user);
+        ResponseDTO<Void> responseDTO = this.userClient.update(testUserId, user);
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
 
-        ResponseDTO<User> queryUser = this.userClient.getById(testUserId);
+        ResponseDTO<User> queryUser = this.userClient.queryById(testUserId);
         Assert.isTrue(queryUser.isSuccess(), DubboClientUtils.format(responseDTO));
     }
 }

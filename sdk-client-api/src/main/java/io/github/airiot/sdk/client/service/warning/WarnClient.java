@@ -18,10 +18,10 @@
 package io.github.airiot.sdk.client.service.warning;
 
 
+import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.PlatformClient;
-import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.service.warning.dto.Warning;
 
 import javax.annotation.Nonnull;
@@ -36,7 +36,7 @@ public interface WarnClient extends PlatformClient {
      * 查询告警信息
      *
      * @param query   查询条件
-     * @param archive
+     * @param archive 是否在归档数据中查询
      * @return 告警信息
      */
     ResponseDTO<List<Warning>> query(@Nonnull Query query, String archive);
@@ -54,7 +54,7 @@ public interface WarnClient extends PlatformClient {
      * 创建告警
      *
      * @param warning 告警信息
-     * @return
+     * @return 创建结果
      */
     ResponseDTO<InsertResult> create(@Nonnull Warning warning);
 }

@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.properties.condition;
+package io.github.airiot.sdk.client.dubbo.configuration.condition;
 
-import io.github.airiot.sdk.client.properties.ClientProperties;
-import io.github.airiot.sdk.client.properties.ServiceType;
+import io.github.airiot.sdk.client.dubbo.config.ServiceType;
+import io.github.airiot.sdk.client.dubbo.configuration.properties.DubboClientProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionOutcome;
 import org.springframework.boot.autoconfigure.condition.SpringBootCondition;
 import org.springframework.context.annotation.ConditionContext;
@@ -41,7 +41,7 @@ public class OnServiceEnabledCondition extends SpringBootCondition {
         ServiceType value = (ServiceType) annotationAttributes.get("value");
         String serviceName = value.getName().toLowerCase();
         boolean enabled = context.getEnvironment()
-                .getProperty(String.format("%s.services.%s.enabled", ClientProperties.PREFIX, serviceName), Boolean.class, false);
+                .getProperty(String.format("%s.services.%s.enabled", DubboClientProperties.PREFIX, serviceName), Boolean.class, false);
         if (enabled) {
             return ConditionOutcome.match(String.format("the service %s is enabled", serviceName));
         }

@@ -89,7 +89,7 @@ public class Token {
      * @return 如果即将过期则返回 {@code true}, 否则返回 {@code false}
      */
     public boolean isExpired(Duration advance) {
-        return this.expiresAt <= System.currentTimeMillis() - advance.toMillis();
+        return this.expiresAt <= System.currentTimeMillis() / 1000 - advance.getSeconds();
     }
 
     /**

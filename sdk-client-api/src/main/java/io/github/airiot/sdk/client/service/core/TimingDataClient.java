@@ -18,11 +18,33 @@
 package io.github.airiot.sdk.client.service.core;
 
 
+import io.github.airiot.sdk.client.builder.LatestDataQuery;
+import io.github.airiot.sdk.client.builder.TimingDataQuery;
 import io.github.airiot.sdk.client.service.PlatformClient;
+import io.github.airiot.sdk.client.service.core.dto.latest.LatestData;
+import io.github.airiot.sdk.client.service.core.dto.timing.TimingData;
+
+import java.util.List;
 
 /**
  * 时序数据客户端
  */
 public interface TimingDataClient extends PlatformClient {
+
+    /**
+     * 查询历史数据
+     *
+     * @param queries 查询信息
+     * @return 查询结果
+     */
+    List<TimingData> query(List<TimingDataQuery> queries);
+
+    /**
+     * 查询指定数据点的最新数据. 可同时查询多个设备的数据点最新数据.
+     *
+     * @param query 要查询的数据点列表
+     * @return 数据点的最新数据
+     */
+    List<LatestData> queryLatest(LatestDataQuery query);
 
 }
