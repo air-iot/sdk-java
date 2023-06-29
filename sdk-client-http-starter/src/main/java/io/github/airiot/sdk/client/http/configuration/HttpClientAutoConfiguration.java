@@ -95,8 +95,7 @@ public class HttpClientAutoConfiguration {
 
         @Bean
         public SpmUserClient spmUserClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                           HttpClientProperties properties,
-                                           RequestInterceptor authRequestInterceptor) {
+                                           HttpClientProperties properties) {
             ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.SPM);
             return Feign.builder().client(client)
                     .encoder(encoder)
@@ -107,7 +106,6 @@ public class HttpClientAutoConfiguration {
                             serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
                             false
                     ))
-                    .requestInterceptor(authRequestInterceptor)
                     .responseInterceptor(UniResponseInterceptor.INSTANCE)
                     .target(SpmUserFeignClient.class, properties.getHost());
         }
