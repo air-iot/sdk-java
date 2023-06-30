@@ -89,7 +89,7 @@ public class AuthorizationProperties implements InitializingBean {
             throw new IllegalArgumentException("设置 airiot.client.authorization.type=PROJECT 时, 必须设置 airiot.client.authorization.project-id");
         }
         if (StringUtils.hasText(this.projectId)) {
-            RequestContext.setProjectId(this.projectId);
+            RequestContext.setDefaultProjectId(this.projectId);
         }
     }
 
