@@ -21,6 +21,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.DriverApp;
@@ -32,8 +33,8 @@ import io.github.airiot.sdk.driver.config.Model;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
 import io.github.airiot.sdk.driver.event.DriverReloadApplicationEvent;
-import io.github.airiot.sdk.driver.grpc.driver.Error;
 import io.github.airiot.sdk.driver.grpc.driver.*;
+import io.github.airiot.sdk.driver.grpc.driver.Error;
 import io.github.airiot.sdk.driver.model.Tag;
 import io.grpc.*;
 import io.grpc.stub.MetadataUtils;
@@ -370,6 +371,19 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                         this::handleStreamClosed, this::clearTagValueCache);
                 startCall.start(startHandler, startMetadata);
                 startCall.request(Integer.MAX_VALUE);
+
+                // httpProxy
+                if (this.driverApp.supportHttpProxy()) {
+                    ClientCall<HttpProxyResult, HttpProxyRequest> httpProxyCall = channel.newCall(
+                            DriverServiceGrpc.getHttpProxyStreamMethod(),
+                            CallOptions.DEFAULT.withWaitForReady()
+                    );
+                    Metadata httpProxyMetadata = new Metadata();
+                    httpProxyMetadata.merge(this.metadata);
+                    HttpProxyHandler httpProxyHandler = new HttpProxyHandler(httpProxyCall, this.driverApp, this::handleStreamClosed);
+                    httpProxyCall.start(httpProxyHandler, httpProxyMetadata);
+                    httpProxyCall.request(Integer.MAX_VALUE);
+                }
 
                 this.state.set(State.RUNNING);
 
@@ -838,6 +852,66 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             clientCall.sendMessage(SchemaResult.newBuilder()
                     .setRequest(request.getRequest())
                     .setMessage(ByteString.copyFrom(message, StandardCharsets.UTF_8))
+                    .build());
+        }
+    }
+
+    static class HttpProxyHandler extends ClientCall.Listener<HttpProxyRequest> {
+        private final Logger log = LoggerFactory.getLogger("http-proxy-stream");
+
+        private final static Gson GSON = new Gson();
+//        private final static TypeToken<Map<String, List<String>>> HEADER_TYPE = new TypeToken<Map<String, List<String>>>() {
+//        };
+
+        private final static Type HEADER_TYPE = new TypeToken<Map<String, List<String>>>() {
+        }.getType();
+
+        private final ClientCall<HttpProxyResult, HttpProxyRequest> clientCall;
+        private final DriverApp<Object, Object, Object> driverApp;
+        private final StreamClosedCallback closedCallback;
+
+        public HttpProxyHandler(ClientCall<HttpProxyResult, HttpProxyRequest> clientCall,
+                                DriverApp<Object, Object, Object> driverApp,
+                                StreamClosedCallback closedCallback) {
+            this.clientCall = clientCall;
+            this.driverApp = driverApp;
+            this.closedCallback = closedCallback;
+        }
+
+        @Override
+        public void onClose(Status status, Metadata trailers) {
+            log.error("closed, status = {}, metadata = {}", status, trailers);
+            this.closedCallback.handle(status, trailers);
+        }
+
+        @Override
+        public void onReady() {
+            log.info("ready");
+        }
+
+        @Override
+        public void onMessage(HttpProxyRequest request) {
+            log.info("req = {}, type = httpProxy", request.getRequest());
+            Result result = new Result();
+            try {
+                Map<String, List<String>> headers = GSON.fromJson(request.getHeaders().toStringUtf8(), HEADER_TYPE);
+                Object proxyResult = this.driverApp.httpProxy(request.getType(), headers, request.getData().toByteArray());
+                if (log.isDebugEnabled()) {
+                    log.debug("req = {}, type = httpProxy, {}", request.getRequest(), proxyResult);
+                }
+
+                result.setCode(200);
+                result.setResult(proxyResult);
+            } catch (Exception e) {
+                log.error("req = {}, type = schema", request.getRequest(), e);
+                result.setCode(500);
+                result.setResult(e.getMessage());
+            }
+
+            String message = GSON.toJson(result);
+            clientCall.sendMessage(HttpProxyResult.newBuilder()
+                    .setRequest(request.getRequest())
+                    .setData(ByteString.copyFrom(message, StandardCharsets.UTF_8))
                     .build());
         }
     }

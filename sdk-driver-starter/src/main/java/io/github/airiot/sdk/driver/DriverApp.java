@@ -23,6 +23,9 @@ import io.github.airiot.sdk.driver.listener.BatchCmd;
 import io.github.airiot.sdk.driver.listener.Cmd;
 import io.github.airiot.sdk.driver.model.RunLog;
 
+import java.util.List;
+import java.util.Map;
+
 
 /**
  * 驱动管理接口, 主要实现对驱动运行状态的管理
@@ -40,7 +43,30 @@ public interface DriverApp<DriverConfig, Command, Tag> {
      * @return 版本号
      */
     String getVersion();
-    
+
+    /**
+     * HTTP 请求代理. 可以将驱动中的功能通过 HTTP 暴露到平台.
+     * <br>
+     * 只有 {@link #supportHttpProxy()} 返回值为 {@code true} 时才生效
+     *
+     * @param requestType 请求代理
+     * @param headers     请求头
+     * @param data        请求参数
+     * @return 请求处理结果
+     */
+    default Object httpProxy(String requestType, Map<String, List<String>> headers, byte[] data) {
+        throw new UnsupportedOperationException("不支持 HTTP 请求代理");
+    }
+
+    /**
+     * 是否支持 HTTP 请求代理
+     *
+     * @return 如果返回 {@code true} 表示启用 HTTP 请求代理, 否则不启用
+     */
+    default boolean supportHttpProxy() {
+        return false;
+    }
+
     /**
      * 启动或重启驱动
      * <br>
