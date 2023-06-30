@@ -18,9 +18,10 @@
 package io.github.airiot.sdk.client.service.core;
 
 
+import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.PlatformClient;
-import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.service.core.dto.SystemVariable;
 
 import javax.annotation.Nonnull;
@@ -40,12 +41,39 @@ public interface SystemVariableClient extends PlatformClient {
     ResponseDTO<List<SystemVariable>> query(@Nonnull Query query);
 
     /**
+     * 查询全部系统变量信息
+     *
+     * @return 系统变量信息
+     */
+    default ResponseDTO<List<SystemVariable>> queryAll() {
+        return query(Query.newBuilder().select(SystemVariable.class).build());
+    }
+
+    /**
      * 根据系统变量编号查询系统变量信息
      *
      * @param uid 系统变量编号
      * @return 系统变量信息
      */
-    ResponseDTO<SystemVariable> queryByUId(@Nonnull String uid);
+    default ResponseDTO<SystemVariable> queryByUId(@Nonnull String uid) {
+        ResponseDTO<List<SystemVariable>> response = query(Query.newBuilder()
+                .select(SystemVariable.class)
+                .filter()
+                .eq(SystemVariable::getUid, uid).end()
+                .build());
+        if (!response.isSuccess()) {
+            return new ResponseDTO<>(response.isSuccess(), response.getCode(), response.getMessage(), response.getDetail(), null);
+        }
+
+        List<SystemVariable> systemVariables = response.getData();
+        if (systemVariables != null && systemVariables.size() > 1) {
+            throw new IllegalStateException("根据 uid '" + uid + "' 查询到多个系统变量, " + systemVariables);
+        }
+
+        return new ResponseDTO<>(response.isSuccess(), response.getCode(),
+                response.getMessage(), response.getDetail(),
+                systemVariables == null || systemVariables.isEmpty() ? null : systemVariables.get(0));
+    }
 
     /**
      * 根据系统变量ID查询系统变量信息
@@ -55,4 +83,63 @@ public interface SystemVariableClient extends PlatformClient {
      */
     ResponseDTO<SystemVariable> queryById(@Nonnull String id);
 
+    /**
+     * 根据系统变量名称查询系统变量信息
+     *
+     * @param name 系统变量名称
+     * @return 系统变量信息
+     */
+    default ResponseDTO<List<SystemVariable>> queryByName(@Nonnull String name) {
+        return query(Query.newBuilder().select(SystemVariable.class)
+                .filter().eq(SystemVariable::getName, name).end()
+                .build());
+    }
+
+    /**
+     * 创建系统变量信息
+     *
+     * @param systemVariable 系统变量信息
+     * @return 创建结果
+     */
+    ResponseDTO<InsertResult> create(@Nonnull SystemVariable systemVariable);
+
+    /**
+     * 替换系统变量信息
+     *
+     * @param id             系统变量ID
+     * @param systemVariable 系统变量信息
+     * @return 替换结果
+     */
+    ResponseDTO<Void> replace(@Nonnull String id, @Nonnull SystemVariable systemVariable);
+
+    /**
+     * 更新系统变量信息
+     *
+     * @param id             系统变量ID
+     * @param systemVariable 系统变量信息
+     * @return 更新结果
+     */
+    ResponseDTO<Void> update(@Nonnull String id, @Nonnull SystemVariable systemVariable);
+
+    /**
+     * 更新系统变量的值
+     *
+     * @param id    系统变量ID
+     * @param value 系统变量值
+     * @return 更新结果
+     */
+    default ResponseDTO<Void> updateValue(@Nonnull String id, @Nonnull Object value) {
+        SystemVariable variable = new SystemVariable();
+        variable.setId(id);
+        variable.setValue(value);
+        return this.update(id, variable);
+    }
+
+    /**
+     * 删除系统变量信息
+     *
+     * @param id 系统变量ID
+     * @return 删除结果
+     */
+    ResponseDTO<Void> deleteById(@Nonnull String id);
 }

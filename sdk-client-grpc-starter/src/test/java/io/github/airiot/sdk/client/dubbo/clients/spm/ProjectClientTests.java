@@ -67,7 +67,9 @@ public class ProjectClientTests {
     @Order(3)
     void queryByName() {
         ResponseDTO<List<Project>> responseDTO = this.projectClient.query(Query.newBuilder()
+                .filter()
                 .eq(Project::getName, "集成测试项目-可删除")
+                .end()
                 .build());
 
         Assertions.assertTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -116,7 +118,7 @@ public class ProjectClientTests {
         ResponseDTO<Void> responseDTO = this.projectClient.updateLicense(this.projectId, license);
         Assertions.assertTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
     }
-    
+
     @Test
     @Order(7)
     void replaceProject() {

@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.properties;
+package io.github.airiot.sdk.client.dubbo.config;
+
+import io.github.airiot.sdk.client.dubbo.configuration.properties.DubboClientProperties;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -31,7 +33,7 @@ public class ServiceConfig {
     /**
      * 是否启用该服务. 默认不启用
      * <br>
-     * 如果默认配置 {@link ClientProperties#getDefaultConfig()} 中的 {@code enabled} 为 {@code false} 则表示禁用默认配置
+     * 如果默认配置 {@link DubboClientProperties#getDefaultConfig()} 中的 {@code enabled} 为 {@code false} 则表示禁用默认配置
      */
     private boolean enabled = false;
 
@@ -59,9 +61,13 @@ public class ServiceConfig {
      */
     private int retries = 1;
     /**
-     * 请求超时时间
+     * 连接超时时间
      */
-    private Duration timeout = Duration.ofSeconds(3);
+    private Duration connectTimeout = Duration.ofSeconds(5);
+    /**
+     * 读取超时时间
+     */
+    private Duration readTimeout = Duration.ofSeconds(120);
 
     public ServiceConfig() {
     }
@@ -110,12 +116,20 @@ public class ServiceConfig {
         this.retries = retries;
     }
 
-    public Duration getTimeout() {
-        return timeout;
+    public Duration getConnectTimeout() {
+        return connectTimeout;
     }
 
-    public void setTimeout(Duration timeout) {
-        this.timeout = timeout;
+    public void setConnectTimeout(Duration connectTimeout) {
+        this.connectTimeout = connectTimeout;
+    }
+
+    public Duration getReadTimeout() {
+        return readTimeout;
+    }
+
+    public void setReadTimeout(Duration readTimeout) {
+        this.readTimeout = readTimeout;
     }
 
     /**

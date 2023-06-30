@@ -85,11 +85,11 @@ public class AuthorizationProperties implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        if (Type.PROJECT.equals(this.type)) {
-            if (!StringUtils.hasText(this.projectId)) {
-                throw new IllegalArgumentException("设置 airiot.client.authorization.type=PROJECT 时, 必须设置 airiot.client.authorization.project-id");
-            }
-            RequestContext.setProjectId(this.projectId);
+        if (Type.PROJECT.equals(this.type) && !StringUtils.hasText(this.projectId)) {
+            throw new IllegalArgumentException("设置 airiot.client.authorization.type=PROJECT 时, 必须设置 airiot.client.authorization.project-id");
+        }
+        if (StringUtils.hasText(this.projectId)) {
+            RequestContext.setDefaultProjectId(this.projectId);
         }
     }
 

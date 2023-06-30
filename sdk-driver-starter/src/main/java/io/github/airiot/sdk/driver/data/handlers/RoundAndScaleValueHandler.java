@@ -24,8 +24,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.Collections;
+import java.util.Map;
 
 
 /**
@@ -76,26 +77,28 @@ public class RoundAndScaleValueHandler implements DataHandler {
     }
 
     @Override
-    public Object handle(String tableId, String deviceId, Tag tag, Object value) {
+    public Map<String, Object> handle(String tableId, String deviceId, Tag tag, Object value) {
         double dValue = ((Number) value).doubleValue();
         if (!Double.isFinite(dValue)) {
             logger.warn("数据点数据处理器: 小数位数和缩放比例, 值为 {}, 丢弃. device = {}, tag = {}",
                     value, deviceId, tag.getId());
-            return null;
+            return Collections.emptyMap();
         }
 
         BigDecimal val = BigDecimal.valueOf(dValue);
-
+        
         if (tag.getMod() != null) {
             val = val.multiply(BigDecimal.valueOf(tag.getMod()));
         }
 
         if (tag.getFixed() != null && tag.getFixed() >= 0) {
-            int precision = String.valueOf(val.longValue()).length() + tag.getFixed();
-            val = val.round(new MathContext(precision, RoundingMode.HALF_UP));
+            val = val.setScale(tag.getFixed(), RoundingMode.HALF_UP);
         }
 
-        return val.doubleValue();
+        logger.warn("数据点数据处理器: 小数位数和缩放比例, device = {}, tag = {}, value = {}, result = {}",
+                deviceId, tag.getId(), value, val);
+
+        return Collections.singletonMap(tag.getId(), val);
     }
 
     @Override

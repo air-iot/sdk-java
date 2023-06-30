@@ -15,41 +15,21 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.properties;
+package io.github.airiot.sdk.client.http.clients.core;
 
-public enum ServiceType {
+import io.github.airiot.sdk.client.service.core.SpecificTableDataClient;
+import io.github.airiot.sdk.client.service.core.TableDataClientFactory;
 
-    /**
-     * 核心服务
-     */
-    CORE("core"),
+public class TableDataClientFactoryImpl extends TableDataClientFactory {
 
-    /**
-     * 数据接口服务
-     */
-    DATA_SERVICE("data-service"),
+    private final TableDataFeignClient tableDataFeignClient;
 
-    /**
-     * 告警服务
-     */
-    WARNING("warning"),
-
-    /**
-     * 空间管理服务
-     */
-    SPM("spm");
-
-    private final String name;
-
-    public String getName() {
-        return name;
+    public TableDataClientFactoryImpl(TableDataFeignClient tableDataFeignClient) {
+        this.tableDataFeignClient = tableDataFeignClient;
     }
-
-    ServiceType(String name) {
-        this.name = name;
-    }
-
-    public static ServiceType of(String serviceName) {
-        return ServiceType.valueOf(serviceName.toUpperCase());
+    
+    @Override
+    protected <T> SpecificTableDataClient<T> createClient(String tableId, Class<T> clazz) {
+        return new SpecificTableDataFeignClient<>(tableId, clazz, this.tableDataFeignClient);
     }
 }

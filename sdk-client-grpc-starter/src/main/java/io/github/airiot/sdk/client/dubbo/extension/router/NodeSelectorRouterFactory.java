@@ -17,7 +17,7 @@
 
 package io.github.airiot.sdk.client.dubbo.extension.router;
 
-import io.github.airiot.sdk.client.properties.ClientProperties;
+import io.github.airiot.sdk.client.dubbo.configuration.properties.DubboClientProperties;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.config.spring.extension.SpringExtensionInjector;
@@ -37,10 +37,10 @@ public class NodeSelectorRouterFactory extends CacheableRouterFactory {
         SpringExtensionInjector springExtensionInjector = SpringExtensionInjector.get(applicationModel);
         this.applicationContext = springExtensionInjector.getContext();
     }
-
+    
     @Override
     protected Router createRouter(URL url) {
-        ClientProperties properties = this.applicationContext.getBean(ClientProperties.class);
+        DubboClientProperties properties = this.applicationContext.getBean(DubboClientProperties.class);
         return new NodeSelectorRouter(url, properties);
     }
 }

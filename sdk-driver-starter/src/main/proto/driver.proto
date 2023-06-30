@@ -30,6 +30,7 @@ service DriverService {
   rpc WriteTagStream (stream RunResult) returns (stream RunRequest) {}
   rpc BatchRunStream (stream BatchRunResult) returns (stream BatchRunRequest) {}
   rpc DebugStream (stream Debug) returns (stream Debug) {}
+  rpc HttpProxyStream (stream HttpProxyResult) returns (stream HttpProxyRequest) {}
 
   rpc BatchCommand (api.CreateRequest) returns (api.Response) {}
   rpc ChangeCommand (api.UpdateRequest) returns (api.Response) {}
@@ -72,6 +73,7 @@ message Error {
     Write = 3;  // Used only by the Watch method.
     BatchRun = 4;  // Used only by the Watch method.
     Debug = 5;  // Used only by the Watch method.
+    Health = 6;
   }
   ErrorCode code = 1;
   string message = 2;
@@ -128,6 +130,20 @@ message BatchRunResult {
 }
 
 message Debug {
+  string request = 1;
+  bytes data = 2;
+}
+
+
+message HttpProxyRequest {
+  string request = 1;
+  string type = 2;
+  bytes headers = 3;
+  bytes data = 4;
+}
+
+
+message HttpProxyResult {
   string request = 1;
   bytes data = 2;
 }

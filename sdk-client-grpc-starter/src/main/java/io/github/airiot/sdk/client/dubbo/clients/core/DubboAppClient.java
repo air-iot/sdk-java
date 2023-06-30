@@ -24,16 +24,12 @@ import io.github.airiot.sdk.client.dubbo.grpc.api.TokenRequest;
 import io.github.airiot.sdk.client.dubbo.grpc.core.DubboAppServiceGrpc;
 import io.github.airiot.sdk.client.dubbo.utils.DubboClientUtils;
 import io.github.airiot.sdk.client.service.core.AppClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
 import javax.annotation.Nonnull;
 
 
 public class DubboAppClient implements AppClient {
-
-    private final Logger logger = LoggerFactory.getLogger(DubboAppClient.class);
 
     private final DubboAppServiceGrpc.IAppService appService;
 

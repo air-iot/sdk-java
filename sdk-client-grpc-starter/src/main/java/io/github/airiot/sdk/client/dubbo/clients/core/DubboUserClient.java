@@ -61,12 +61,11 @@ public class DubboUserClient implements UserClient {
     }
 
     @Override
-    public ResponseDTO<Void> update(@Nonnull User user) {
+    public ResponseDTO<Void> update(@Nonnull String userId, @Nonnull User user) {
         if (logger.isDebugEnabled()) {
             logger.debug("更新用户信息: {}", user);
         }
 
-        String userId = user.getId();
         if (!StringUtils.hasText(userId)) {
             throw new IllegalArgumentException("the id of user cannot be empty");
         }
@@ -92,12 +91,11 @@ public class DubboUserClient implements UserClient {
     }
 
     @Override
-    public ResponseDTO<Void> replace(@Nonnull User user) {
+    public ResponseDTO<Void> replace(@Nonnull String userId, @Nonnull User user) {
         if (logger.isDebugEnabled()) {
             logger.debug("替换用户信息: {}", user);
         }
-
-        String userId = user.getId();
+        
         if (!StringUtils.hasText(userId)) {
             throw new IllegalArgumentException("the id of user cannot be empty");
         }
@@ -155,7 +153,7 @@ public class DubboUserClient implements UserClient {
     }
 
     @Override
-    public ResponseDTO<User> getById(@Nonnull String userId) {
+    public ResponseDTO<User> queryById(@Nonnull String userId) {
         logger.debug("查询用户: userId = {}", userId);
         Response response = this.userService.get(GetOrDeleteRequest.newBuilder()
                 .setId(userId)
@@ -164,7 +162,7 @@ public class DubboUserClient implements UserClient {
         if (logger.isDebugEnabled()) {
             logger.debug("查询用户: userId = {}, response = {}", userId, DubboClientUtils.toString(response));
         }
-        
+
         return DubboClientUtils.deserialize(User.class, response);
     }
 }

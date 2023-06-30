@@ -21,6 +21,7 @@ import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.DriverApp;
@@ -31,14 +32,18 @@ import io.github.airiot.sdk.driver.config.DriverConfig;
 import io.github.airiot.sdk.driver.config.Model;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
-import io.github.airiot.sdk.driver.grpc.driver.Error;
+import io.github.airiot.sdk.driver.event.DriverReloadApplicationEvent;
 import io.github.airiot.sdk.driver.grpc.driver.*;
+import io.github.airiot.sdk.driver.grpc.driver.Error;
 import io.github.airiot.sdk.driver.model.Tag;
 import io.grpc.*;
 import io.grpc.stub.MetadataUtils;
 import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.util.CollectionUtils;
 
 import java.lang.reflect.ParameterizedType;
@@ -51,6 +56,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 /**
  * 基于 GRPC 的驱动事件监听器实现
@@ -59,7 +65,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @see DriverApp 具体的驱动实现类
  */
-public class GrpcDriverEventListener implements DriverEventListener {
+public class GrpcDriverEventListener implements DriverEventListener, ApplicationContextAware {
 
     private final Logger log = LoggerFactory.getLogger(GrpcDriverEventListener.class);
 
@@ -77,8 +83,15 @@ public class GrpcDriverEventListener implements DriverEventListener {
     private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
 
+    private ApplicationContext applicationContext;
+
     private Thread connectThread;
     private Thread healthCheckThread;
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        this.applicationContext = applicationContext;
+    }
 
     public static <T> ByteString encode(T data) {
         if (data == null) {
@@ -111,6 +124,11 @@ public class GrpcDriverEventListener implements DriverEventListener {
 
         ClientInterceptor metadataInterceptor = MetadataUtils.newAttachHeadersInterceptor(new Metadata());
         this.driverGrpcClient = driverGrpcClient.withInterceptors(metadataInterceptor);
+    }
+
+    private void clearTagValueCache(Void v) {
+        // 发布驱动重载事件
+        this.applicationContext.publishEvent(new DriverReloadApplicationEvent());
     }
 
     private Type[] parseParameterizedTypes() {
@@ -163,7 +181,7 @@ public class GrpcDriverEventListener implements DriverEventListener {
         log.info("创建心跳检测线程");
 
         this.healthCheckThread = new Thread(this::healthCheck, "healthCheck");
-        this.healthCheckThread.setDaemon(true);
+//        this.healthCheckThread.setDaemon(true);
         this.healthCheckThread.start();
     }
 
@@ -202,7 +220,7 @@ public class GrpcDriverEventListener implements DriverEventListener {
                 break;
             }
         }
-        
+
         if (this.state.get().isRunning()) {
             log.info("重新连接 Driver 服务");
             this.state.set(State.RECONNECTING);
@@ -264,7 +282,7 @@ public class GrpcDriverEventListener implements DriverEventListener {
         log.info("创建连接 Driver 服务线程");
         this.connectThread = new Thread(this::connectTask);
         this.connectThread.setName("connectTask");
-        this.connectThread.setDaemon(true);
+//        this.connectThread.setDaemon(true);
         this.connectThread.start();
     }
 
@@ -349,9 +367,23 @@ public class GrpcDriverEventListener implements DriverEventListener {
                 Metadata startMetadata = new Metadata();
                 startMetadata.merge(this.metadata);
                 StartHandler startHandler = new StartHandler(startCall, this.driverApp, this.globalContext,
-                        this.getDriverConfigType(), this.getTagType(), this::handleStreamClosed);
+                        this.getDriverConfigType(), this.getTagType(),
+                        this::handleStreamClosed, this::clearTagValueCache);
                 startCall.start(startHandler, startMetadata);
                 startCall.request(Integer.MAX_VALUE);
+
+                // httpProxy
+                if (this.driverApp.supportHttpProxy()) {
+                    ClientCall<HttpProxyResult, HttpProxyRequest> httpProxyCall = channel.newCall(
+                            DriverServiceGrpc.getHttpProxyStreamMethod(),
+                            CallOptions.DEFAULT.withWaitForReady()
+                    );
+                    Metadata httpProxyMetadata = new Metadata();
+                    httpProxyMetadata.merge(this.metadata);
+                    HttpProxyHandler httpProxyHandler = new HttpProxyHandler(httpProxyCall, this.driverApp, this::handleStreamClosed);
+                    httpProxyCall.start(httpProxyHandler, httpProxyMetadata);
+                    httpProxyCall.request(Integer.MAX_VALUE);
+                }
 
                 this.state.set(State.RUNNING);
 
@@ -649,18 +681,22 @@ public class GrpcDriverEventListener implements DriverEventListener {
         private final Type driverConfigType;
         private final Type tagType;
         private final StreamClosedCallback closedCallback;
+        private final Consumer<Void> clearCacheFn;
 
         public StartHandler(ClientCall<StartResult, StartRequest> clientCall,
                             DriverApp<Object, Object, Object> driverApp,
                             GlobalContext globalContext,
                             Type driverConfigType, Type tagType,
-                            StreamClosedCallback closedCallback) {
+                            StreamClosedCallback closedCallback,
+                            Consumer<Void> clearCacheFn
+        ) {
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.globalContext = globalContext;
             this.driverConfigType = driverConfigType;
             this.tagType = tagType;
             this.closedCallback = closedCallback;
+            this.clearCacheFn = clearCacheFn;
         }
 
         @Override
@@ -748,6 +784,7 @@ public class GrpcDriverEventListener implements DriverEventListener {
                 try {
                     Object drvConfig = JSON.parseObject(config, this.driverConfigType);
                     this.driverApp.start(drvConfig);
+                    this.clearCacheFn.accept(null);
                 } catch (Exception e) {
                     log.error("启动驱动:", e);
                     result.setCode(400);
@@ -798,6 +835,11 @@ public class GrpcDriverEventListener implements DriverEventListener {
                 if (log.isDebugEnabled()) {
                     log.debug("req = {}, type = schema, {}", request.getRequest(), schema);
                 }
+
+                // 替换版本号
+                schema = schema.replaceAll("__version__", driverApp.getVersion());
+                schema = schema.replaceAll("__sdk_version__", GlobalContext.getVersion());
+
                 result.setCode(200);
                 result.setResult(schema);
             } catch (Exception e) {
@@ -810,6 +852,66 @@ public class GrpcDriverEventListener implements DriverEventListener {
             clientCall.sendMessage(SchemaResult.newBuilder()
                     .setRequest(request.getRequest())
                     .setMessage(ByteString.copyFrom(message, StandardCharsets.UTF_8))
+                    .build());
+        }
+    }
+
+    static class HttpProxyHandler extends ClientCall.Listener<HttpProxyRequest> {
+        private final Logger log = LoggerFactory.getLogger("http-proxy-stream");
+
+        private final static Gson GSON = new Gson();
+//        private final static TypeToken<Map<String, List<String>>> HEADER_TYPE = new TypeToken<Map<String, List<String>>>() {
+//        };
+
+        private final static Type HEADER_TYPE = new TypeToken<Map<String, List<String>>>() {
+        }.getType();
+
+        private final ClientCall<HttpProxyResult, HttpProxyRequest> clientCall;
+        private final DriverApp<Object, Object, Object> driverApp;
+        private final StreamClosedCallback closedCallback;
+
+        public HttpProxyHandler(ClientCall<HttpProxyResult, HttpProxyRequest> clientCall,
+                                DriverApp<Object, Object, Object> driverApp,
+                                StreamClosedCallback closedCallback) {
+            this.clientCall = clientCall;
+            this.driverApp = driverApp;
+            this.closedCallback = closedCallback;
+        }
+
+        @Override
+        public void onClose(Status status, Metadata trailers) {
+            log.error("closed, status = {}, metadata = {}", status, trailers);
+            this.closedCallback.handle(status, trailers);
+        }
+
+        @Override
+        public void onReady() {
+            log.info("ready");
+        }
+
+        @Override
+        public void onMessage(HttpProxyRequest request) {
+            log.info("req = {}, type = httpProxy", request.getRequest());
+            Result result = new Result();
+            try {
+                Map<String, List<String>> headers = GSON.fromJson(request.getHeaders().toStringUtf8(), HEADER_TYPE);
+                Object proxyResult = this.driverApp.httpProxy(request.getType(), headers, request.getData().toByteArray());
+                if (log.isDebugEnabled()) {
+                    log.debug("req = {}, type = httpProxy, {}", request.getRequest(), proxyResult);
+                }
+
+                result.setCode(200);
+                result.setResult(proxyResult);
+            } catch (Exception e) {
+                log.error("req = {}, type = schema", request.getRequest(), e);
+                result.setCode(500);
+                result.setResult(e.getMessage());
+            }
+
+            String message = GSON.toJson(result);
+            clientCall.sendMessage(HttpProxyResult.newBuilder()
+                    .setRequest(request.getRequest())
+                    .setData(ByteString.copyFrom(message, StandardCharsets.UTF_8))
                     .build());
         }
     }

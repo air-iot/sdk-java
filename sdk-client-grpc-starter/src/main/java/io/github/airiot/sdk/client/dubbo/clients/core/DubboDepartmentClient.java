@@ -17,6 +17,7 @@
 
 package io.github.airiot.sdk.client.dubbo.clients.core;
 
+import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dubbo.grpc.api.GetOrDeleteRequest;
@@ -26,7 +27,6 @@ import io.github.airiot.sdk.client.dubbo.grpc.core.DubboDeptServiceGrpc;
 import io.github.airiot.sdk.client.dubbo.utils.DubboClientUtils;
 import io.github.airiot.sdk.client.service.core.DepartmentClient;
 import io.github.airiot.sdk.client.service.core.dto.Department;
-import com.google.protobuf.ByteString;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
@@ -83,5 +83,27 @@ public class DubboDepartmentClient implements DepartmentClient {
         }
 
         return DubboClientUtils.deserialize(Department.class, response);
+    }
+
+    @Override
+    public ResponseDTO<List<Department>> queryAll() {
+        Query query = Query.newBuilder()
+                .select(Department.class)
+                .build();
+
+        byte[] queryData = query.serialize();
+        if (logger.isDebugEnabled()) {
+            logger.debug("查询全部部门信息: query = {}", new String(queryData));
+        }
+
+        Response response = this.deptService.query(QueryRequest.newBuilder()
+                .setQuery(ByteString.copyFrom(queryData))
+                .build());
+
+        if (logger.isDebugEnabled()) {
+            logger.debug("查询全部部门信息: query = {}, response = {}", new String(queryData), DubboClientUtils.toString(response));
+        }
+
+        return DubboClientUtils.deserializeList(Department.class, response);
     }
 }

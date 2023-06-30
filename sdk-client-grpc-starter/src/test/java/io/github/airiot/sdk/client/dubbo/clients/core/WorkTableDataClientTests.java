@@ -31,6 +31,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.util.Assert;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -87,7 +88,9 @@ public class WorkTableDataClientTests {
     void queryById() {
         ResponseDTO<List<Employee>> responseDTO = this.tableDataClient.query(Employee.class, testTableId, Query.newBuilder()
                 .select("id", "name", "age")
+                .filter()
                 .eq("id", this.testRowId)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -101,7 +104,9 @@ public class WorkTableDataClientTests {
     void queryByIn() {
         ResponseDTO<List<Employee>> responseDTO = this.tableDataClient.query(Employee.class, testTableId, Query.newBuilder()
                 .select("id", "name", "age")
+                .filter()
                 .in("id", this.testRowId)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -126,7 +131,9 @@ public class WorkTableDataClientTests {
     void queryNotEquals() {
         ResponseDTO<List<Employee>> responseDTO = this.tableDataClient.query(Employee.class, testTableId, Query.newBuilder()
                 .select("id", "name", "age")
+                .filter()
                 .ne("id", testRowId)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -140,7 +147,9 @@ public class WorkTableDataClientTests {
         int maxValue = 32;
         ResponseDTO<List<Employee>> responseDTO = this.tableDataClient.query(Employee.class, testTableId, Query.newBuilder()
                 .select("id", "name", "age")
+                .filter()
                 .between("age", minValue, maxValue)
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
@@ -152,8 +161,8 @@ public class WorkTableDataClientTests {
 
         for (Employee employee : employees) {
             Integer age = employee.getAge();
-            if (age == null || age < minValue || age >= maxValue) {
-                throw new IllegalStateException("返回结果不正确, 返回结果中存在年龄不在 [" + minValue + ", " + maxValue + ") 范围内的数据, " + employee);
+            if (age == null || age < minValue || age > maxValue) {
+                throw new IllegalStateException("返回结果不正确, 返回结果中存在年龄不在 [" + minValue + ", " + maxValue + "] 范围内的数据, " + employee);
             }
         }
     }
@@ -161,14 +170,16 @@ public class WorkTableDataClientTests {
     @Test
     @Order(8)
     void countAge() {
-        ResponseDTO<List<Map<String, Object>>> responseDTO = this.tableDataClient.query(testTableId, Query.newBuilder()
+        Query query = Query.newBuilder()
                 .select("id", "name")
                 .summary(Employee::getAge).count("countAge")
                 .summary(Employee::getAge).sum("sumAge")
                 .summary(Employee::getAge).min("minAge")
                 .summary(Employee::getAge).max("maxAge")
                 .groupBy(Employee::getName).sameToField()
-                .build());
+                .build();
+        ResponseDTO<List<Map<String, Object>>> responseDTO = this.tableDataClient.query(testTableId, query);
+        System.out.println(new String(query.serialize(), StandardCharsets.UTF_8));
         System.out.println(responseDTO);
         Assertions.assertTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
     }

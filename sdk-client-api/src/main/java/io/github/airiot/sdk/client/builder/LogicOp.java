@@ -20,6 +20,7 @@ package io.github.airiot.sdk.client.builder;
 
 import com.google.common.collect.Maps;
 
+import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.Map;
 
@@ -31,32 +32,61 @@ public enum LogicOp {
     /**
      * 比较
      */
-    EQ(LogicOp::checkAndGetFist),
+    EQ(LogicOp::checkAndGetFirst),
 
     /**
      * 不相等
      */
-    NE(v -> Collections.singletonMap("$not", checkAndGetFist(v))),
+    NE(v -> Collections.singletonMap("$not", checkAndGetFirst(v))),
 
     /**
      * 小于
      */
-    LT(v -> Collections.singletonMap("$lt", checkAndGetFist(v))),
+    LT(v -> Collections.singletonMap("$lt", checkAndGetFirst(v))),
     /**
      * 小于或等于
      */
-    LTE(v -> Collections.singletonMap("$lte", checkAndGetFist(v))),
+    LTE(v -> Collections.singletonMap("$lte", checkAndGetFirst(v))),
 
     /**
      * 大于
      */
-    GT(v -> Collections.singletonMap("$gt", checkAndGetFist(v))),
+    GT(v -> Collections.singletonMap("$gt", checkAndGetFirst(v))),
     /**
      * 大于或等于
      */
-    GTE(v -> Collections.singletonMap("$gte", checkAndGetFist(v))),
+    GTE(v -> Collections.singletonMap("$gte", checkAndGetFirst(v))),
+    /**
+     * 正则匹配
+     */
+    REGEX(v -> Collections.singletonMap("$regex", checkAndGetFirst(v))),
 
+    /**
+     * 在指定范围内, 闭区间. [minValue, maxValue]
+     */
     BETWEEN(v -> {
+        checkSize(2, v);
+        Map<String, Object> data = Maps.newHashMapWithExpectedSize(2);
+        data.put("$gte", v[0]);
+        data.put("$lte", v[1]);
+        return data;
+    }),
+
+    /**
+     * 在指定范围内, 左开右闭区间. (minValue, maxValue]
+     */
+    BETWEEN_EXCLUDE_LEFT(v -> {
+        checkSize(2, v);
+        Map<String, Object> data = Maps.newHashMapWithExpectedSize(2);
+        data.put("$gt", v[0]);
+        data.put("$lte", v[1]);
+        return data;
+    }),
+
+    /**
+     * 在指定范围内, 左闭右开区间. [minValue, maxValue)
+     */
+    BETWEEN_EXCLUDE_RIGHT(v -> {
         checkSize(2, v);
         Map<String, Object> data = Maps.newHashMapWithExpectedSize(2);
         data.put("$gte", v[0]);
@@ -65,13 +95,24 @@ public enum LogicOp {
     }),
 
     /**
+     * 在指定范围内, 左开右开区间. (minValue, maxValue)
+     */
+    BETWEEN_EXCLUDE_ALL(v -> {
+        checkSize(2, v);
+        Map<String, Object> data = Maps.newHashMapWithExpectedSize(2);
+        data.put("$gt", v[0]);
+        data.put("$lt", v[1]);
+        return data;
+    }),
+
+    /**
      * 在指定列表范围内
      */
-    IN(v -> Collections.singletonMap("$in", checkAndGetFist(v))),
+    IN(v -> Collections.singletonMap("$in", checkAndGetFirst(v))),
     /**
      * 不在指定列表范围内
      */
-    NOT_IN(v -> Collections.singletonMap("$nin", checkAndGetFist(v))),
+    NOT_IN(v -> Collections.singletonMap("$nin", checkAndGetFirst(v))),
     ;
 
     /**
@@ -95,7 +136,7 @@ public enum LogicOp {
         }
     }
 
-    static Object checkAndGetFist(Object... values) {
+    static Object checkAndGetFirst(Object... values) {
         checkSize(1, values);
         return values[0];
     }
@@ -106,7 +147,7 @@ public enum LogicOp {
         this.logicSegment = logicSegment;
     }
 
-    public <T> Object apply(T... values) {
+    public final <T> Object apply(@Nullable T... values) {
         return this.logicSegment.apply(values);
     }
 }

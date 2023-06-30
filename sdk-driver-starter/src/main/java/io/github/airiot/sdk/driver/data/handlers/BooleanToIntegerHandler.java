@@ -20,6 +20,9 @@ package io.github.airiot.sdk.driver.data.handlers;
 import io.github.airiot.sdk.driver.data.DataHandler;
 import io.github.airiot.sdk.driver.model.Tag;
 
+import java.util.Collections;
+import java.util.Map;
+
 
 /**
  * 将 boolean 值转换为 0 或 1
@@ -35,8 +38,8 @@ public class BooleanToIntegerHandler implements DataHandler {
     }
 
     @Override
-    public <T extends Tag> Object handle(String tableId, String deviceId, T tag, Object value) {
-        return (Boolean) value ? 1 : 0;
+    public <T extends Tag> Map<String, Object> handle(String tableId, String deviceId, T tag, Object value) {
+        return Collections.singletonMap(tag.getId(), (Boolean) value ? 1 : 0);
     }
 
     @Override

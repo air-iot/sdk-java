@@ -17,15 +17,17 @@
 
 package io.github.airiot.sdk.driver;
 
+import com.google.common.collect.Maps;
 import io.github.airiot.sdk.driver.model.Field;
 import io.github.airiot.sdk.driver.model.FieldType;
 import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.driver.model.Tag;
-import com.google.common.collect.Maps;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -39,6 +41,29 @@ public final class GlobalContext {
      * deviceId: {tableId: DeviceInfo}
      */
     private final AtomicReference<Map<String, Map<String, DeviceInfo<? extends Tag>>>> devices = new AtomicReference<>(Collections.emptyMap());
+
+    private static String VERSION = null;
+
+    static {
+        try (InputStream is = GlobalContext.class.getResourceAsStream("/META-INF/sdk.properties")) {
+            Properties properties = new Properties();
+            properties.load(is);
+            VERSION = properties.getProperty("version");
+        } catch (IOException e) {
+            System.err.println("读取 SDK 版本信息失败");
+            e.printStackTrace();
+            System.exit(1);
+        }
+    }
+
+    /**
+     * 获取 SDK 版本号
+     *
+     * @return 版本号
+     */
+    public static String getVersion() {
+        return VERSION;
+    }
 
     public void set(Map<String, List<DeviceInfo<? extends Tag>>> deviceInfos) {
         if (deviceInfos == null || deviceInfos.isEmpty()) {

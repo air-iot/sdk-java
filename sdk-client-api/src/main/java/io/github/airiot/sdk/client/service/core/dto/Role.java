@@ -18,6 +18,7 @@
 package io.github.airiot.sdk.client.service.core.dto;
 
 import java.util.Date;
+import java.util.List;
 
 
 /**
@@ -42,7 +43,7 @@ public class Role {
     /**
      * 角色管理的权限
      */
-    private String permission;
+    private List<String> permission;
 
     /**
      * 创建时间
@@ -83,11 +84,11 @@ public class Role {
         this.description = description;
     }
 
-    public String getPermission() {
+    public List<String> getPermission() {
         return permission;
     }
 
-    public void setPermission(String permission) {
+    public void setPermission(List<String> permission) {
         this.permission = permission;
     }
 

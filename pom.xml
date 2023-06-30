@@ -17,6 +17,7 @@
         <module>sdk-client-grpc-starter</module>
         <module>sdk-dependencies</module>
         <module>sdk-flow-plugin-starter</module>
+        <module>sdk-client-http-starter</module>
     </modules>
 
     <properties>
@@ -26,8 +27,8 @@
 
         <java.version>1.8</java.version>
         <spring-boot.version>2.7.8</spring-boot.version>
-        <revision>4.1.2</revision>
-
+        <revision>4.1.4-SNAPSHOT</revision>
+        
         <maven.compiler.version>3.8.1</maven.compiler.version>
         <maven-jar-plugin>3.2.0</maven-jar-plugin>
         <maven-flatten-plugin.version>1.2.7</maven-flatten-plugin.version>
@@ -52,7 +53,7 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>31.1-jre</version>
+                <version>32.0.1-jre</version>
             </dependency>
             <dependency>
                 <groupId>com.google.code.gson</groupId>
@@ -253,6 +254,7 @@
                         <artifactId>maven-javadoc-plugin</artifactId>
                         <configuration>
                             <encoding>${project.build.sourceEncoding}</encoding>
+                            <failOnError>false</failOnError>
                         </configuration>
                         <executions>
                             <execution>

@@ -15,26 +15,21 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.properties.condition;
+package io.github.airiot.sdk.client.builder;
 
+import org.junit.jupiter.api.Test;
 
-import io.github.airiot.sdk.client.properties.ServiceType;
-import org.springframework.context.annotation.Conditional;
+import java.time.LocalDateTime;
+import java.util.List;
 
-import java.lang.annotation.*;
+public class TimingDataQueryTests {
 
-
-/**
- * 判断指定服务是否启用
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE, ElementType.METHOD})
-@Documented
-@Conditional(OnServiceEnabledCondition.class)
-public @interface ConditionalOnServiceEnabled {
-    
-    /**
-     * 服务类型
-     */
-    ServiceType value();
+    @Test
+    void test1() {
+        List<TimingDataQuery> queries = TimingDataQuery.newBuilder()
+                .select("id", "a", "b")
+                .timeBetween(LocalDateTime.now().minusDays(10), LocalDateTime.now())
+                .finish()
+                .build();
+    }
 }

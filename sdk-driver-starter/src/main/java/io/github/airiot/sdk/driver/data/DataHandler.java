@@ -20,6 +20,8 @@ package io.github.airiot.sdk.driver.data;
 import io.github.airiot.sdk.driver.model.Tag;
 import org.springframework.core.Ordered;
 
+import java.util.Map;
+
 
 /**
  * 数据处理器, 对采集到的数据进行处理
@@ -51,8 +53,7 @@ public interface DataHandler extends Ordered {
      * @param deviceId 设备ID
      * @param tag      数据点信息
      * @param value    采集到的数据
-     * @return 处理后的结果数据. 如果返回结果为 {@code null} 则表示丢弃该数据点的数据, 即不上报给平台.
+     * @return 处理后的结果数据. 如果返回结果为 {@code null} 或空集合则表示丢弃该数据点的数据, 即不上报给平台.
      */
-    <T extends Tag> Object handle(String tableId, String deviceId, T tag, Object value);
-
+    <T extends Tag> Map<String, Object> handle(String tableId, String deviceId, T tag, Object value);
 }

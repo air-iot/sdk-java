@@ -154,6 +154,34 @@ public class Query {
             this.withCount = withCount;
         }
 
+        public FilterBuilder filter() {
+            if (this.filters == null) {
+                this.filters = new HashMap<>();
+            }
+            return new FilterBuilder(this, this.filters);
+        }
+
+        public FilterBuilder or() {
+            Map<String, Object> orFilters = null;
+            if (this.filters == null) {
+                this.filters = new HashMap<>();
+            } else {
+                orFilters = (Map<String, Object>) this.filters.get("$or");
+            }
+
+            if (orFilters == null) {
+                orFilters = new HashMap<>();
+                this.filters.put("$or", orFilters);
+            }
+            return new FilterBuilder(this, orFilters);
+        }
+
+        /**
+         * 判断现有查询字段列表中是否包含指定字段
+         *
+         * @param field 字段名称
+         * @return 如果已经包含则返回 true, 否则返回 false
+         */
         public boolean containsSelectField(String field) {
             if (CollectionUtils.isEmpty(this.projects)) {
                 return false;
@@ -161,25 +189,30 @@ public class Query {
             return this.projects.containsKey(field);
         }
 
+        /**
+         * 判断现有查询字段列表中是否包含指定字段
+         *
+         * @param column 字段名称
+         * @return 如果已经包含则返回 true, 否则返回 false
+         */
         public <T> boolean containsSelectField(SFunction<T, ?> column) {
             return this.containsSelectField(BuilderUtils.getPropertyName(column));
         }
 
-        private void checkOrCreateFilters() {
-            if (this.filters != null) {
-                return;
-            }
-            this.filters = new HashMap<>();
-        }
-
         /**
+         * 添加要返回的字段列表
+         *
          * @see #select(Collection)
          */
         public Builder select(String... fields) {
             return this.select(Arrays.asList(fields));
         }
 
-
+        /**
+         * 添加要返回的字段列表
+         *
+         * @see #select(Collection)
+         */
         public <T> Builder select(SFunction<T, ?>... columns) {
             if (columns == null || columns.length == 0) {
                 return this;
@@ -229,6 +262,72 @@ public class Query {
             return this;
         }
 
+        /**
+         * 设置查询返回的嵌套对象内的字段列表
+         *
+         * @see #selectSubFields(String, Map)
+         */
+        public <T> Builder selectSubFields(SFunction<T, ?> column, String... subFields) {
+            if (subFields == null || subFields.length == 0) {
+                throw new IllegalArgumentException("Query: the select sub fields cannot be empty");
+            }
+            return this.selectSubFields(BuilderUtils.getPropertyName(column), Arrays.stream(subFields).collect(Collectors.toMap(subField -> subField, v -> 1)));
+        }
+
+        /**
+         * 设置查询返回的嵌套对象内的字段列表
+         *
+         * @see #selectSubFields(String, Map)
+         */
+        public <T> Builder selectSubFields(String field, String... subFields) {
+            if (subFields == null || subFields.length == 0) {
+                throw new IllegalArgumentException("Query: the select sub fields cannot be empty");
+            }
+
+            return this.selectSubFields(field, Arrays.stream(subFields).collect(Collectors.toMap(subField -> subField, v -> 1)));
+        }
+
+        /**
+         * 设置查询返回的嵌套对象内的字段列表
+         *
+         * @see #selectSubFields(String, Map)
+         */
+        public <T> Builder selectSubFields(SFunction<T, ?> column, Map<String, Object> subFields) {
+            return this.selectSubFields(BuilderUtils.getPropertyName(column), subFields);
+        }
+
+        /**
+         * 设置查询返回的嵌套对象内的字段列表
+         *
+         * @param field     字段名称
+         * @param subFields 嵌套对象内的字段列表
+         */
+        public Builder selectSubFields(String field, Map<String, Object> subFields) {
+            if (!StringUtils.hasText(field)) {
+                throw new IllegalArgumentException("Query: the select field cannot be empty");
+            }
+
+            if (CollectionUtils.isEmpty(subFields)) {
+                return this;
+            }
+
+            if (this.projects == null) {
+                this.projects = Maps.newHashMapWithExpectedSize(1);
+                this.projects.put(field, subFields);
+                return this;
+            }
+
+            Object projectField = this.projects.get(field);
+            if (projectField == null) {
+                this.projects.put(field, subFields);
+            } else if (projectField instanceof Map) {
+                ((Map<String, Object>) projectField).putAll(subFields);
+            } else {
+                throw new IllegalArgumentException("Query: the select field '" + field + "' has been set to a non-nested object");
+            }
+
+            return this;
+        }
 
         /**
          * 排除要查询的字段列表, 即查询结果中不返回该字段
@@ -253,6 +352,8 @@ public class Query {
 
 
         /**
+         * 排除要查询的字段列表
+         *
          * @see #exclude(Collection)
          */
         public Builder exclude(String... columns) {
@@ -263,6 +364,8 @@ public class Query {
         }
 
         /**
+         * 排除要查询的字段列表
+         *
          * @see #exclude(Collection)
          */
         public <T> Builder exclude(SFunction<T, ?>... columns) {
@@ -277,14 +380,39 @@ public class Query {
             return this.exclude(columnNames);
         }
 
+        /**
+         * 汇总查询
+         *
+         * <pre>
+         *     示例1: 统计匹配行数
+         *     {
+         *         "count": {
+         *             "$sum": 1
+         *         }
+         *     }
+         *
+         *     示例2: 最小值
+         *     {
+         *         "minValue": {
+         *             "$min": "$value"
+         *         }
+         *     }
+         *
+         *     示例3: 求和
+         *     {
+         *         "sum": {
+         *             "$sum": "$value"
+         *         }
+         *     }
+         * </pre>
+         *
+         * @param field 汇总字段及汇总方式
+         */
         protected Builder summary(Map<String, Object> field) {
-            if (field == null) {
+            if (field == null || field.isEmpty()) {
                 throw new IllegalArgumentException("the select 'field' cannot be null or empty");
             }
 
-            if (field.isEmpty()) {
-                return this;
-            }
             if (this.groupFields == null) {
                 this.groupFields = new HashMap<>(1);
             }
@@ -340,273 +468,6 @@ public class Query {
             return this.groupBy(BuilderUtils.getPropertyName(column));
         }
 
-        /**
-         * 等于
-         *
-         * @param field 字段名
-         * @param value 字段值
-         */
-        public <T> Builder eq(String field, T value) {
-            if (!StringUtils.hasText(field)) {
-                throw new IllegalArgumentException("Query: the field name of condition 'eq' cannot be empty");
-            }
-
-            this.checkOrCreateFilters();
-
-            this.filters.put(field.trim(), LogicOp.EQ.apply(value));
-
-            return this;
-        }
-
-        public <Type, T> Builder eq(SFunction<Type, ?> column, T value) {
-            String propName = BuilderUtils.getPropertyName(column);
-            return this.eq(propName, value);
-        }
-
-        /**
-         * 不等于
-         *
-         * @param field 字段名
-         * @param value 字段值
-         */
-        public <T> Builder ne(String field, T value) {
-            if (!StringUtils.hasText(field)) {
-                throw new IllegalArgumentException("Query: the field name of condition 'ne' cannot be empty");
-            }
-
-            this.checkOrCreateFilters();
-
-            this.filters.put(field.trim(), LogicOp.NE.apply(value));
-
-            return this;
-        }
-
-        /**
-         * @see #ne(String, Object)
-         */
-        public <Type, T> Builder ne(SFunction<Type, ?> column, T value) {
-            String propName = BuilderUtils.getPropertyName(column);
-            return this.ne(propName, value);
-        }
-
-        public <T> Builder in(String field, T... value) {
-            return this.in(field, Arrays.asList(value));
-        }
-
-        public <Type, T> Builder in(SFunction<Type, ?> column, T value) {
-            String propName = BuilderUtils.getPropertyName(column);
-            return this.in(propName, value);
-        }
-
-        /**
-         * 在指定列表之内
-         *
-         * @param field 字段名
-         * @param value 字段值列表
-         */
-        public <T> Builder in(String field, Collection<T> value) {
-            if (!StringUtils.hasText(field)) {
-                throw new IllegalArgumentException("Query: the field name of condition 'in' cannot be empty");
-            }
-
-            if (value == null || value.isEmpty()) {
-                throw new IllegalArgumentException("Query: the field[" + field + "] values of condition 'in' cannot be null and  empty");
-            }
-
-            this.checkOrCreateFilters();
-
-            this.filters.put(field.trim(), LogicOp.IN.apply(value));
-
-            return this;
-        }
-
-        public <T> Builder notIn(String field, T... values) {
-            if (values == null || values.length == 0) {
-                throw new IllegalArgumentException("Query: the field[" + field + "] values of condition 'not in' cannot be null and empty");
-            }
-            return this.notIn(field, Arrays.asList(values));
-        }
-
-        public <Type, T> Builder notIn(SFunction<Type, ?> column, T... values) {
-            String propName = BuilderUtils.getPropertyName(column);
-            return this.notIn(propName, values);
-        }
-
-        /**
-         * 不在指定列表之内
-         *
-         * @param field  字段名
-         * @param values 字段值列表
-         */
-        public <T> Builder notIn(String field, Collection<T> values) {
-            if (!StringUtils.hasText(field)) {
-                throw new IllegalArgumentException("Query: the field name of condition 'not in' cannot be empty");
-            }
-
-            if (values == null || values.isEmpty()) {
-                throw new IllegalArgumentException("Query: the field[" + field + "] values of condition 'not in' cannot be null and empty");
-            }
-
-            this.checkOrCreateFilters();
-
-            this.filters.put(field.trim(), LogicOp.NOT_IN.apply(values));
-
-            return this;
-        }
-
-        /**
-         * 小于
-         *
-         * @param field 字段名
-         * @param value 字段值
-         */
-        public Builder lt(String field, Object value) {
-            if (!StringUtils.hasText(field)) {
-                throw new IllegalArgumentException("Query: the field name of condition 'lt' cannot be empty");
-            }
-
-            if (value == null) {
-                throw new IllegalArgumentException("Query: the field[" + field + "] value of condition 'lt' cannot be null");
-            }
-
-            this.checkOrCreateFilters();
-
-            this.filters.put(field.trim(), LogicOp.LT.apply(value));
-
-            return this;
-        }
-
-        public <T> Builder lt(SFunction<T, ?> column, Object value) {
-            String propName = BuilderUtils.getPropertyName(column);
-            return this.lt(propName, value);
-        }
-
-        /**
-         * 小于或等于
-         *
-         * @param field 字段名
-         * @param value 字段值
-         */
-        public Builder lte(String field, Object value) {
-            if (!StringUtils.hasText(field)) {
-                throw new IllegalArgumentException("Query: the field name of condition 'lte' cannot be empty");
-            }
-
-            if (value == null) {
-                throw new IllegalArgumentException("Query: the field[" + field + "] value of condition 'lte' cannot be null");
-            }
-
-            this.checkOrCreateFilters();
-
-            this.filters.put(field.trim(), LogicOp.LTE.apply(value));
-
-            return this;
-        }
-
-        public <T> Builder lte(SFunction<T, ?> column, Object value) {
-            String propName = BuilderUtils.getPropertyName(column);
-            return this.lte(propName, value);
-        }
-
-        /**
-         * 大于
-         *
-         * @param field 字段名
-         * @param value 字段值
-         */
-        public Builder gt(String field, Object value) {
-            if (!StringUtils.hasText(field)) {
-                throw new IllegalArgumentException("Query: the field name of condition 'gt' cannot be empty");
-            }
-
-            if (value == null) {
-                throw new IllegalArgumentException("Query: the field[" + field + "] value of condition 'gt' cannot be null");
-            }
-
-            this.checkOrCreateFilters();
-
-            this.filters.put(field.trim(), LogicOp.GT.apply(value));
-
-            return this;
-        }
-
-        public <T> Builder gt(SFunction<T, ?> column, Object value) {
-            String propName = BuilderUtils.getPropertyName(column);
-            return this.gt(propName, value);
-        }
-
-        /**
-         * 大于或等于
-         *
-         * @param field 字段名
-         * @param value 字段值
-         */
-        public Builder gte(String field, Object value) {
-            if (!StringUtils.hasText(field)) {
-                throw new IllegalArgumentException("Query: the field name of condition 'gte' cannot be empty");
-            }
-
-            if (value == null) {
-                throw new IllegalArgumentException("Query: the field[" + field + "] value of condition 'gte' cannot be null");
-            }
-
-            this.checkOrCreateFilters();
-
-            this.filters.put(field.trim(), LogicOp.GTE.apply(value));
-
-            return this;
-        }
-
-        public <T> Builder gte(SFunction<T, ?> column, Object value) {
-            String propName = BuilderUtils.getPropertyName(column);
-            return this.gte(propName, value);
-        }
-
-        /**
-         * 在指定取值范围之内. [minValue, maxValue).
-         *
-         * <br>
-         * 注: 取值范围左闭右开.
-         *
-         * <pre>
-         *     例如:
-         *     // 查询年龄在 15 - 30 岁之间的用户. 不包括 30 岁
-         *     Query query = Query.newBuilder()
-         *          .select(User.class)
-         *          .between("age", 15, 30)
-         *          .build();
-         *
-         *     // 查询 2020 年新注册的用户数
-         *     Query query = Query.newBuilder()
-         *          .groupField("count(id) as count")
-         *          .between("createTime", "2020-01-01 00:00:00", "2021-01-01 00:00:00")
-         *          .build();
-         * </pre>
-         *
-         * @param field    字段名
-         * @param minValue 最小值. 包含最小值
-         * @param maxValue 最大值. 不含最大值
-         */
-        public Builder between(String field, Object minValue, Object maxValue) {
-            if (!StringUtils.hasText(field)) {
-                throw new IllegalArgumentException("Query: the field name of condition 'gte' cannot be empty");
-            }
-
-            if (minValue == null || maxValue == null) {
-                throw new IllegalArgumentException("Query: the field[" + field + "] range value [" + minValue + "," + maxValue + "] of condition 'between' cannot be null");
-            }
-
-            this.checkOrCreateFilters();
-
-            this.filters.put(field.trim(), LogicOp.BETWEEN.apply(minValue, maxValue));
-
-            return this;
-        }
-
-        public <T> Builder between(SFunction<T, ?> column, Object minValue, Object maxValue) {
-            String propName = BuilderUtils.getPropertyName(column);
-            return this.between(propName, minValue, maxValue);
-        }
 
         /**
          * 添加升序字段
@@ -632,6 +493,8 @@ public class Query {
         }
 
         /**
+         * 添加升序字段
+         *
          * @see #orderAsc(Collection)
          */
         public Builder orderAsc(String... fields) {
@@ -641,6 +504,11 @@ public class Query {
             return this.orderAsc(Arrays.asList(fields));
         }
 
+        /**
+         * 添加升序字段
+         *
+         * @see #orderAsc(Collection)
+         */
         public <T> Builder orderAsc(SFunction<T, ?>... fields) {
             if (fields == null || fields.length == 0) {
                 return this;
@@ -654,6 +522,8 @@ public class Query {
 
 
         /**
+         * 添加降序字段
+         *
          * @see #orderDesc(Collection)
          */
         public Builder orderDesc(String... fields) {
@@ -663,6 +533,11 @@ public class Query {
             return this.orderDesc(Arrays.asList(fields));
         }
 
+        /**
+         * 添加降序字段
+         *
+         * @see #orderDesc(Collection)
+         */
         public <T> Builder orderDesc(SFunction<T, ?>... fields) {
             if (fields == null || fields.length == 0) {
                 return this;
@@ -781,11 +656,73 @@ public class Query {
         return !CollectionUtils.isEmpty(this.filter);
     }
 
+    /**
+     * 查询返回的字段列表
+     *
+     * @return 字段列表
+     */
+    public Map<String, ?> getProject() {
+        return this.project;
+    }
+
+    /**
+     * 查询条件信息
+     *
+     * @return 查询条件信息
+     */
+    public Map<String, ?> getFilters() {
+        return this.filter;
+    }
+
+    public Map<String, Integer> getSort() {
+        return this.sort;
+    }
+
+    public int getLimit() {
+        return this.limit;
+    }
+
+    public int getSkip() {
+        return this.skip;
+    }
+
+    public boolean isWithCount() {
+        return this.withCount;
+    }
+
+    /**
+     * 将查询对象序列化为字节数组
+     *
+     * @return 序列化后的字节数组
+     */
     public byte[] serialize() {
         return GSON.toJson(this).getBytes(StandardCharsets.UTF_8);
     }
 
+    /**
+     * 将查询对象序列化为字符串
+     *
+     * @return 序列化后的字符串
+     */
+    public String serializeToString() {
+        return GSON.toJson(this);
+    }
+
+    /**
+     * 将查询条件信息序列化为字节数组
+     *
+     * @return 序列化后的字节数组
+     */
     public byte[] serializeFilter() {
         return GSON.toJson(this.filter).getBytes(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 将查询条件信息序列化为字符串
+     *
+     * @return 序列化后的字符串
+     */
+    public String serializeFilterToString() {
+        return GSON.toJson(this.filter);
     }
 }

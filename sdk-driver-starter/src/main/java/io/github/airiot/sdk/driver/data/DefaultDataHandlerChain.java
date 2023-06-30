@@ -17,29 +17,25 @@
 
 package io.github.airiot.sdk.driver.data;
 
-import io.github.airiot.sdk.driver.data.handlers.BooleanToIntegerHandler;
-import io.github.airiot.sdk.driver.data.handlers.ConvertValueHandler;
-import io.github.airiot.sdk.driver.data.handlers.RangeValueHandler;
-import io.github.airiot.sdk.driver.data.handlers.RoundAndScaleValueHandler;
+import io.github.airiot.sdk.driver.data.handlers.*;
 import io.github.airiot.sdk.driver.model.Field;
 import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.driver.model.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class DefaultDataHandlerChain implements DataHandlerChain {
 
     private final Logger logger = LoggerFactory.getLogger(DefaultDataHandlerChain.class);
 
+    private final TagValueCache tagValueCache;
     private final List<DataHandler> handlers = new ArrayList<>();
 
-    public DefaultDataHandlerChain(List<DataHandler> handlers) {
-        this(handlers, true);
+    public DefaultDataHandlerChain(TagValueCache tagValueCache, List<DataHandler> handlers) {
+        this(tagValueCache, handlers, true);
     }
 
     /**
@@ -48,7 +44,8 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
      * @param handlers         自定义数据处理功能
      * @param registerDefaults 是否启用平台默认数据处理功能. 如果设置为 {@code false} 则不启用.
      */
-    public DefaultDataHandlerChain(List<DataHandler> handlers, boolean registerDefaults) {
+    public DefaultDataHandlerChain(TagValueCache tagValueCache, List<DataHandler> handlers, boolean registerDefaults) {
+        this.tagValueCache = tagValueCache;
         if (registerDefaults) {
             this.registerDefaultHandlers();
         }
@@ -71,39 +68,55 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
      * <br>
      * 1. 数值转换 <br>
      * 2. 小数位数和缩放比例 <br>
-     * 3. 有效范围
-     * 4. 将 boolean 转换为 0 或 1
+     * 3. 小数位数和缩放比例 v2 <br>
+     * 4. 有效范围
+     * 5. 将 boolean 转换为 0 或 1
      */
     public void registerDefaultHandlers() {
         this.handlers.add(new ConvertValueHandler());
         this.handlers.add(new RoundAndScaleValueHandler());
-        this.handlers.add(new RangeValueHandler());
+        this.handlers.add(new RangeValueHandler(this.tagValueCache));
+        this.handlers.add(new RangeValueHandlerV2(this.tagValueCache));
         this.handlers.add(new BooleanToIntegerHandler());
     }
 
     @Override
-    public <T extends Tag> Object handle(String tableId, String deviceId, T tag, Object value) {
+    public <T extends Tag> Map<String, Object> handle(String tableId, String deviceId, T tag, Object value) {
         if (handlers.isEmpty()) {
-            return value;
+            return Collections.singletonMap(tag.getId(), value);
         }
 
-        Object newValue = value;
+        Map<String, Object> finalValues = new HashMap<>(2);
+        finalValues.put(tag.getId(), value);
+
         for (DataHandler handler : handlers) {
-            if (!handler.supports(tableId, deviceId, tag, newValue)) {
+            Object tagValue = finalValues.get(tag.getId());
+            if (!handler.supports(tableId, deviceId, tag, tagValue)) {
                 logger.trace("数据处理: 跳过 [{}] 数据处理功能, tableId = {}, deviceId = {}, tag = {}, value = {}",
-                        handler.getClass().getName(), tableId, deviceId, tag, value);
+                        handler.getClass().getName(), tableId, deviceId, tag, tagValue);
                 continue;
             }
 
-            newValue = handler.handle(tableId, deviceId, tag, newValue);
-            if (newValue == null) {
+            Map<String, Object> newValue = handler.handle(tableId, deviceId, tag, tagValue);
+            if (newValue == null || newValue.isEmpty()) {
                 logger.info("数据处理: 数据处理功能 [{}] 返回结果为 null, 中断数据处理. tableId = {}, deviceId = {}, tag = {}, value = {}",
                         handler.getClass().getName(), tableId, deviceId, tag, value);
                 break;
             }
+
+            finalValues.putAll(newValue);
+            // 如果处理后的结果中不包含数据点, 则说明数据点的值被丢弃
+            if (!newValue.containsKey(tag.getId())) {
+                finalValues.remove(tag.getId());
+            }
+        }
+        
+        // 更新数据点最新有效值缓存
+        if (finalValues.containsKey(tag.getId())) {
+            this.tagValueCache.put(tableId, deviceId, tag.getId(), finalValues.get(tag.getId()));
         }
 
-        return newValue;
+        return finalValues;
     }
 
     @Override
@@ -121,19 +134,19 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
                 continue;
             }
 
-            if (field.getValue() == null) {
-                logger.warn("数据处理: 数据点的值为 null 的数据, 丢掉该数据点. table = {}, device = {}, field = {}",
-                        tableId, deviceId, field);
+            Map<String, Object> newValue = this.handle(tableId, deviceId, field.getTag(), field.getValue());
+            if (newValue == null || newValue.isEmpty()) {
                 continue;
             }
 
-            Object newValue = this.handle(tableId, deviceId, field.getTag(), field.getValue());
-            if (newValue == null) {
-                continue;
+            for (Map.Entry<String, Object> entry : newValue.entrySet()) {
+                if (entry.getKey().equals(field.getTag().getId())) {
+                    // 必须创建新的 Field 对象, 如果直接修改可能会影响驱动中数据
+                    finalFields.add(new Field<>(field.getTag(), entry.getValue()));
+                    continue;
+                }
+                finalFields.add(new Field<>(new Tag(entry.getKey(), entry.getKey(), null, null, null, null), entry.getValue()));
             }
-
-            // 必须创建新的 Field 对象, 如果直接修改可能会影响驱动中数据
-            finalFields.add(new Field<>(field.getTag(), newValue));
         }
 
         Point newPoint = new Point();

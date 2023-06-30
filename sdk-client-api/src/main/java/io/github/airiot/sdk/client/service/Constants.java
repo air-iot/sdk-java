@@ -29,4 +29,9 @@ public interface Constants {
      * 请求头中 token 的 key
      */
     String HEADER_AUTHORIZATION = "Authorization";
+
+    /**
+     * 查询中带有 {@code withCount = true} 时，响应头中记录总数的 key
+     */
+    String HEADER_COUNT = "Count";
 }

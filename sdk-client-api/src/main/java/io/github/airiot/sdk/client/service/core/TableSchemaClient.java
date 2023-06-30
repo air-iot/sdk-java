@@ -18,9 +18,9 @@
 package io.github.airiot.sdk.client.service.core;
 
 
+import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.PlatformClient;
-import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.service.core.dto.table.TableSchema;
 
 import javax.annotation.Nonnull;
@@ -43,7 +43,9 @@ public interface TableSchemaClient extends PlatformClient {
      *
      * @return 工作表定义信息
      */
-    ResponseDTO<List<TableSchema>> queryAll();
+    default ResponseDTO<List<TableSchema>> queryAll() {
+        return query(Query.newBuilder().select(TableSchema.class).build());
+    }
 
     /**
      * 查询工作表定义
@@ -52,4 +54,14 @@ public interface TableSchemaClient extends PlatformClient {
      * @return 工作表定义信息
      */
     ResponseDTO<TableSchema> queryById(@Nonnull String tableId);
+
+    /**
+     * 根据工作表标题查询工作表定义
+     *
+     * @param tableTitle 工作表标题
+     * @return 工作表定义信息
+     */
+    default ResponseDTO<List<TableSchema>> queryByTitle(@Nonnull String tableTitle) {
+        return query(Query.newBuilder().select(TableSchema.class).filter().eq(TableSchema::getTitle, tableTitle).end().build());
+    }
 }

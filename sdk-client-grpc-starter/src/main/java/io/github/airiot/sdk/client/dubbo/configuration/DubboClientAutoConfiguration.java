@@ -21,14 +21,16 @@ package io.github.airiot.sdk.client.dubbo.configuration;
 import io.github.airiot.sdk.client.dubbo.clients.DubboProjectAuthorizationClient;
 import io.github.airiot.sdk.client.dubbo.clients.DubboTenantAuthorizationClient;
 import io.github.airiot.sdk.client.dubbo.clients.core.*;
-import io.github.airiot.sdk.client.dubbo.clients.core.*;
 import io.github.airiot.sdk.client.dubbo.clients.ds.DubboDataServiceClient;
 import io.github.airiot.sdk.client.dubbo.clients.spm.DubboProjectClient;
 import io.github.airiot.sdk.client.dubbo.clients.spm.DubboSpmUserClient;
 import io.github.airiot.sdk.client.dubbo.clients.warning.DubboRuleClient;
 import io.github.airiot.sdk.client.dubbo.clients.warning.DubboWarnClient;
+import io.github.airiot.sdk.client.dubbo.configuration.condition.ConditionalOnServiceEnabled;
+import io.github.airiot.sdk.client.dubbo.configuration.properties.DubboClientProperties;
+import io.github.airiot.sdk.client.dubbo.config.ServiceConfig;
+import io.github.airiot.sdk.client.dubbo.config.ServiceType;
 import io.github.airiot.sdk.client.dubbo.grpc.core.*;
-import io.github.airiot.sdk.client.dubbo.grpc.core.DubboUserServiceGrpc;
 import io.github.airiot.sdk.client.dubbo.grpc.datasource.DubboDataServiceGrpc;
 import io.github.airiot.sdk.client.dubbo.grpc.spm.DubboProjectServiceGrpc;
 import io.github.airiot.sdk.client.dubbo.grpc.warning.DubboRuleServiceGrpc;
@@ -36,14 +38,9 @@ import io.github.airiot.sdk.client.dubbo.grpc.warning.DubboWarnServiceGrpc;
 import io.github.airiot.sdk.client.dubbo.utils.DubboClientUtils;
 import io.github.airiot.sdk.client.interceptor.EnableClientInterceptors;
 import io.github.airiot.sdk.client.properties.AuthorizationProperties;
-import io.github.airiot.sdk.client.properties.ClientProperties;
-import io.github.airiot.sdk.client.properties.ServiceConfig;
-import io.github.airiot.sdk.client.properties.ServiceType;
-import io.github.airiot.sdk.client.properties.condition.ConditionalOnServiceEnabled;
 import io.github.airiot.sdk.client.service.AuthorizationClient;
 import io.github.airiot.sdk.client.service.core.AppClient;
 import io.github.airiot.sdk.client.service.spm.SpmUserClient;
-import io.github.airiot.sdk.client.dubbo.grpc.core.*;
 import org.apache.dubbo.common.constants.LoadbalanceRules;
 import org.apache.dubbo.config.annotation.DubboReference;
 import org.apache.dubbo.config.spring.ReferenceBean;
@@ -60,7 +57,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 @EnableDubbo
 @EnableAspectJAutoProxy
 @EnableClientInterceptors
-@EnableConfigurationProperties({ClientProperties.class, AuthorizationProperties.class})
+@EnableConfigurationProperties({DubboClientProperties.class, AuthorizationProperties.class})
 @Configuration
 public class DubboClientAutoConfiguration {
 
@@ -137,13 +134,12 @@ public class DubboClientAutoConfiguration {
      * 核心服务
      */
     @Configuration
-//    @ComponentScan("cn.airiot.sdk.client.dubbo.clients.core")
     @ConditionalOnServiceEnabled(ServiceType.CORE)
     public static class DubboCoreClientConfiguration {
 
         private final ServiceConfig serviceConfig;
 
-        public DubboCoreClientConfiguration(ClientProperties properties) {
+        public DubboCoreClientConfiguration(DubboClientProperties properties) {
             this.serviceConfig = properties.getServices().getOrDefault(ServiceType.CORE, properties.getDefaultConfig());
         }
 
@@ -231,12 +227,11 @@ public class DubboClientAutoConfiguration {
      */
     @Configuration
     @ConditionalOnServiceEnabled(ServiceType.DATA_SERVICE)
-//    @ComponentScan(basePackages = "cn.airiot.sdk.client.dubbo.clients.ds")
     public static class DubboDataServiceClientConfiguration {
 
         private final ServiceConfig serviceConfig;
 
-        public DubboDataServiceClientConfiguration(ClientProperties properties) {
+        public DubboDataServiceClientConfiguration(DubboClientProperties properties) {
             this.serviceConfig = properties.getServices().getOrDefault(ServiceType.DATA_SERVICE, properties.getDefaultConfig());
         }
 
@@ -264,7 +259,7 @@ public class DubboClientAutoConfiguration {
 
         private final ServiceConfig serviceConfig;
 
-        public DubboWarningClientConfiguration(ClientProperties properties) {
+        public DubboWarningClientConfiguration(DubboClientProperties properties) {
             this.serviceConfig = properties.getServices().getOrDefault(ServiceType.WARNING, properties.getDefaultConfig());
         }
 
@@ -305,7 +300,7 @@ public class DubboClientAutoConfiguration {
 
         private final ServiceConfig serviceConfig;
 
-        public DubboSpmClientConfiguration(ClientProperties properties) {
+        public DubboSpmClientConfiguration(DubboClientProperties properties) {
             this.serviceConfig = properties.getServices().getOrDefault(ServiceType.SPM, properties.getDefaultConfig());
         }
 

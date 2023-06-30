@@ -60,7 +60,7 @@ public class WorkTableSchemaClientTests {
     @Order(1)
     void queryById() {
         ResponseDTO<TableSchema> responseDTO = this.tableSchemaClient.queryById("employee");
-        
+
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
         Assert.notNull(responseDTO.getData(), "未查询到数据");
     }
@@ -70,7 +70,9 @@ public class WorkTableSchemaClientTests {
     void queryByTitle() {
         ResponseDTO<List<TableSchema>> responseDTO = this.tableSchemaClient.query(Query.newBuilder()
                 .select(TableSchema.class)
+                .filter()
                 .eq(TableSchema::getTitle, "员工信息")
+                .end()
                 .build());
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
