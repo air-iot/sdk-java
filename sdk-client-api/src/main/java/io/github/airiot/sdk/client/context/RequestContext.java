@@ -21,30 +21,26 @@ package io.github.airiot.sdk.client.context;
 import org.springframework.util.StringUtils;
 
 import java.util.Stack;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 请求上下文
  */
 public class RequestContext {
 
-    private static String DEFAULT_PROJECT_ID = null;
+    private static final AtomicReference<String> DEFAULT_PROJECT_ID = new AtomicReference<>();
 
     public static void setDefaultProjectId(String projectId) {
         if (!StringUtils.hasText(projectId)) {
             throw new IllegalArgumentException("cannot set default projectId to empty");
         }
-
-        if (DEFAULT_PROJECT_ID != null) {
-            throw new IllegalArgumentException("the default projectId has bean config");
-        }
-
-        DEFAULT_PROJECT_ID = projectId.trim();
+        DEFAULT_PROJECT_ID.set(projectId.trim());
     }
 
     private final static ThreadLocal<Stack<ContextData>> RT_CONTEXT = ThreadLocal.withInitial(() -> {
         Stack<ContextData> stack = new Stack<>();
         ContextData data = new ContextData();
-        data.projectId = DEFAULT_PROJECT_ID;
+        data.projectId = DEFAULT_PROJECT_ID.get();
         stack.push(data);
         return stack;
     });

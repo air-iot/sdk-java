@@ -33,8 +33,8 @@ import io.github.airiot.sdk.driver.config.Model;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
 import io.github.airiot.sdk.driver.event.DriverReloadApplicationEvent;
-import io.github.airiot.sdk.driver.grpc.driver.*;
 import io.github.airiot.sdk.driver.grpc.driver.Error;
+import io.github.airiot.sdk.driver.grpc.driver.*;
 import io.github.airiot.sdk.driver.model.Tag;
 import io.grpc.*;
 import io.grpc.stub.MetadataUtils;
@@ -860,9 +860,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         private final Logger log = LoggerFactory.getLogger("http-proxy-stream");
 
         private final static Gson GSON = new Gson();
-//        private final static TypeToken<Map<String, List<String>>> HEADER_TYPE = new TypeToken<Map<String, List<String>>>() {
-//        };
-
+        
         private final static Type HEADER_TYPE = new TypeToken<Map<String, List<String>>>() {
         }.getType();
 
@@ -904,7 +902,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 result.setResult(proxyResult);
             } catch (Exception e) {
                 log.error("req = {}, type = schema", request.getRequest(), e);
-                result.setCode(500);
+                result.setCode(400);
                 result.setResult(e.getMessage());
             }
 

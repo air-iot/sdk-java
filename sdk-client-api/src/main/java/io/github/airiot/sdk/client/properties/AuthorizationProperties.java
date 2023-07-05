@@ -22,13 +22,18 @@ import io.github.airiot.sdk.client.context.RequestContext;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Scope;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.util.StringUtils;
 
 /**
  * 平台认证配置
  */
-@ConfigurationProperties(prefix = "airiot.client.authorization")
+@Scope(value = "refresh", proxyMode = ScopedProxyMode.TARGET_CLASS)
+@ConfigurationProperties(prefix = AuthorizationProperties.PREFIX)
 public class AuthorizationProperties implements InitializingBean {
+
+    public static final String PREFIX = "airiot.client.authorization";
 
     /**
      * 认证类型
@@ -40,15 +45,13 @@ public class AuthorizationProperties implements InitializingBean {
     private String appKey;
     private String appSecret;
     /**
-     * 项目ID.
-     * <br>
-     * 仅在 {@link #type} 为 {@link Type#PROJECT} 时有效.
+     * 项目ID. 默认为 {@code default}
      * <br>
      * 如果 {@link #type} 为 {@link Type#PROJECT} 时不能为空.
      * <br>
      * 除了配置文件之外, 也可以通过启动参数 {@code --project} 动态设置
      */
-    @Value("${project:}")
+    @Value("${project:default}")
     private String projectId = "";
 
     public Type getType() {
@@ -90,6 +93,10 @@ public class AuthorizationProperties implements InitializingBean {
         }
         if (StringUtils.hasText(this.projectId)) {
             RequestContext.setDefaultProjectId(this.projectId);
+        }
+
+        if (!StringUtils.hasText(this.appKey) || !StringUtils.hasText(this.appSecret)) {
+            throw new IllegalArgumentException("未设置 appKey 或 appSecret");
         }
     }
 
