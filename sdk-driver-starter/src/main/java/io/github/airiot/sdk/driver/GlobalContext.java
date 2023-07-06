@@ -157,7 +157,7 @@ public final class GlobalContext {
                 continue;
             }
 
-            fields.add(new Field<>(tags.get(tagId), entry.getValue()));
+            fields.add(new Field<>(tags.get(tagId), tagValues.get(tagId)));
         }
         return fields;
     }

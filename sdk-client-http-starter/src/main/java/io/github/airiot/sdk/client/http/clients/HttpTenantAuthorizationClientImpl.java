@@ -20,6 +20,7 @@ package io.github.airiot.sdk.client.http.clients;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dto.Token;
 import io.github.airiot.sdk.client.exception.AuthorizationException;
+import io.github.airiot.sdk.client.properties.AuthorizationProperties;
 import io.github.airiot.sdk.client.service.AuthorizationClient;
 import io.github.airiot.sdk.client.service.spm.SpmUserClient;
 
@@ -28,28 +29,25 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class HttpTenantAuthorizationClientImpl implements AuthorizationClient {
 
-    private final AtomicReference<Token> holder = new AtomicReference<>();
+    private final AtomicReference<TokenHolder> holder = new AtomicReference<>();
     private final SpmUserClient spmUserClient;
-    private final String appKey;
-    private final String appSecret;
+    private final AuthorizationProperties properties;
 
-    public HttpTenantAuthorizationClientImpl(SpmUserClient spmUserClient, String appKey, String appSecret) {
+    public HttpTenantAuthorizationClientImpl(SpmUserClient spmUserClient, AuthorizationProperties properties) {
         this.spmUserClient = spmUserClient;
-        this.appKey = appKey;
-        this.appSecret = appSecret;
+        this.properties = properties;
     }
 
     @Override
     public synchronized Token getToken() throws AuthorizationException {
-        Token token = this.holder.get();
-        if (token != null && !token.isExpired(Duration.ofSeconds(60))) {
-            return token;
+        TokenHolder token = this.holder.get();
+        if (token != null && token.equals(this.properties) && !token.getToken().isExpired(Duration.ofSeconds(60))) {
+            return token.getToken();
         }
         
-        ResponseDTO<Token> response = this.spmUserClient.getToken(this.appKey, this.appSecret);
-        token = response.unwrap(() -> new AuthorizationException(response.getCode(), response.getMessage(), response.getDetail()));
-
-        this.holder.set(token);
-        return token;
+        ResponseDTO<Token> response = this.spmUserClient.getToken(this.properties.getAppKey(), this.properties.getAppSecret());
+        Token t = response.unwrap(() -> new AuthorizationException(response.getCode(), response.getMessage(), response.getDetail()));
+        this.holder.set(new TokenHolder(this.properties.getAppKey(), this.properties.getAppSecret(), t));
+        return t;
     }
 }

@@ -35,12 +35,8 @@ import io.github.airiot.sdk.client.properties.AuthorizationProperties;
 import io.github.airiot.sdk.client.service.AuthorizationClient;
 import io.github.airiot.sdk.client.service.core.*;
 import io.github.airiot.sdk.client.service.spm.SpmUserClient;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.EnableAspectJAutoProxy;
-import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.*;
 
 import java.util.concurrent.TimeUnit;
 
@@ -52,70 +48,113 @@ import java.util.concurrent.TimeUnit;
 public class HttpClientAutoConfiguration {
 
     @Bean
+    public AppClient appClient(Client client, Encoder encoder, Decoder decoder, Contract contract, HttpClientProperties properties) {
+        ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
+        return Feign.builder().client(client)
+                .encoder(encoder)
+                .decoder(decoder)
+                .contract(contract)
+                .options(new Request.Options(
+                        serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                        serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                        false
+                ))
+                .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
+                .responseInterceptor(UniResponseInterceptor.INSTANCE)
+                .target(AppFeignClient.class, properties.getHost());
+    }
+
+    @Bean
+    public SpmUserClient spmUserClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
+                                       HttpClientProperties properties) {
+        ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.SPM);
+        return Feign.builder().client(client)
+                .encoder(encoder)
+                .decoder(decoder)
+                .contract(contract)
+                .options(new Request.Options(
+                        serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                        serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                        false
+                ))
+                .responseInterceptor(UniResponseInterceptor.INSTANCE)
+                .target(SpmUserFeignClient.class, properties.getHost());
+    }
+
+    @Bean
+    @Scope(scopeName = "refresh", proxyMode = ScopedProxyMode.TARGET_CLASS)
+    public AuthorizationClient authorizationClient(AuthorizationProperties properties, AppClient httpAppClient, SpmUserClient spmUserClient) {
+        return AuthorizationProperties.Type.PROJECT.equals(properties.getType()) ?
+                new HttpProjectAuthorizationClientImpl(httpAppClient, properties) :
+                new HttpTenantAuthorizationClientImpl(spmUserClient, properties);
+    }
+    
+    @Bean
+    @Scope(scopeName = "refresh", proxyMode = ScopedProxyMode.TARGET_CLASS)
     public RequestInterceptor authRequestInterceptor(AuthorizationClient authorizationClient) {
         return new AuthRequestInterceptor(authorizationClient);
     }
 
-    /**
-     * 项目级授权
-     */
-    @ConditionalOnProperty(prefix = "airiot.client.authorization", name = "type", havingValue = "project", matchIfMissing = true)
-    @Configuration
-    public static class ProjectAuthorizationConfiguration {
-
-        @Bean
-        public AppClient appClient(Client client, Encoder encoder, Decoder decoder, Contract contract, HttpClientProperties properties) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
-            return Feign.builder().client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(AppFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public AuthorizationClient projectAuthorizationClient(AppClient httpAppClient, AuthorizationProperties properties) {
-            return new HttpProjectAuthorizationClientImpl(httpAppClient, properties.getAppKey(), properties.getAppSecret());
-        }
-    }
-
-    /**
-     * 租户级授权
-     */
-    @ConditionalOnProperty(prefix = "airiot.client.authorization", name = "type", havingValue = "tenant")
-    @Configuration
-    public static class TenantAuthorizationConfiguration {
-
-        @Bean
-        public SpmUserClient spmUserClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                           HttpClientProperties properties) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.SPM);
-            return Feign.builder().client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(SpmUserFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public AuthorizationClient tenantAuthorizationClient(SpmUserClient spmUserClient,
-                                                             AuthorizationProperties properties) {
-            return new HttpTenantAuthorizationClientImpl(spmUserClient, properties.getAppKey(), properties.getAppSecret());
-        }
-    }
+//    /**
+//     * 项目级授权
+//     */
+//    @ConditionalOnProperty(prefix = "airiot.client.authorization", name = "type", havingValue = "project", matchIfMissing = true)
+//    @Configuration
+//    public static class ProjectAuthorizationConfiguration {
+//
+//        @Bean
+//        public AppClient appClient(Client client, Encoder encoder, Decoder decoder, Contract contract, HttpClientProperties properties) {
+//            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
+//            return Feign.builder().client(client)
+//                    .encoder(encoder)
+//                    .decoder(decoder)
+//                    .contract(contract)
+//                    .options(new Request.Options(
+//                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+//                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+//                            false
+//                    ))
+//                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
+//                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
+//                    .target(AppFeignClient.class, properties.getHost());
+//        }
+//
+//        @Bean
+//        public AuthorizationClient projectAuthorizationClient(AppClient httpAppClient, AuthorizationProperties properties) {
+//            return new HttpProjectAuthorizationClientImpl(httpAppClient, properties);
+//        }
+//    }
+//
+//    /**
+//     * 租户级授权
+//     */
+//    @ConditionalOnProperty(prefix = "airiot.client.authorization", name = "type", havingValue = "tenant")
+//    @Configuration
+//    public static class TenantAuthorizationConfiguration {
+//
+//        @Bean
+//        public SpmUserClient spmUserClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
+//                                           HttpClientProperties properties) {
+//            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.SPM);
+//            return Feign.builder().client(client)
+//                    .encoder(encoder)
+//                    .decoder(decoder)
+//                    .contract(contract)
+//                    .options(new Request.Options(
+//                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+//                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+//                            false
+//                    ))
+//                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
+//                    .target(SpmUserFeignClient.class, properties.getHost());
+//        }
+//
+//        @Bean
+//        public AuthorizationClient tenantAuthorizationClient(SpmUserClient spmUserClient,
+//                                                             AuthorizationProperties properties) {
+//            return new HttpTenantAuthorizationClientImpl(spmUserClient, properties);
+//        }
+//    }
 
     /**
      * 核心服务客户端
