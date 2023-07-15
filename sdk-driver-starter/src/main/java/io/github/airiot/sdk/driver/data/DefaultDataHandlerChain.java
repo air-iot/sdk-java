@@ -71,6 +71,7 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
      * 3. 小数位数和缩放比例 v2 <br>
      * 4. 有效范围
      * 5. 将 boolean 转换为 0 或 1
+     * 6. 将 byte[] 转换为 hex 字符串
      */
     public void registerDefaultHandlers() {
         this.handlers.add(new ConvertValueHandler());
@@ -78,6 +79,7 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
         this.handlers.add(new RangeValueHandler(this.tagValueCache));
         this.handlers.add(new RangeValueHandlerV2(this.tagValueCache));
         this.handlers.add(new BooleanToIntegerHandler());
+        this.handlers.add(new ByteArrayToHexHandler());
     }
 
     @Override
@@ -110,7 +112,7 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
                 finalValues.remove(tag.getId());
             }
         }
-        
+
         // 更新数据点最新有效值缓存
         if (finalValues.containsKey(tag.getId())) {
             this.tagValueCache.put(tableId, deviceId, tag.getId(), finalValues.get(tag.getId()));
