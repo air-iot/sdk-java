@@ -49,8 +49,8 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
         if (registerDefaults) {
             this.registerDefaultHandlers();
         }
-        handlers.sort(Comparator.comparing(DataHandler::getOrder));
         this.handlers.addAll(handlers);
+        handlers.sort(Comparator.comparing(DataHandler::getOrder));
 
         logger.info("数据处理 Chain: 是否注册默认数据处理功能: {}, 自定义数据处理功能: {}",
                 registerDefaults,
@@ -78,6 +78,7 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
         this.handlers.add(new RoundAndScaleValueHandler());
         this.handlers.add(new RangeValueHandler(this.tagValueCache));
         this.handlers.add(new RangeValueHandlerV2(this.tagValueCache));
+        this.handlers.add(new InvalidRangeValueHandler(this.tagValueCache));
         this.handlers.add(new BooleanToIntegerHandler());
         this.handlers.add(new ByteArrayToHexHandler());
     }
@@ -147,8 +148,19 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
                     finalFields.add(new Field<>(field.getTag(), entry.getValue()));
                     continue;
                 }
-                finalFields.add(new Field<>(new Tag(entry.getKey(), entry.getKey(), null, null, null, null), entry.getValue()));
+
+                // 如果未开启周期存储, 则直接上报该数据点数据
+                if (!field.getTag().isOpenInterval()) {
+                    finalFields.add(new Field<>(new Tag(entry.getKey(), entry.getKey(), null, null, null, null), entry.getValue()));
+                } else {
+                    logger.debug("数据处理: 数据点设置了周期存储, 不上报该数据点. tableId = {}, deviceId = {}, tag = {}", tableId, deviceId, field.getTag());
+                }
             }
+        }
+
+        if (finalFields.isEmpty()) {
+            logger.info("数据处理: 该设备所有数据点均无须上报. tableId = {}, deviceId = {}", tableId, deviceId);
+            return null;
         }
 
         Point newPoint = new Point();

@@ -26,10 +26,7 @@ import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.DriverApp;
 import io.github.airiot.sdk.driver.GlobalContext;
-import io.github.airiot.sdk.driver.config.BasicConfig;
-import io.github.airiot.sdk.driver.config.Device;
-import io.github.airiot.sdk.driver.config.DriverConfig;
-import io.github.airiot.sdk.driver.config.Model;
+import io.github.airiot.sdk.driver.config.*;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
 import io.github.airiot.sdk.driver.event.DriverReloadApplicationEvent;
@@ -126,9 +123,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         this.driverGrpcClient = driverGrpcClient.withInterceptors(metadataInterceptor);
     }
 
-    private void clearTagValueCache(Void v) {
+    private void clearTagValueCache(DriverSingleConfig<BasicConfig<?>> driverConfigs) {
         // 发布驱动重载事件
-        this.applicationContext.publishEvent(new DriverReloadApplicationEvent());
+        this.applicationContext.publishEvent(new DriverReloadApplicationEvent(driverConfigs));
     }
 
     private Type[] parseParameterizedTypes() {
@@ -681,14 +678,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         private final Type driverConfigType;
         private final Type tagType;
         private final StreamClosedCallback closedCallback;
-        private final Consumer<Void> clearCacheFn;
+        private final Consumer<DriverSingleConfig<BasicConfig<?>>> clearCacheFn;
 
         public StartHandler(ClientCall<StartResult, StartRequest> clientCall,
                             DriverApp<Object, Object, Object> driverApp,
                             GlobalContext globalContext,
                             Type driverConfigType, Type tagType,
                             StreamClosedCallback closedCallback,
-                            Consumer<Void> clearCacheFn
+                            Consumer<DriverSingleConfig<BasicConfig<?>>> clearCacheFn
         ) {
             this.clientCall = clientCall;
             this.driverApp = driverApp;
@@ -725,12 +722,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             result.setResult("启动成功");
 
             boolean passed = true;
+            DriverSingleConfig<BasicConfig<? extends Tag>> driverConfig = null;
             try {
                 Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
-                Type driverConfigType = TypeReference.parametricType(DriverConfig.class, baseConfigType, baseConfigType, baseConfigType);
+//                Type driverConfigType = TypeReference.parametricType(DriverConfig.class, baseConfigType, baseConfigType, baseConfigType);
+                Type driverConfigType = TypeReference.parametricType(DriverConfig.class, baseConfigType);
 
-                DriverConfig<BasicConfig<? extends Tag>, BasicConfig<? extends Tag>, BasicConfig<? extends Tag>> driverConfig = JSON.parseObject(config, driverConfigType);
-
+                driverConfig = JSON.parseObject(config, driverConfigType);
+                
                 if (log.isDebugEnabled()) {
                     log.debug("启动驱动, config = {}", driverConfig);
                 }
@@ -784,7 +783,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 try {
                     Object drvConfig = JSON.parseObject(config, this.driverConfigType);
                     this.driverApp.start(drvConfig);
-                    this.clearCacheFn.accept(null);
+                    this.clearCacheFn.accept(driverConfig);
                 } catch (Exception e) {
                     log.error("启动驱动:", e);
                     result.setCode(400);
@@ -860,7 +859,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         private final Logger log = LoggerFactory.getLogger("http-proxy-stream");
 
         private final static Gson GSON = new Gson();
-        
+
         private final static Type HEADER_TYPE = new TypeToken<Map<String, List<String>>>() {
         }.getType();
 

@@ -59,6 +59,12 @@ public class RangeValueHandlerV2 implements DataHandler {
             return false;
         }
 
+        if (!"valid".equalsIgnoreCase(range.getMethod())) {
+            logger.debug("数据点数据处理器: 有效范围处理, 不生效. table = {}, device = {}, tag = {}, range = {}, value = {}",
+                    tableId, deviceId, tagId, range, value);
+            return false;
+        }
+
         if (range.getMinValue() != null || range.getMaxValue() != null) {
             logger.debug("数据点数据处理器: 有效范围处理, 不生效. table = {}, device = {}, tag = {}, range = {}, value = {}",
                     tableId, deviceId, tagId, range, value);
