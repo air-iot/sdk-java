@@ -33,7 +33,7 @@ public class Range {
 
     public static class Condition {
         /**
-         * 有效值处理模式
+         * 处理模式
          * <br>
          * 取值: number(数值), rate(变化率), delta(差值)
          * <br>
@@ -47,7 +47,7 @@ public class Range {
          */
         private String mode;
         /**
-         * 有效值判断条件类型.
+         * 判断条件类型.
          * <br>
          * 取值: range(范围值), greater(大于), less (小于)
          * <br>
@@ -78,10 +78,14 @@ public class Range {
         private Double value;
         /**
          * 默认处理条件. 即当前值与所有条件都不匹配时, 并且 {@code active} 为 boundary 时, 使用该条件的配置进行处理
+         * <br>
+         * 该字段只在 {@link Range#getMethod()} 为 "valid" 时有效
          */
         private Boolean defaultCondition;
         /**
          * 无效值类型
+         * <br>
+         * 该字段只在 {@link Range#getMethod()} 为 "invalid" 时有效
          */
         private String invalidType;
 
@@ -190,6 +194,7 @@ public class Range {
                     ", maxValue=" + maxValue +
                     ", value=" + value +
                     ", defaultCondition=" + defaultCondition +
+                    ", invalidType='" + invalidType + '\'' +
                     '}';
         }
     }
@@ -203,7 +208,7 @@ public class Range {
     private String method;
 
     /**
-     * 新版本的有效范围配置, 用于支持多种有效范围配置
+     * 范围配置, 支持配置多个范围
      */
     private List<Condition> conditions;
     /**
