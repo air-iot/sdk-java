@@ -19,6 +19,7 @@ package io.github.airiot.sdk.client.service.core;
 
 
 import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.PlatformClient;
 import io.github.airiot.sdk.client.service.core.dto.User;
@@ -37,7 +38,7 @@ public interface UserClient extends PlatformClient {
      * @param user 用户信息
      * @return 用户ID或错误信息
      */
-    ResponseDTO<User> create(@Nonnull User user);
+    ResponseDTO<InsertResult> create(@Nonnull User user);
 
     /**
      * 更新用户信息
@@ -80,7 +81,7 @@ public interface UserClient extends PlatformClient {
      * @return 用户信息或错误信息
      */
     ResponseDTO<User> queryById(@Nonnull String userId);
-    
+
     /**
      * 根据用户名查询用户信息
      *

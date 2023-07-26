@@ -33,7 +33,7 @@ public class Range {
 
     public static class Condition {
         /**
-         * 有效值处理模式
+         * 处理模式
          * <br>
          * 取值: number(数值), rate(变化率), delta(差值)
          * <br>
@@ -47,7 +47,7 @@ public class Range {
          */
         private String mode;
         /**
-         * 有效值判断条件类型.
+         * 判断条件类型.
          * <br>
          * 取值: range(范围值), greater(大于), less (小于)
          * <br>
@@ -78,8 +78,16 @@ public class Range {
         private Double value;
         /**
          * 默认处理条件. 即当前值与所有条件都不匹配时, 并且 {@code active} 为 boundary 时, 使用该条件的配置进行处理
+         * <br>
+         * 该字段只在 {@link Range#getMethod()} 为 "valid" 时有效
          */
         private Boolean defaultCondition;
+        /**
+         * 无效值类型
+         * <br>
+         * 该字段只在 {@link Range#getMethod()} 为 "invalid" 时有效
+         */
+        private String invalidType;
 
         public String getMode() {
             return mode;
@@ -129,6 +137,14 @@ public class Range {
             this.defaultCondition = defaultCondition;
         }
 
+        public String getInvalidType() {
+            return invalidType;
+        }
+
+        public void setInvalidType(String invalidType) {
+            this.invalidType = invalidType;
+        }
+
         public Condition() {
         }
 
@@ -141,6 +157,16 @@ public class Range {
             this.defaultCondition = defaultCondition;
         }
 
+        public Condition(String mode, String condition, Double minValue, Double maxValue, Double value, Boolean defaultCondition, String invalidType) {
+            this.mode = mode;
+            this.condition = condition;
+            this.minValue = minValue;
+            this.maxValue = maxValue;
+            this.value = value;
+            this.defaultCondition = defaultCondition;
+            this.invalidType = invalidType;
+        }
+
         public Condition(String mode, String condition, Double minValue, Double maxValue, Boolean defaultCondition) {
             this.mode = mode;
             this.condition = condition;
@@ -149,7 +175,7 @@ public class Range {
             this.value = null;
             this.defaultCondition = defaultCondition;
         }
-        
+
         public Condition(String mode, String condition, Double value, Boolean defaultCondition) {
             this.mode = mode;
             this.condition = condition;
@@ -168,12 +194,21 @@ public class Range {
                     ", maxValue=" + maxValue +
                     ", value=" + value +
                     ", defaultCondition=" + defaultCondition +
+                    ", invalidType='" + invalidType + '\'' +
                     '}';
         }
     }
 
     /**
-     * 新版本的有效范围配置, 用于支持多种有效范围配置
+     * 配置类型
+     * <br>
+     * "valid": 有效值范围 <br>
+     * "invalid": 无效值范围
+     */
+    private String method;
+
+    /**
+     * 范围配置, 支持配置多个范围
      */
     private List<Condition> conditions;
     /**
@@ -193,7 +228,7 @@ public class Range {
      * <br><br>
      * fixed: 固定值, 即返回 {@link #fixedValue} 定义的值
      * <br><br><br>
-     * boundary: 边界值.
+     * boundary: 边界值(无效范围时无该配置).
      * <br>
      * 之前版本处理: 如果采集到的数据小于 {@link #minValue} 时返回 {@link #minValue}, 如果大于 {@link #maxValue} 时返回 {@link #maxValue}<br>
      * 新版本处理: 根据 {@link #conditions} 中第一条规则的 {@code mode} 和 {@code condition} 进行处理<br>
@@ -219,6 +254,14 @@ public class Range {
         this.maxValue = maxValue;
         this.active = active;
         this.fixedValue = fixedValue;
+    }
+
+    public String getMethod() {
+        return method;
+    }
+
+    public void setMethod(String method) {
+        this.method = method;
     }
 
     public List<Condition> getConditions() {

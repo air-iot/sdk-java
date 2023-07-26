@@ -20,6 +20,7 @@ package io.github.airiot.sdk.client.http.clients.core;
 import feign.Param;
 import feign.RequestLine;
 import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.core.UserClient;
 import io.github.airiot.sdk.client.service.core.dto.User;
@@ -32,7 +33,7 @@ public interface UserFeignClient extends UserClient {
 
     @RequestLine("POST /core/user")
     @Override
-    ResponseDTO<User> create(@NotNull User user);
+    ResponseDTO<InsertResult> create(@NotNull User user);
 
     @RequestLine("PATCH /core/user/{userId}")
     @Override

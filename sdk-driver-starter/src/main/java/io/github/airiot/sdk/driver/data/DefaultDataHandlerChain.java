@@ -49,8 +49,8 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
         if (registerDefaults) {
             this.registerDefaultHandlers();
         }
-        handlers.sort(Comparator.comparing(DataHandler::getOrder));
         this.handlers.addAll(handlers);
+        this.handlers.sort(Comparator.comparing(DataHandler::getOrder));
 
         logger.info("数据处理 Chain: 是否注册默认数据处理功能: {}, 自定义数据处理功能: {}",
                 registerDefaults,
@@ -71,13 +71,16 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
      * 3. 小数位数和缩放比例 v2 <br>
      * 4. 有效范围
      * 5. 将 boolean 转换为 0 或 1
+     * 6. 将 byte[] 转换为 hex 字符串
      */
     public void registerDefaultHandlers() {
         this.handlers.add(new ConvertValueHandler());
         this.handlers.add(new RoundAndScaleValueHandler());
         this.handlers.add(new RangeValueHandler(this.tagValueCache));
         this.handlers.add(new RangeValueHandlerV2(this.tagValueCache));
+        this.handlers.add(new InvalidRangeValueHandler(this.tagValueCache));
         this.handlers.add(new BooleanToIntegerHandler());
+        this.handlers.add(new ByteArrayToHexHandler());
     }
 
     @Override
@@ -110,7 +113,7 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
                 finalValues.remove(tag.getId());
             }
         }
-        
+
         // 更新数据点最新有效值缓存
         if (finalValues.containsKey(tag.getId())) {
             this.tagValueCache.put(tableId, deviceId, tag.getId(), finalValues.get(tag.getId()));
@@ -147,6 +150,11 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
                 }
                 finalFields.add(new Field<>(new Tag(entry.getKey(), entry.getKey(), null, null, null, null), entry.getValue()));
             }
+        }
+
+        if (finalFields.isEmpty()) {
+            logger.info("数据处理: 该设备所有数据点均无须上报. tableId = {}, deviceId = {}", tableId, deviceId);
+            return null;
         }
 
         Point newPoint = new Point();

@@ -53,6 +53,13 @@ public class Tag {
     public String getInvalidTagId() {
         return String.format("%s__invalid", id);
     }
+    
+    /**
+     * 无效范围类型
+     */
+    public String getInvalidType() {
+        return String.format("%s__invalid__type", id);
+    }
 
     public Tag() {
     }

@@ -22,14 +22,12 @@ import io.github.airiot.sdk.client.context.RequestContext;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Scope;
-import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.util.StringUtils;
 
 /**
  * 平台认证配置
  */
-@Scope(value = "refresh", proxyMode = ScopedProxyMode.TARGET_CLASS)
+//@Scope(value = "refresh", proxyMode = ScopedProxyMode.TARGET_CLASS)
 @ConfigurationProperties(prefix = AuthorizationProperties.PREFIX)
 public class AuthorizationProperties implements InitializingBean {
 
