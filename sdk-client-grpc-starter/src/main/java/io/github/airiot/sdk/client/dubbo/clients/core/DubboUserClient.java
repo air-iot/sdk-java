@@ -19,6 +19,7 @@ package io.github.airiot.sdk.client.dubbo.clients.core;
 
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dubbo.grpc.api.*;
 import io.github.airiot.sdk.client.dubbo.grpc.core.DubboUserServiceGrpc;
@@ -45,7 +46,7 @@ public class DubboUserClient implements UserClient {
     }
 
     @Override
-    public ResponseDTO<User> create(@Nonnull User user) {
+    public ResponseDTO<InsertResult> create(@Nonnull User user) {
         logger.debug("创建用户: {}", user);
 
         Response response = this.userService.create(CreateRequest.newBuilder()
