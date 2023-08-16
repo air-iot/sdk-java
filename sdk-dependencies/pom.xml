@@ -33,12 +33,12 @@
             </dependency>
             <dependency>
                 <groupId>io.github.air-iot</groupId>
-                <artifactId>sdk-client-grpc-starter</artifactId>
+                <artifactId>sdk-client-http-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.github.air-iot</groupId>
-                <artifactId>sdk-client-http-starter</artifactId>
+                <artifactId>sdk-flow-plugin-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

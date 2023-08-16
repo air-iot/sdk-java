@@ -10,11 +10,10 @@
     <url>https://github.com/air-iot/sdk-java</url>
 
     <packaging>pom</packaging>
-
+    
     <modules>
         <module>sdk-driver-starter</module>
         <module>sdk-client-api</module>
-        <module>sdk-client-grpc-starter</module>
         <module>sdk-dependencies</module>
         <module>sdk-flow-plugin-starter</module>
         <module>sdk-client-http-starter</module>
