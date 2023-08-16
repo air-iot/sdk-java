@@ -21,6 +21,7 @@ package io.github.airiot.sdk.client.http.configuration;
 import feign.*;
 import feign.codec.Decoder;
 import feign.codec.Encoder;
+import feign.form.FormEncoder;
 import io.github.airiot.sdk.client.http.clients.HttpProjectAuthorizationClientImpl;
 import io.github.airiot.sdk.client.http.clients.HttpTenantAuthorizationClientImpl;
 import io.github.airiot.sdk.client.http.clients.core.*;
@@ -85,7 +86,6 @@ public class HttpClientAutoConfiguration {
     }
 
     @Bean
-//    @Scope(scopeName = "refresh", proxyMode = ScopedProxyMode.TARGET_CLASS)
     public AuthorizationClient authorizationClient(AuthorizationProperties properties, AppClient httpAppClient, SpmUserClient spmUserClient) {
         return AuthorizationProperties.Type.PROJECT.equals(properties.getType()) ?
                 new HttpProjectAuthorizationClientImpl(httpAppClient, properties) :
@@ -93,11 +93,10 @@ public class HttpClientAutoConfiguration {
     }
 
     @Bean
-//    @Scope(scopeName = "refresh", proxyMode = ScopedProxyMode.TARGET_CLASS)
     public RequestInterceptor authRequestInterceptor(AuthorizationClient authorizationClient) {
         return new AuthRequestInterceptor(authorizationClient);
     }
-    
+
     /**
      * 核心服务客户端
      */
@@ -248,6 +247,26 @@ public class HttpClientAutoConfiguration {
                     .requestInterceptor(authRequestInterceptor)
                     .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
                     .target(TimingDataFeignClient.class, properties.getHost());
+        }
+
+        @Bean
+        public MediaLibraryClient mediaLibraryClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
+                                                     HttpClientProperties properties, RequestInterceptor authRequestInterceptor) {
+            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
+            return Feign.builder()
+                    .client(client)
+                    .encoder(new FormEncoder(encoder))
+                    .decoder(decoder)
+                    .contract(contract)
+                    .options(new Request.Options(
+                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            false
+                    ))
+                    .requestInterceptor(authRequestInterceptor)
+                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
+                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
+                    .target(MediaLibraryFeignClient.class, properties.getHost());
         }
     }
 }

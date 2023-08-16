@@ -15,16 +15,20 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.dubbo;
+package io.github.airiot.sdk.client.http.clients.core;
 
+import feign.codec.Encoder;
+import feign.form.spring.SpringFormEncoder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+public class MediaLibraryConfiguration {
 
-@SpringBootApplication
-public class DubboClientApplication {
+    @Autowired
+    private Encoder encoder;
 
-    public static void main(String[] args) {
-        SpringApplication.run(DubboClientApplication.class, args);
+    @Bean
+    public Encoder feignFormEncoder() {
+        return new SpringFormEncoder(new SpringFormEncoder(this.encoder));
     }
 }

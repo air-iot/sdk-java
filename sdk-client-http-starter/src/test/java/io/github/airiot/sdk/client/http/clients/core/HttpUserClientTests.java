@@ -18,6 +18,7 @@
 package io.github.airiot.sdk.client.http.clients.core;
 
 
+import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.core.UserClient;
 import io.github.airiot.sdk.client.service.core.dto.User;
 import org.junit.jupiter.api.MethodOrderer;
@@ -46,5 +47,11 @@ public class HttpUserClientTests {
         user.setName("admin1");
         user.setPassword("dell123");
         this.userClient.create(user);
+    }
+
+    @Test
+    void testQueryUserById() {
+        ResponseDTO<User> response = this.userClient.queryById("admin");
+        System.out.println(response);
     }
 }

@@ -15,41 +15,20 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.dubbo.config;
+package io.github.airiot.sdk.client.service.core.dto;
 
-public enum ServiceType {
+public class UploadFileResult {
 
-    /**
-     * 核心服务
-     */
-    CORE("core"),
+    private String url;
 
-    /**
-     * 数据接口服务
-     */
-    DATA_SERVICE("data-service"),
-
-    /**
-     * 告警服务
-     */
-    WARNING("warning"),
-
-    /**
-     * 空间管理服务
-     */
-    SPM("spm");
-
-    private final String name;
-
-    public String getName() {
-        return name;
+    public String getUrl() {
+        return url;
     }
 
-    ServiceType(String name) {
-        this.name = name;
-    }
-
-    public static ServiceType of(String serviceName) {
-        return ServiceType.valueOf(serviceName.toUpperCase());
+    @Override
+    public String toString() {
+        return "UploadFileResult{" +
+                "url='" + url + '\'' +
+                '}';
     }
 }

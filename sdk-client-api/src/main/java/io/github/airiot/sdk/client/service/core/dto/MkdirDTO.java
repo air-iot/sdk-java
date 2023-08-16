@@ -15,32 +15,43 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.dubbo.extension.registry;
+package io.github.airiot.sdk.client.service.core.dto;
 
 
 /**
- * 常量
+ * 媒体库创建目录请求参数
  */
-public interface ServiceConstants {
-
+public class MkdirDTO {
     /**
-     * 服务实例ID
-     * <br>
-     * 元数据存储在 {@link org.apache.dubbo.common.URL} 的 attribute 中
+     * 上级目录名称
      */
-    String SERVICE_INSTANCE_ID = "instanceId";
-
+    private String catalog;
     /**
-     * 元数据 Key
-     * <br>
-     * 元数据存储在 {@link org.apache.dubbo.common.URL} 的 attribute 中
+     * 目录名称
      */
-    String METADATA_KEY = "metadata";
+    private String dirName;
 
-    /**
-     * 服务实例版本号
-     * <br>
-     * 元数据存储在 {@link org.apache.dubbo.common.URL} 的 attribute 中
-     */
-    String VERSION_KEY = "version";
+    public String getCatalog() {
+        return catalog;
+    }
+
+    public String getDirName() {
+        return dirName;
+    }
+
+    public MkdirDTO() {
+    }
+
+    public MkdirDTO(String catalog, String dirName) {
+        this.catalog = catalog;
+        this.dirName = dirName;
+    }
+
+    @Override
+    public String toString() {
+        return "MkdirDTO{" +
+                "catalog='" + catalog + '\'' +
+                ", dirName='" + dirName + '\'' +
+                '}';
+    }
 }
