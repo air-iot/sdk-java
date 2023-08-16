@@ -20,6 +20,7 @@ package io.github.airiot.sdk.client.dubbo.clients.core;
 
 import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.context.RequestContext;
+import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dubbo.utils.DubboClientUtils;
 import io.github.airiot.sdk.client.service.core.dto.User;
@@ -66,11 +67,11 @@ public class UserClientTests {
         user.setPassword("dell123");
         user.setPhone("189xxxx1536");
 
-        ResponseDTO<User> responseDTO = this.userClient.create(user);
+        ResponseDTO<InsertResult> responseDTO = this.userClient.create(user);
 
         Assert.isTrue(responseDTO.isSuccess(), responseDTO.getFullMessage());
 
-        this.testUserId = responseDTO.getData().getId();
+        this.testUserId = responseDTO.getData().getInsertedID();
     }
 
     @Test

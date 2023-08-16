@@ -27,7 +27,6 @@ import org.springframework.util.StringUtils;
 /**
  * 平台认证配置
  */
-//@Scope(value = "refresh", proxyMode = ScopedProxyMode.TARGET_CLASS)
 @ConfigurationProperties(prefix = AuthorizationProperties.PREFIX)
 public class AuthorizationProperties implements InitializingBean {
 

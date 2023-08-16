@@ -58,7 +58,7 @@ public class DubboUserClient implements UserClient {
             logger.debug("创建用户: user = {}, response = {}", user, DubboClientUtils.toString(response));
         }
 
-        return DubboClientUtils.deserialize(User.class, response);
+        return DubboClientUtils.deserialize(InsertResult.class, response);
     }
 
     @Override
