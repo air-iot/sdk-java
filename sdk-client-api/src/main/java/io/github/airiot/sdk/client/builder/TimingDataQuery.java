@@ -31,7 +31,7 @@ import java.util.*;
 /**
  * 时序数据查询
  *
- * <pre>
+ * <pre>{@code
  * [{
  * 	"fields": [
  * 		"MEAN(\"tagid3\") as XXX",
@@ -51,7 +51,7 @@ import java.util.*;
  * 	"order": "time asc",
  * 	"limit": 5,
  * 	"offset": 0
- * }]
+ * }]}
  * </pre>
  *
  * @see Constants 相关常量

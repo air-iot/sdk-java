@@ -50,9 +50,13 @@ public class LatestDataQuery {
     public List<Specification> getSpecifications() {
         return specifications;
     }
-
+    
     /**
-     * @see #specific(String, String, Collection)
+     * 查询设备中指定的数据点最新数据
+     *
+     * @param tableId 工作表标识
+     * @param nodeId  资产编号
+     * @param tags    数据点标识列表
      */
     public LatestDataQuery specific(String tableId, String nodeId, String... tags) {
         return this.specific(tableId, nodeId, Arrays.asList(tags));
