@@ -29,14 +29,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableConfigurationProperties({AlgorithmProperties.class})
+@EnableConfigurationProperties({AlgorithmProperties.class, AlgorithmGrpcProperties.class})
 public class AlgorithmAutoConfiguration {
 
 
     @Bean
-    public Channel channel(AlgorithmProperties properties) {
-        AlgorithmProperties.AlgorithmGrpc grpc = properties.getAlgorithmGrpc();
-        return ManagedChannelBuilder.forAddress(grpc.getHost(), grpc.getPort())
+    public Channel channel(AlgorithmGrpcProperties properties) {
+        return ManagedChannelBuilder.forAddress(properties.getHost(), properties.getPort())
                 .usePlaintext()
                 .build();
     }
@@ -45,16 +44,17 @@ public class AlgorithmAutoConfiguration {
     public AlgorithmServiceGrpc.AlgorithmServiceBlockingStub flowPluginService(Channel channel) {
         return AlgorithmServiceGrpc.newBlockingStub(channel);
     }
-    
+
     @Bean
     public AlgorithmManagement algorithmManagement(AlgorithmProperties properties,
+                                                   Channel channel,
                                                    AlgorithmServiceGrpc.AlgorithmServiceBlockingStub algorithmService,
                                                    ObjectProvider<AlgorithmApp> app) {
-
+        
         AlgorithmApp algorithmApp = app.getIfUnique();
         if (algorithmApp == null) {
             throw new IllegalArgumentException("未找到 AlgorithmApp 实现类, 请检查是否创建了该类的实现并且注入到 Spring 容器中");
         }
-        return new AlgorithmManagement(properties, algorithmService, algorithmApp);
+        return new AlgorithmManagement(properties, channel, algorithmService, algorithmApp);
     }
 }

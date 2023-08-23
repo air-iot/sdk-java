@@ -25,7 +25,7 @@ import java.time.Duration;
 /**
  * 流程插件配置类
  */
-@ConfigurationProperties(prefix = "flow-grpc")
+@ConfigurationProperties(prefix = "flow-engine")
 public class FlowPluginProperties {
     /**
      * 流程引擎服务地址

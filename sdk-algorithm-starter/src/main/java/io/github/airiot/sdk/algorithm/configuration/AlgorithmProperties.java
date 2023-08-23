@@ -18,6 +18,7 @@
 package io.github.airiot.sdk.algorithm.configuration;
 
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
@@ -42,12 +43,8 @@ public class AlgorithmProperties {
     /**
      * 算法服务ID(实例ID)
      */
-    private String serviceId = UUID.randomUUID().toString();
-    /**
-     * 算法服务的 gRPC 地址
-     */
-    private AlgorithmGrpc algorithmGrpc = new AlgorithmGrpc();
-
+    @Value("${serviceId:}")
+    private String serviceId;
     /**
      * 最大线程线量.
      * 如果为 0, 则取当前机器的CPU核数
@@ -77,21 +74,16 @@ public class AlgorithmProperties {
     public void setName(String name) {
         this.name = name;
     }
-
+    
     public String getServiceId() {
+        if (serviceId == null || serviceId.isEmpty()) {
+            this.serviceId = UUID.randomUUID().toString().replaceAll("-", "");
+        }
         return serviceId;
     }
 
     public void setServiceId(String serviceId) {
         this.serviceId = serviceId;
-    }
-
-    public AlgorithmGrpc getAlgorithmGrpc() {
-        return algorithmGrpc;
-    }
-
-    public void setAlgorithmGrpc(AlgorithmGrpc algorithmGrpc) {
-        this.algorithmGrpc = algorithmGrpc;
     }
 
     public int getMaxThreads() {
@@ -116,26 +108,5 @@ public class AlgorithmProperties {
 
     public void setKeepaliveInterval(Duration keepaliveInterval) {
         this.keepaliveInterval = keepaliveInterval;
-    }
-
-    public static class AlgorithmGrpc {
-        private String host = "algorithmService";
-        private int port = 9236;
-
-        public String getHost() {
-            return host;
-        }
-
-        public void setHost(String host) {
-            this.host = host;
-        }
-
-        public int getPort() {
-            return port;
-        }
-
-        public void setPort(int port) {
-            this.port = port;
-        }
     }
 }

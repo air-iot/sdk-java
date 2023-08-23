@@ -41,6 +41,11 @@
                 <artifactId>sdk-flow-plugin-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.github.air-iot</groupId>
+                <artifactId>sdk-algorithm-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>

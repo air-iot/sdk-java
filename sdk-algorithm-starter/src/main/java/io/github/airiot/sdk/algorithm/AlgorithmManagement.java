@@ -54,6 +54,8 @@ public class AlgorithmManagement implements SmartLifecycle {
 
     private final ThreadPoolExecutor executor;
 
+    private final String serviceId;
+
     private AlgorithmHandler handler;
     private SchemaHandler schemaHandler;
     /**
@@ -66,21 +68,19 @@ public class AlgorithmManagement implements SmartLifecycle {
     private Thread heartbeatThread;
 
     public AlgorithmManagement(AlgorithmProperties properties,
+                               Channel channel,
                                AlgorithmServiceGrpc.AlgorithmServiceBlockingStub algorithmService,
                                AlgorithmApp algorithmApp) {
         this.properties = properties;
         this.algorithmService = algorithmService;
         this.app = algorithmApp;
+        this.serviceId = String.format("%s_%s", properties.getId(), properties.getServiceId());
 
         int maxThreads = properties.getMaxThreads() <= 0 ? Runtime.getRuntime().availableProcessors() : properties.getMaxThreads();
         int coreThreads = maxThreads / 2 + 1;
         this.executor = new ThreadPoolExecutor(coreThreads, maxThreads, 15, TimeUnit.MINUTES, new ArrayBlockingQueue<>(coreThreads));
 
-        AlgorithmProperties.AlgorithmGrpc grpc = properties.getAlgorithmGrpc();
-        this.channel = ManagedChannelBuilder.forAddress(grpc.getHost(), grpc.getPort())
-                .usePlaintext()
-                .build();
-
+        this.channel = channel;
         this.functions = AnnotationUtils.scanFunctions(algorithmApp);
     }
 
@@ -155,7 +155,7 @@ public class AlgorithmManagement implements SmartLifecycle {
         );
         metadata.put(
                 Metadata.Key.of("serviceId", Metadata.ASCII_STRING_MARSHALLER),
-                Hex.encodeHexString(this.properties.getServiceId().getBytes(StandardCharsets.UTF_8))
+                Hex.encodeHexString(this.serviceId.getBytes(StandardCharsets.UTF_8))
         );
         return metadata;
     }
@@ -167,7 +167,7 @@ public class AlgorithmManagement implements SmartLifecycle {
 
         String id = this.properties.getId();
         String name = this.properties.getName();
-        String serviceId = this.properties.getServiceId();
+        String serviceId = this.serviceId;
 
         int retryTimes = 0;
         while (this.running.get()) {
@@ -196,7 +196,7 @@ public class AlgorithmManagement implements SmartLifecycle {
                 this.handler = new AlgorithmHandler(call, this.app, this.functions, this.executor);
                 call.start(handler, this.createMetadata());
                 call.request(Integer.MAX_VALUE);
-                
+
                 logger.info("注册算法: 成功, id={}, name={}, serviceId={}", id, name, serviceId);
 
                 // 开启心跳
@@ -239,7 +239,7 @@ public class AlgorithmManagement implements SmartLifecycle {
 
         String id = this.properties.getId();
         String name = this.properties.getName();
-        String serviceId = this.properties.getServiceId();
+        String serviceId = this.serviceId;
         int failureTimes = 0;
         while (this.running.get()) {
             try {
