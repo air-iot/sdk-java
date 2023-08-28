@@ -219,7 +219,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
         }
 
         try {
-            return this.driverGrpcClient.event(
+            return this.driverGrpcClient.commandLog(
                     Request.newBuilder()
                             .setProject(this.projectId)
                             .setData(ByteString.copyFrom(gson.toJson(runLog, RunLog.class), StandardCharsets.UTF_8))
