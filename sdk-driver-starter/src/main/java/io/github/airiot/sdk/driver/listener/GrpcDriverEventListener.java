@@ -26,7 +26,10 @@ import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.DriverApp;
 import io.github.airiot.sdk.driver.GlobalContext;
-import io.github.airiot.sdk.driver.config.*;
+import io.github.airiot.sdk.driver.config.BasicConfig;
+import io.github.airiot.sdk.driver.config.Device;
+import io.github.airiot.sdk.driver.config.DriverSingleConfig;
+import io.github.airiot.sdk.driver.config.Model;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
 import io.github.airiot.sdk.driver.event.DriverReloadApplicationEvent;
@@ -726,10 +729,10 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             try {
                 Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
 //                Type driverConfigType = TypeReference.parametricType(DriverConfig.class, baseConfigType, baseConfigType, baseConfigType);
-                Type driverConfigType = TypeReference.parametricType(DriverConfig.class, baseConfigType);
+                Type driverConfigType = TypeReference.parametricType(DriverSingleConfig.class, baseConfigType);
 
                 driverConfig = JSON.parseObject(config, driverConfigType);
-                
+
                 if (log.isDebugEnabled()) {
                     log.debug("启动驱动, config = {}", driverConfig);
                 }
