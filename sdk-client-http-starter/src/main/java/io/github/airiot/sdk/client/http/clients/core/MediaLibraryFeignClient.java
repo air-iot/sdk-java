@@ -33,9 +33,9 @@ public interface MediaLibraryFeignClient extends MediaLibraryClient {
     @RequestLine("POST /core/mediaLibrary/mkdir")
     @Override
     ResponseDTO<Void> mkdir(@Nonnull MkdirDTO mkdir);
-
+    
     @Override
-    default ResponseDTO<UploadFileResult> upload(String catalog, String action, String filename, byte[] fileData) {
+    default ResponseDTO<UploadFileResult> upload(@Nonnull String catalog, @Nonnull String action, @Nonnull String filename, @Nonnull byte[] fileData) {
         FormData formData = new FormData();
         formData.setFileName(filename);
         formData.setData(fileData);

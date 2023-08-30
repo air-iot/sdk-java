@@ -24,33 +24,33 @@ import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.core.SystemVariableClient;
 import io.github.airiot.sdk.client.service.core.dto.SystemVariable;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 public interface SystemVariableFeignClient extends SystemVariableClient {
 
     @RequestLine("GET /core/systemVariable?query={query}")
     @Override
-    ResponseDTO<List<SystemVariable>> query(@NotNull @Param("query") Query query);
+    ResponseDTO<List<SystemVariable>> query(@Nonnull @Param("query") Query query);
 
     @RequestLine("GET /core/systemVariable/{id}")
     @Override
-    ResponseDTO<SystemVariable> queryById(@NotNull @Param("id") String id);
+    ResponseDTO<SystemVariable> queryById(@Nonnull @Param("id") String id);
 
     @RequestLine("POST /core/systemVariable")
     @Override
-    ResponseDTO<InsertResult> create(@NotNull SystemVariable systemVariable);
+    ResponseDTO<InsertResult> create(@Nonnull SystemVariable systemVariable);
 
     @RequestLine("PUT /core/systemVariable/{id}")
     @Override
-    ResponseDTO<Void> replace(@NotNull @Param("id") String id, @NotNull SystemVariable systemVariable);
+    ResponseDTO<Void> replace(@Nonnull @Param("id") String id, @Nonnull SystemVariable systemVariable);
 
     @RequestLine("PATCH /core/systemVariable/{id}")
     @Override
-    ResponseDTO<Void> update(@NotNull @Param("id") String id, @NotNull SystemVariable systemVariable);
+    ResponseDTO<Void> update(@Nonnull @Param("id") String id, @Nonnull SystemVariable systemVariable);
 
     @RequestLine("DELETE /core/systemVariable/{id}")
     @Override
-    ResponseDTO<Void> deleteById(@NotNull @Param("id") String id);
+    ResponseDTO<Void> deleteById(@Nonnull @Param("id") String id);
 }

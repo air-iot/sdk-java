@@ -15,20 +15,25 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.http.clients.core;
-
+package io.github.airiot.sdk.client.http.clients.warn;
 
 import feign.Param;
 import feign.RequestLine;
+import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
-import io.github.airiot.sdk.client.dto.Token;
-import io.github.airiot.sdk.client.service.core.AppClient;
+import io.github.airiot.sdk.client.service.warning.WarnRuleClient;
+import io.github.airiot.sdk.client.service.warning.dto.Rule;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 
-public interface AppFeignClient extends AppClient {
 
-    @RequestLine("GET /core/auth/token?appkey={appKey}&appsecret={appSecret}")
+/**
+ * 告警规则客户端
+ */
+public interface WarnRuleFeignClient extends WarnRuleClient {
+
+    @RequestLine("GET /warning/rule?query={query}")
     @Override
-    ResponseDTO<Token> getToken(@Nonnull @Param("appKey") String appKey, @Nonnull @Param("appSecret") String appSecret);
+    ResponseDTO<List<Rule>> query(@Nonnull @Param("query") Query query);
 }

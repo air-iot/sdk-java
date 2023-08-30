@@ -17,13 +17,13 @@
 
 package io.github.airiot.sdk.client.http.configuration;
 
-import com.google.gson.Gson;
 import feign.*;
 import feign.codec.DecodeException;
 import feign.codec.Decoder;
 import feign.codec.EncodeException;
 import feign.codec.Encoder;
 import feign.okhttp.OkHttpClient;
+import io.github.airiot.sdk.client.gson.CustomGson;
 import io.github.airiot.sdk.client.http.feign.MyContract;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,11 +46,10 @@ public class FeignConfiguration {
     @Bean
     public Encoder gsonEncoder() {
         return new Encoder() {
-            final Gson gson = new Gson();
 
             @Override
             public void encode(Object object, Type bodyType, RequestTemplate template) throws EncodeException {
-                template.body(gson.toJson(object, bodyType));
+                template.body(CustomGson.GSON.toJson(object, bodyType));
             }
         };
     }
@@ -58,12 +57,11 @@ public class FeignConfiguration {
     @Bean
     public Decoder gsonDecoder() {
         return new Decoder() {
-            final Gson gson = new Gson();
 
             @Override
             public Object decode(Response response, Type type) throws IOException, DecodeException, FeignException {
                 Response.Body body = response.body();
-                return this.gson.fromJson(body.asReader(StandardCharsets.UTF_8), type);
+                return CustomGson.GSON.fromJson(body.asReader(StandardCharsets.UTF_8), type);
             }
         };
     }

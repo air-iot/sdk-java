@@ -15,16 +15,27 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.http.feign;
+package io.github.airiot.sdk.client.service.warning;
 
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
-import org.springframework.core.type.AnnotationMetadata;
+import io.github.airiot.sdk.client.dto.ResponseDTO;
+import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.service.PlatformClient;
+import io.github.airiot.sdk.client.service.warning.dto.Rule;
 
-public class FeignClientRegister implements ImportBeanDefinitionRegistrar {
-    
-    @Override
-    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+import javax.annotation.Nonnull;
+import java.util.List;
 
-    }
+
+/**
+ * 告警规则客户端
+ */
+public interface WarnRuleClient extends PlatformClient {
+
+    /**
+     * 查询报警规则
+     *
+     * @param query 查询条件
+     * @return 报警规则信息
+     */
+    ResponseDTO<List<Rule>> query(@Nonnull Query query);
 }

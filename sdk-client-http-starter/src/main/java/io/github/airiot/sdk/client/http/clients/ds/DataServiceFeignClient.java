@@ -15,20 +15,25 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.http.clients.core;
+package io.github.airiot.sdk.client.http.clients.ds;
 
-import feign.codec.Encoder;
-import feign.form.spring.SpringFormEncoder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
+import feign.Param;
+import feign.RequestLine;
+import io.github.airiot.sdk.client.dto.ResponseDTO;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-public class MediaLibraryConfiguration {
+import java.util.Map;
 
-    @Autowired
-    private Encoder encoder;
+public interface DataServiceFeignClient {
 
-    @Bean
-    public Encoder feignFormEncoder() {
-        return new SpringFormEncoder(new SpringFormEncoder(this.encoder));
-    }
+    /**
+     * 调用数据接口
+     *
+     * @param dsId   数据接口ID
+     * @param params 请求参数
+     * @return 请求结果
+     */
+    @RequestLine("POST /ds/p/{dsId}")
+    ResponseDTO<String> call(@NotNull @Param("dsId") String dsId, @Nullable Map<String, Object> params);
 }

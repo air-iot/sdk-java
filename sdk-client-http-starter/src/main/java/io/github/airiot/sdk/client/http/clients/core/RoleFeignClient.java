@@ -33,8 +33,8 @@ public interface RoleFeignClient extends RoleClient {
 
     @RequestLine("POST /core/role")
     @Override
-    ResponseDTO<InsertResult> create(Role role);
-
+    ResponseDTO<InsertResult> create(@NotNull Role role);
+    
     @RequestLine("GET /core/role?query={query}")
     @Override
     ResponseDTO<List<Role>> query(@NotNull @Param(value = "query", expander = QueryParamExpander.class) Query query);

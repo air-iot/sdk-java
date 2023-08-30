@@ -42,13 +42,32 @@ public interface WarnClient extends PlatformClient {
     ResponseDTO<List<Warning>> query(@Nonnull Query query, String archive);
 
     /**
-     * 根据告警信息ID查询告警信息
+     * 根据指定设备的所有告警信息
      *
-     * @param warningId 告警信息ID
-     * @param archive
-     * @return 告警信息
+     * @param deviceId 设备ID
+     * @param archive  是否在归档数据中查询
+     * @return 告警信息列表
      */
-    ResponseDTO<Warning> queryById(@Nonnull String warningId, String archive);
+    default ResponseDTO<List<Warning>> queryByDeviceId(@Nonnull String deviceId, String archive) {
+        return this.query(Query.newBuilder()
+                .select(Warning.class)
+                .filter()
+                .eq("tableDataId", deviceId)
+                .end()
+                .build(), archive);
+    }
+
+    /**
+     * 查询全部告警信息
+     *
+     * @param archive 是否在归档数据中查询
+     * @return 告警信息列表
+     */
+    default ResponseDTO<List<Warning>> queryAll(String archive) {
+        return this.query(Query.newBuilder()
+                .select(Warning.class)
+                .build(), archive);
+    }
 
     /**
      * 创建告警

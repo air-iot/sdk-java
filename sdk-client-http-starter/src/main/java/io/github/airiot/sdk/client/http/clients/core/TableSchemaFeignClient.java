@@ -23,17 +23,17 @@ import io.github.airiot.sdk.client.builder.Query;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.core.TableSchemaClient;
 import io.github.airiot.sdk.client.service.core.dto.table.TableSchema;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 public interface TableSchemaFeignClient extends TableSchemaClient {
 
     @RequestLine("GET /core/t/schema?query={query}")
     @Override
-    ResponseDTO<List<TableSchema>> query(@NotNull @Param(value = "query") Query query);
-
+    ResponseDTO<List<TableSchema>> query(@Nonnull @Param(value = "query") Query query);
+    
     @RequestLine("GET /core/t/schema/{tableId}")
     @Override
-    ResponseDTO<TableSchema> queryById(@NotNull @Param("tableId") String tableId);
+    ResponseDTO<TableSchema> queryById(@Nonnull @Param("tableId") String tableId);
 }

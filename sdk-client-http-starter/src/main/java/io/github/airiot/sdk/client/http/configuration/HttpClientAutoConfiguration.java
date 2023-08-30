@@ -25,7 +25,12 @@ import feign.form.FormEncoder;
 import io.github.airiot.sdk.client.http.clients.HttpProjectAuthorizationClientImpl;
 import io.github.airiot.sdk.client.http.clients.HttpTenantAuthorizationClientImpl;
 import io.github.airiot.sdk.client.http.clients.core.*;
+import io.github.airiot.sdk.client.http.clients.ds.DataServiceClientImpl;
+import io.github.airiot.sdk.client.http.clients.ds.DataServiceFeignClient;
+import io.github.airiot.sdk.client.http.clients.spm.SpmProjectFeignClient;
 import io.github.airiot.sdk.client.http.clients.spm.SpmUserFeignClient;
+import io.github.airiot.sdk.client.http.clients.warn.WarnFeignClient;
+import io.github.airiot.sdk.client.http.clients.warn.WarnRuleFeignClient;
 import io.github.airiot.sdk.client.http.config.ServiceConfig;
 import io.github.airiot.sdk.client.http.config.ServiceType;
 import io.github.airiot.sdk.client.http.feign.AuthRequestInterceptor;
@@ -35,7 +40,11 @@ import io.github.airiot.sdk.client.interceptor.EnableClientInterceptors;
 import io.github.airiot.sdk.client.properties.AuthorizationProperties;
 import io.github.airiot.sdk.client.service.AuthorizationClient;
 import io.github.airiot.sdk.client.service.core.*;
+import io.github.airiot.sdk.client.service.ds.DataServiceClient;
+import io.github.airiot.sdk.client.service.spm.ProjectClient;
 import io.github.airiot.sdk.client.service.spm.SpmUserClient;
+import io.github.airiot.sdk.client.service.warning.WarnClient;
+import io.github.airiot.sdk.client.service.warning.WarnRuleClient;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -267,6 +276,104 @@ public class HttpClientAutoConfiguration {
                     .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
                     .responseInterceptor(UniResponseInterceptor.INSTANCE)
                     .target(MediaLibraryFeignClient.class, properties.getHost());
+        }
+
+        @Bean
+        public WarnRuleClient warnRuleClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
+                                             HttpClientProperties properties, RequestInterceptor authRequestInterceptor) {
+            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.WARNING);
+            return Feign.builder()
+                    .client(client)
+                    .encoder(new FormEncoder(encoder))
+                    .decoder(decoder)
+                    .contract(contract)
+                    .options(new Request.Options(
+                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            false
+                    ))
+                    .requestInterceptor(authRequestInterceptor)
+                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
+                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
+                    .target(WarnRuleFeignClient.class, properties.getHost());
+        }
+
+        @Bean
+        public WarnClient warnClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
+                                     HttpClientProperties properties, RequestInterceptor authRequestInterceptor) {
+            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.WARNING);
+            return Feign.builder()
+                    .client(client)
+                    .encoder(new FormEncoder(encoder))
+                    .decoder(decoder)
+                    .contract(contract)
+                    .options(new Request.Options(
+                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            false
+                    ))
+                    .requestInterceptor(authRequestInterceptor)
+                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
+                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
+                    .target(WarnFeignClient.class, properties.getHost());
+        }
+    }
+
+
+    /**
+     * 数据接口服务
+     */
+    @Configuration
+    public static class HttpDataSourceClientConfiguration {
+        @Bean
+        public DataServiceFeignClient dataServiceFeignClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
+                                                             HttpClientProperties properties,
+                                                             RequestInterceptor authRequestInterceptor) {
+            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.DATA_SERVICE);
+            return Feign.builder().client(client)
+                    .encoder(encoder)
+                    .decoder(decoder)
+                    .contract(contract)
+                    .options(new Request.Options(
+                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            false
+                    ))
+                    .requestInterceptor(authRequestInterceptor)
+                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
+                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
+                    .target(DataServiceFeignClient.class, properties.getHost());
+        }
+
+        @Bean
+        public DataServiceClient dataServiceClient(DataServiceFeignClient dataServiceFeignClient) {
+            return new DataServiceClientImpl(dataServiceFeignClient);
+        }
+    }
+    
+    /**
+     * 空间管理接口服务
+     */
+    @Configuration
+    public static class HttpSpmClientConfiguration {
+        @Bean
+        public ProjectClient projectClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
+                                           HttpClientProperties properties,
+                                           RequestInterceptor authRequestInterceptor) {
+            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.SPM);
+            return Feign.builder().client(client)
+                    .encoder(encoder)
+                    .decoder(decoder)
+                    .contract(contract)
+                    .options(new Request.Options(
+                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            false
+                    ))
+                    .requestInterceptor(authRequestInterceptor)
+                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
+                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
+                    .target(SpmProjectFeignClient.class, properties.getHost());
         }
     }
 }

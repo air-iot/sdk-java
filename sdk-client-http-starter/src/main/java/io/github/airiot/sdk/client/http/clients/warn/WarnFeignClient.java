@@ -15,20 +15,29 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.http.clients.core;
-
+package io.github.airiot.sdk.client.http.clients.warn;
 
 import feign.Param;
 import feign.RequestLine;
+import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
-import io.github.airiot.sdk.client.dto.Token;
-import io.github.airiot.sdk.client.service.core.AppClient;
+import io.github.airiot.sdk.client.service.warning.WarnClient;
+import io.github.airiot.sdk.client.service.warning.dto.Warning;
 
 import javax.annotation.Nonnull;
+import java.util.List;
 
-public interface AppFeignClient extends AppClient {
+/**
+ * 告警信息客户端
+ */
+public interface WarnFeignClient extends WarnClient {
 
-    @RequestLine("GET /core/auth/token?appkey={appKey}&appsecret={appSecret}")
+    @RequestLine("GET /warning/warning?archive={archive}&query={query}")
     @Override
-    ResponseDTO<Token> getToken(@Nonnull @Param("appKey") String appKey, @Nonnull @Param("appSecret") String appSecret);
+    ResponseDTO<List<Warning>> query(@Nonnull @Param(value = "query") Query query, @Param("archive") String archive);
+    
+    @RequestLine("POST /warning/warning")
+    @Override
+    ResponseDTO<InsertResult> create(@Nonnull Warning warning);
 }

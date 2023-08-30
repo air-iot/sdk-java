@@ -75,12 +75,41 @@ public class ResponseDTO<T> {
         return message;
     }
 
+    public String getField() {
+        return field;
+    }
+
     public String getDetail() {
         return detail;
     }
 
     public T getData() {
         return data;
+    }
+
+    /**
+     * 将 {@link ResponseDTO} 转换为 {@link ResponseDTO}, 忽略 {@link #data} 字段
+     *
+     * @param <R> 转换后的响应数据类型
+     * @return 转换后的响应数据
+     */
+    public <R> ResponseDTO<R> to() {
+        return new ResponseDTO<>(this.isSuccess(), this.getCount(), this.getCode(),
+                this.getMessage(), this.getDetail(),
+                this.getField(), null);
+    }
+
+    /**
+     * 将 {@link ResponseDTO} 转换为 {@link ResponseDTO}, 并设置 {@link #data} 字段
+     *
+     * @param data 响应数据
+     * @param <R>  转换后的响应数据类型
+     * @return 响应数据的类型
+     */
+    public <R> ResponseDTO<R> to(R data) {
+        return new ResponseDTO<>(this.isSuccess(), this.getCount(), this.getCode(),
+                this.getMessage(), this.getDetail(),
+                this.getField(), data);
     }
 
     public ResponseDTO() {

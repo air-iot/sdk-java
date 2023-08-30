@@ -30,11 +30,13 @@ public class FlowPluginProperties {
     /**
      * 流程引擎服务地址
      */
-    private String host;
+    private String host = "flow-engine";
     /**
-     * 流程引擎服务端口
+     * 流程引擎服务端口.
+     * <br>
+     * 默认端: 2333
      */
-    private int port;
+    private int port = 2333;
     /**
      * 与流程引擎服务建立连接超时时间
      */

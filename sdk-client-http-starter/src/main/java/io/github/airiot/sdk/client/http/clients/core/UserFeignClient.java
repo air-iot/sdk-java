@@ -24,7 +24,6 @@ import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.core.UserClient;
 import io.github.airiot.sdk.client.service.core.dto.User;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.List;
@@ -33,25 +32,25 @@ public interface UserFeignClient extends UserClient {
 
     @RequestLine("POST /core/user")
     @Override
-    ResponseDTO<InsertResult> create(@NotNull User user);
+    ResponseDTO<InsertResult> create(@Nonnull User user);
 
     @RequestLine("PATCH /core/user/{userId}")
     @Override
-    ResponseDTO<Void> update(@Nonnull @Param("userId") String userId, @NotNull User user);
+    ResponseDTO<Void> update(@Nonnull @Param("userId") String userId, @Nonnull User user);
 
     @RequestLine("PUT /core/user/{userId}")
     @Override
-    ResponseDTO<Void> replace(@Nonnull @Param("userId") String userId, @NotNull User user);
+    ResponseDTO<Void> replace(@Nonnull @Param("userId") String userId, @Nonnull User user);
 
     @RequestLine("DELETE /core/user/{userId}")
     @Override
-    ResponseDTO<Void> deleteById(@NotNull @Param("userId") String userId);
+    ResponseDTO<Void> deleteById(@Nonnull @Param("userId") String userId);
 
     @RequestLine("GET /core/user?query={query}")
     @Override
-    ResponseDTO<List<User>> query(@NotNull @Param(value = "query") Query query);
+    ResponseDTO<List<User>> query(@Nonnull @Param(value = "query") Query query);
 
     @RequestLine("GET /core/user/{userId}")
     @Override
-    ResponseDTO<User> queryById(@NotNull @Param("userId") String userId);
+    ResponseDTO<User> queryById(@Nonnull @Param("userId") String userId);
 }

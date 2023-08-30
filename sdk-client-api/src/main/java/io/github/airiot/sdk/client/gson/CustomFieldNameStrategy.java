@@ -15,20 +15,23 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.http.clients.core;
+package io.github.airiot.sdk.client.gson;
 
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.FieldNamingStrategy;
 
-import feign.Param;
-import feign.RequestLine;
-import io.github.airiot.sdk.client.dto.ResponseDTO;
-import io.github.airiot.sdk.client.dto.Token;
-import io.github.airiot.sdk.client.service.core.AppClient;
+import java.lang.reflect.Field;
 
-import javax.annotation.Nonnull;
+/**
+ * 自定义字段名称策略
+ */
+public class CustomFieldNameStrategy implements FieldNamingStrategy {
 
-public interface AppFeignClient extends AppClient {
-
-    @RequestLine("GET /core/auth/token?appkey={appKey}&appsecret={appSecret}")
     @Override
-    ResponseDTO<Token> getToken(@Nonnull @Param("appKey") String appKey, @Nonnull @Param("appSecret") String appSecret);
+    public String translateName(Field f) {
+        if (f.isAnnotationPresent(io.github.airiot.sdk.client.annotation.Field.class)) {
+            return f.getAnnotation(io.github.airiot.sdk.client.annotation.Field.class).value();
+        }
+        return FieldNamingPolicy.IDENTITY.translateName(f);
+    }
 }

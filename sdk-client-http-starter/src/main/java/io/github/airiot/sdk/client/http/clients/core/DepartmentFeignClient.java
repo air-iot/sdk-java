@@ -24,17 +24,17 @@ import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.http.feign.QueryParamExpander;
 import io.github.airiot.sdk.client.service.core.DepartmentClient;
 import io.github.airiot.sdk.client.service.core.dto.Department;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 public interface DepartmentFeignClient extends DepartmentClient {
 
     @RequestLine("GET /core/department?query={query}")
     @Override
-    ResponseDTO<List<Department>> query(@NotNull @Param(value = "query", expander = QueryParamExpander.class) Query query);
-
+    ResponseDTO<List<Department>> query(@Nonnull @Param(value = "query", expander = QueryParamExpander.class) Query query);
+    
     @RequestLine("GET /core/department/{departmentId}")
     @Override
-    ResponseDTO<Department> queryById(@NotNull @Param("departmentId") String departmentId);
+    ResponseDTO<Department> queryById(@Nonnull @Param("departmentId") String departmentId);
 }

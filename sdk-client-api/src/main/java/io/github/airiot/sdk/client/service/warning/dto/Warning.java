@@ -17,7 +17,8 @@
 
 package io.github.airiot.sdk.client.service.warning.dto;
 
-import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 public class Warning {
     /**
@@ -35,7 +36,7 @@ public class Warning {
     /**
      * 报警类型ID
      */
-    private String type;
+    private Object type;
     /**
      * 报警确认状态
      */
@@ -75,7 +76,7 @@ public class Warning {
     /**
      * 报警数据
      */
-    private String fields;
+    private List<Map<String, Object>> fields;
     /**
      * 报警恢复时的数据
      */
@@ -83,19 +84,19 @@ public class Warning {
     /**
      * 创建时间
      */
-    private LocalDateTime time;
+    private Object time;
     /**
      * 报警恢复时间
      */
-    private LocalDateTime recoveryTime;
+    private Object recoveryTime;
     /**
      * 报警确认时间
      */
-    private LocalDateTime confirmTime;
+    private Object confirmTime;
     /**
      * 报警处理时间
      */
-    private LocalDateTime handleTime;
+    private Object handleTime;
     /**
      * 其他数据
      */
@@ -103,7 +104,7 @@ public class Warning {
     /**
      * 报警数据点信息
      */
-    private String warnTag;
+    private Object warnTag;
     /**
      * 播放次数配置
      */
@@ -149,11 +150,11 @@ public class Warning {
         this.uid = uid;
     }
 
-    public String getType() {
+    public Object getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(Object type) {
         this.type = type;
     }
 
@@ -229,11 +230,11 @@ public class Warning {
         this.tableDataId = tableDataId;
     }
 
-    public String getFields() {
+    public List<Map<String, Object>> getFields() {
         return fields;
     }
 
-    public void setFields(String fields) {
+    public void setFields(List<Map<String, Object>> fields) {
         this.fields = fields;
     }
 
@@ -245,35 +246,35 @@ public class Warning {
         this.recoveryFields = recoveryFields;
     }
 
-    public LocalDateTime getTime() {
+    public Object getTime() {
         return time;
     }
 
-    public void setTime(LocalDateTime time) {
+    public void setTime(Object time) {
         this.time = time;
     }
 
-    public LocalDateTime getRecoveryTime() {
+    public Object getRecoveryTime() {
         return recoveryTime;
     }
 
-    public void setRecoveryTime(LocalDateTime recoveryTime) {
+    public void setRecoveryTime(Object recoveryTime) {
         this.recoveryTime = recoveryTime;
     }
 
-    public LocalDateTime getConfirmTime() {
+    public Object getConfirmTime() {
         return confirmTime;
     }
 
-    public void setConfirmTime(LocalDateTime confirmTime) {
+    public void setConfirmTime(Object confirmTime) {
         this.confirmTime = confirmTime;
     }
 
-    public LocalDateTime getHandleTime() {
+    public Object getHandleTime() {
         return handleTime;
     }
 
-    public void setHandleTime(LocalDateTime handleTime) {
+    public void setHandleTime(Object handleTime) {
         this.handleTime = handleTime;
     }
 
@@ -285,11 +286,11 @@ public class Warning {
         this.other = other;
     }
 
-    public String getWarnTag() {
+    public Object getWarnTag() {
         return warnTag;
     }
 
-    public void setWarnTag(String warnTag) {
+    public void setWarnTag(Object warnTag) {
         this.warnTag = warnTag;
     }
 

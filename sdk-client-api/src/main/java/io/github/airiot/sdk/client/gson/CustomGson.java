@@ -15,27 +15,18 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.service.warning;
+package io.github.airiot.sdk.client.gson;
 
-import io.github.airiot.sdk.client.dto.ResponseDTO;
-import io.github.airiot.sdk.client.builder.Query;
-import io.github.airiot.sdk.client.service.PlatformClient;
-import io.github.airiot.sdk.client.service.warning.dto.Rule;
-
-import javax.annotation.Nonnull;
-import java.util.List;
-
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 /**
- * 告警规则客户端
+ * 自定义 Gson 对象.
+ * 该对象注册一些适配器, 用于处理一些特殊的数据类型.
  */
-public interface RuleClient extends PlatformClient {
+public class CustomGson {
 
-    /**
-     * 查询报警规则
-     *
-     * @param query 查询条件
-     * @return 报警规则信息
-     */
-    ResponseDTO<List<Rule>> query(@Nonnull Query query);
+    public static final Gson GSON = new GsonBuilder()
+            .setFieldNamingStrategy(new CustomFieldNameStrategy())
+            .create();
 }
