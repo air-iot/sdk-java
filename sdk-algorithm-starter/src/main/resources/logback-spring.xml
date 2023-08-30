@@ -1,0 +1,31 @@
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- 日志默认输出到当前目录下的 logs 目录中 -->
+    <property name="LOG_PATH" value="${user.dir}/logs"/>
+    <property name="LOG_FILE_NAME" value="application"/>
+    <property name="LOG_FILE" value="${LOG_PATH}/${LOG_FILE_NAME}.log"/>
+
+    <!-- 编码 -->
+    <property name="ENCODING" value="UTF-8"/>
+
+    <!-- 日志格式: 时间(精确到毫秒)|日志等级|进程ID|线程名|[项目ID,驱动ID,驱动实例ID]|输出日志的类:行号 : 日志内容 -->
+    <property name="FILE_LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS}|%5p|${PID:- }|%20.20t|%-40.40logger{39}:%L|%m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%20.20t]){faint} %clr(%-40.40logger{39}:%-5L){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+    
+    <!-- 控制台日志输出 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>${ENCODING}</charset>
+        </encoder>
+    </appender>
+
+    <!--rootLogger是默认的logger-->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

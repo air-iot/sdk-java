@@ -20,11 +20,13 @@ package io.github.airiot.sdk.client.http.feign;
 import feign.InvocationContext;
 import feign.Response;
 import feign.ResponseInterceptor;
+import feign.Util;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.Constants;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 
 public class UniResponseInterceptor implements ResponseInterceptor {
 
@@ -45,11 +47,17 @@ public class UniResponseInterceptor implements ResponseInterceptor {
                 count = response.headers().get(Constants.HEADER_COUNT).stream()
                         .findFirst().map(Integer::parseInt).orElse(0);
             }
+
+            // 如果返回值是 String 类型, 则直接返回字符串
+            if (returnType == String.class) {
+                String data = Util.toString(response.body().asReader(StandardCharsets.UTF_8));
+                return new ResponseDTO<>(true, count, 200, "OK", "", data);
+            }
+
             Object result = invocationContext.decoder().decode(response, returnType);
             return new ResponseDTO<>(true, count, 200, "OK", "", result);
         }
         
-        System.out.println(response.status() + " " + response.reason());
         ResponseError error = (ResponseError) invocationContext.decoder().decode(response, ResponseError.class);
         if (error == null) {
             return new ResponseDTO<>(false, 0, response.status(), response.reason(), "", null);

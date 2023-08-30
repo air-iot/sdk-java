@@ -18,11 +18,10 @@
 package io.github.airiot.sdk.client.service.spm;
 
 
-import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.annotation.NonProject;
 import io.github.airiot.sdk.client.builder.Query;
+import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.PlatformClient;
-import io.github.airiot.sdk.client.service.spm.dto.LicenseContent;
 import io.github.airiot.sdk.client.service.spm.dto.Project;
 import io.github.airiot.sdk.client.service.spm.dto.ProjectCreateResult;
 
@@ -57,7 +56,9 @@ public interface ProjectClient extends PlatformClient {
      *
      * @return 项目信息
      */
-    ResponseDTO<List<Project>> queryAll();
+    default ResponseDTO<List<Project>> queryAll() {
+        return query(Query.newBuilder().select(Project.class).build());
+    }
 
     /**
      * 根据项目ID查询项目信息
@@ -76,15 +77,6 @@ public interface ProjectClient extends PlatformClient {
      * @return 更新结果
      */
     ResponseDTO<Void> update(@Nonnull Project project);
-
-    /**
-     * 更新项目的已用授权信息
-     *
-     * @param projectId 项目ID
-     * @param license   已用授权信息
-     * @return 更新结果
-     */
-    ResponseDTO<Void> updateLicense(@Nonnull String projectId, @Nonnull LicenseContent license);
 
     /**
      * 替换项目信息

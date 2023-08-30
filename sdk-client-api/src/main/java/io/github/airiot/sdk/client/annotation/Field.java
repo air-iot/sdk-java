@@ -25,7 +25,7 @@ import java.lang.annotation.Target;
 
 
 /**
- * 工作表字段信息
+ * 工作表字段名称.
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)

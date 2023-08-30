@@ -15,20 +15,18 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.http.clients.core;
+package io.github.airiot.sdk.algorithm;
 
-import feign.codec.Encoder;
-import feign.form.spring.SpringFormEncoder;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
+/**
+ * 算法异常
+ */
+public class AlgorithmException extends Exception {
 
-public class MediaLibraryConfiguration {
+    public AlgorithmException(String message) {
+        super(message);
+    }
 
-    @Autowired
-    private Encoder encoder;
-
-    @Bean
-    public Encoder feignFormEncoder() {
-        return new SpringFormEncoder(new SpringFormEncoder(this.encoder));
+    public AlgorithmException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

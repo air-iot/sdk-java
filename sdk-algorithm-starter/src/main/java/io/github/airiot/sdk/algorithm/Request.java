@@ -15,16 +15,37 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.http.feign;
+package io.github.airiot.sdk.algorithm;
 
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
-import org.springframework.core.type.AnnotationMetadata;
+import java.util.Map;
 
-public class FeignClientRegister implements ImportBeanDefinitionRegistrar {
-    
-    @Override
-    public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+/**
+ * 执行算法的请求
+ */
+public class Request {
 
+    /**
+     * 项目ID
+     */
+    private String projectID;
+    /**
+     * 调用的函数名
+     */
+    private String function;
+    /**
+     * 请求参数
+     */
+    private Map<String, Object> input;
+
+    public String getProjectID() {
+        return projectID;
+    }
+
+    public String getFunction() {
+        return function;
+    }
+
+    public Map<String, Object> getInput() {
+        return input;
     }
 }

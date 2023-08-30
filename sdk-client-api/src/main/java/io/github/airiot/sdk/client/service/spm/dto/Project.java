@@ -24,6 +24,7 @@ import java.util.Date;
  * 项目信息
  */
 public class Project {
+
     /**
      * 项目唯一标识
      * <br>
@@ -47,11 +48,6 @@ public class Project {
      * 行业
      */
     private String industry;
-
-    /**
-     * 授权
-     */
-    private LicenseContent grant;
 
     /**
      * 备注
@@ -82,20 +78,8 @@ public class Project {
      */
     private Boolean status;
 
-    /**
-     * 已用授权
-     * <br>
-     * 创建项目时无须填写, 该字段信息由平台自动维护
-     */
-    private LicenseContent license;
-
     public Project() {
 
-    }
-
-    public Project(String name, LicenseContent grant) {
-        this.name = name;
-        this.grant = grant;
     }
 
     public String getId() {
@@ -124,14 +108,6 @@ public class Project {
 
     public void setIndustry(String industry) {
         this.industry = industry;
-    }
-
-    public LicenseContent getGrant() {
-        return grant;
-    }
-
-    public void setGrant(LicenseContent grant) {
-        this.grant = grant;
     }
 
     public String getRemarks() {
@@ -170,24 +146,18 @@ public class Project {
         this.status = status;
     }
 
-    public LicenseContent getLicense() {
-        return license;
-    }
-
     @Override
     public String toString() {
         return "Project{" +
                 "id='" + id + '\'' +
                 ", name='" + name + '\'' +
-                ", user='" + user + '\'' +
+                ", user=" + user +
                 ", industry='" + industry + '\'' +
-                ", grant=" + grant +
                 ", remarks='" + remarks + '\'' +
                 ", createTime=" + createTime +
                 ", bgColor='" + bgColor + '\'' +
                 ", projectType='" + projectType + '\'' +
                 ", status=" + status +
-                ", license=" + license +
                 '}';
     }
 }

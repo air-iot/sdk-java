@@ -17,7 +17,6 @@
 
 package io.github.airiot.sdk.client.http.clients.core;
 
-import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import feign.Response;
 import io.github.airiot.sdk.client.builder.Query;
@@ -26,6 +25,7 @@ import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dto.UpdateOrDeleteResult;
 import io.github.airiot.sdk.client.exception.RequestFailedException;
+import io.github.airiot.sdk.client.gson.CustomGson;
 import io.github.airiot.sdk.client.http.feign.ResponseError;
 import io.github.airiot.sdk.client.service.Constants;
 import io.github.airiot.sdk.client.service.core.SpecificTableDataClient;
@@ -37,8 +37,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class SpecificTableDataFeignClient<T> extends SpecificTableDataClient<T> {
-
-    private final static Gson GSON = new Gson();
 
     private final TableDataFeignClient feignClient;
 
@@ -61,7 +59,7 @@ public class SpecificTableDataFeignClient<T> extends SpecificTableDataClient<T> 
             }
 
             try (Reader reader = response.body().asReader(StandardCharsets.UTF_8)) {
-                E result = GSON.fromJson(reader, tClass);
+                E result = CustomGson.GSON.fromJson(reader, tClass);
                 return new ResponseDTO<>(true, count, 200, "OK", "", result);
             } catch (IOException e) {
                 throw new RequestFailedException(response.status(), "Failed to read response body", "", e);
@@ -69,7 +67,7 @@ public class SpecificTableDataFeignClient<T> extends SpecificTableDataClient<T> 
         }
 
         try (Reader reader = response.body().asReader(StandardCharsets.UTF_8)) {
-            ResponseError error = GSON.fromJson(reader, ResponseError.class);
+            ResponseError error = CustomGson.GSON.fromJson(reader, ResponseError.class);
             return new ResponseDTO<>(false, 0, response.status(), error.getMessage(), error.getDetail(), error.getField(), null);
         } catch (IOException e) {
             throw new RequestFailedException(response.status(), "Failed to read response body", "", e);
@@ -85,7 +83,7 @@ public class SpecificTableDataFeignClient<T> extends SpecificTableDataClient<T> 
             }
 
             try (Reader reader = response.body().asReader(StandardCharsets.UTF_8)) {
-                List<E> result = (List<E>) GSON.fromJson(reader, TypeToken.getParameterized(List.class, tClass));
+                List<E> result = (List<E>) CustomGson.GSON.fromJson(reader, TypeToken.getParameterized(List.class, tClass));
                 return new ResponseDTO<>(true, count, 200, "OK", "", result);
             } catch (IOException e) {
                 throw new RequestFailedException(response.status(), "Failed to read response body", "", e);
@@ -93,13 +91,13 @@ public class SpecificTableDataFeignClient<T> extends SpecificTableDataClient<T> 
         }
 
         try (Reader reader = response.body().asReader(StandardCharsets.UTF_8)) {
-            ResponseError error = GSON.fromJson(reader, ResponseError.class);
+            ResponseError error = CustomGson.GSON.fromJson(reader, ResponseError.class);
             return new ResponseDTO<>(false, 0, response.status(), error.getMessage(), error.getDetail(), error.getField(), null);
         } catch (IOException e) {
             throw new RequestFailedException(response.status(), "Failed to read response body", "", e);
         }
     }
-
+    
     @Override
     public ResponseDTO<InsertResult> create(@NotNull T row) {
         Response response = this.feignClient.create(this.getTableId(), row);

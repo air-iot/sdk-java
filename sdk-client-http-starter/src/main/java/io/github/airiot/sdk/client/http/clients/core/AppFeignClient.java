@@ -23,11 +23,12 @@ import feign.RequestLine;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dto.Token;
 import io.github.airiot.sdk.client.service.core.AppClient;
-import org.jetbrains.annotations.NotNull;
+
+import javax.annotation.Nonnull;
 
 public interface AppFeignClient extends AppClient {
 
     @RequestLine("GET /core/auth/token?appkey={appKey}&appsecret={appSecret}")
     @Override
-    ResponseDTO<Token> getToken(@NotNull @Param("appKey") String appKey, @NotNull @Param("appSecret") String appSecret);
+    ResponseDTO<Token> getToken(@Nonnull @Param("appKey") String appKey, @Nonnull @Param("appSecret") String appSecret);
 }

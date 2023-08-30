@@ -21,30 +21,30 @@ import feign.Param;
 import feign.RequestLine;
 import io.github.airiot.sdk.client.builder.LatestDataQuery;
 import io.github.airiot.sdk.client.builder.TimingDataQuery;
-import io.github.airiot.sdk.client.service.core.dto.timing.BuiltinTimingDataQueryResult;
-import io.github.airiot.sdk.client.service.core.dto.latest.LatestData;
-import io.github.airiot.sdk.client.service.core.dto.timing.TimingData;
-import io.github.airiot.sdk.client.service.core.dto.timing.TimingDataSeries;
 import io.github.airiot.sdk.client.http.feign.JsonParamExpander;
 import io.github.airiot.sdk.client.service.core.TimingDataClient;
+import io.github.airiot.sdk.client.service.core.dto.latest.LatestData;
+import io.github.airiot.sdk.client.service.core.dto.timing.BuiltinTimingDataQueryResult;
+import io.github.airiot.sdk.client.service.core.dto.timing.TimingData;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 
 public interface TimingDataFeignClient extends TimingDataClient {
 
     @RequestLine(value = "GET /core/data/query?query={query}")
-    BuiltinTimingDataQueryResult query(@Param("query") String query);
+    BuiltinTimingDataQueryResult query(@Nonnull @Param("query") String query);
 
     @RequestLine(value = "GET /core/data/latest?query={query}")
-    List<LatestData> queryLatest(@Param("query") String query);
+    List<LatestData> queryLatest(@Nonnull @Param("query") String query);
 
     @Override
-    default List<TimingData> query(List<TimingDataQuery> queries) {
+    default List<TimingData> query(@Nonnull List<TimingDataQuery> queries) {
         return this.query(JsonParamExpander.INSTANCE.expand(queries)).parse();
     }
 
     @Override
-    default List<LatestData> queryLatest(LatestDataQuery query) {
+    default List<LatestData> queryLatest(@Nonnull LatestDataQuery query) {
         return this.queryLatest(JsonParamExpander.INSTANCE.expand(query.getSpecifications()));
     }
 }

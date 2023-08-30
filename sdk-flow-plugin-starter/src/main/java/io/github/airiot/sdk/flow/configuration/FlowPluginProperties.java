@@ -25,16 +25,18 @@ import java.time.Duration;
 /**
  * 流程插件配置类
  */
-@ConfigurationProperties(prefix = "flow-grpc")
+@ConfigurationProperties(prefix = "flow-engine")
 public class FlowPluginProperties {
     /**
      * 流程引擎服务地址
      */
-    private String host;
+    private String host = "flow-engine";
     /**
-     * 流程引擎服务端口
+     * 流程引擎服务端口.
+     * <br>
+     * 默认端: 2333
      */
-    private int port;
+    private int port = 2333;
     /**
      * 与流程引擎服务建立连接超时时间
      */
