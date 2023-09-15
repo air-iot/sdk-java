@@ -1,0 +1,1 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=io.github.airiot.sdk.flow.configuration.FlowExtensionAutoConfiguration
