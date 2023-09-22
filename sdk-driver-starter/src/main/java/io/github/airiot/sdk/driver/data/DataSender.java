@@ -128,6 +128,25 @@ public interface DataSender extends SmartLifecycle {
     void logDebug(String tableId, String deviceId, String msg) throws LogSenderException;
 
     /**
+     * 写入 {@code debug } 级别日志, 发送异常时忽略
+     * <br>
+     * 该日志可以在设备调试窗口中看到
+     *
+     * @param tableId  设备所属工作表标识
+     * @param deviceId 设备编号
+     * @param msg      日志内容
+     * @throws IllegalStateException 如果连接未建立或已断开
+     * @throws LogSenderException    如果写日志时发生异常
+     */
+    default void logDebugIgnoreException(String tableId, String deviceId, String msg) {
+        try {
+            this.logDebug(tableId, deviceId, msg);
+        } catch (Exception e) {
+            // ignore
+        }
+    }
+
+    /**
      * 写入 {@code info } 级别日志
      * <br>
      * 该日志可以在设备调试窗口中看到
@@ -139,6 +158,25 @@ public interface DataSender extends SmartLifecycle {
      * @throws LogSenderException    如果写日志时发生异常
      */
     void logInfo(String tableId, String deviceId, String msg) throws LogSenderException;
+
+    /**
+     * 写入 {@code info } 级别日志. 发送异常时忽略
+     * <br>
+     * 该日志可以在设备调试窗口中看到
+     *
+     * @param tableId  设备所属工作表标识
+     * @param deviceId 设备编号
+     * @param msg      日志内容
+     * @throws IllegalStateException 如果连接未建立或已断开
+     * @throws LogSenderException    如果写日志时发生异常
+     */
+    default void logInfoIgnoreException(String tableId, String deviceId, String msg) {
+        try {
+            this.logInfo(tableId, deviceId, msg);
+        } catch (Exception e) {
+            // ignore
+        }
+    }
 
     /**
      * 写入 {@code warn} 级别日志
@@ -154,6 +192,25 @@ public interface DataSender extends SmartLifecycle {
     void logWarn(String tableId, String deviceId, String msg) throws LogSenderException;
 
     /**
+     * 写入 {@code warn} 级别日志, 发送异常时忽略
+     * <br>
+     * 该日志可以在设备调试窗口中看到
+     *
+     * @param tableId  设备所属工作表标识
+     * @param deviceId 设备编号
+     * @param msg      日志内容
+     * @throws IllegalStateException 如果连接未建立或已断开
+     * @throws LogSenderException    如果写日志时发生异常
+     */
+    default void logWarnIgnoreException(String tableId, String deviceId, String msg) {
+        try {
+            this.logWarn(tableId, deviceId, msg);
+        } catch (Exception e) {
+            // ignore
+        }
+    }
+
+    /**
      * 写入 {@code error} 级别日志
      * <br>
      * 该日志可以在设备调试窗口中看到
@@ -165,6 +222,25 @@ public interface DataSender extends SmartLifecycle {
      * @throws LogSenderException    如果写日志时发生异常
      */
     void logError(String tableId, String deviceId, String msg) throws LogSenderException;
+
+    /**
+     * 写入 {@code error} 级别日志, 发送异常时忽略
+     * <br>
+     * 该日志可以在设备调试窗口中看到
+     *
+     * @param tableId  设备所属工作表标识
+     * @param deviceId 设备编号
+     * @param msg      日志内容
+     * @throws IllegalStateException 如果连接未建立或已断开
+     * @throws LogSenderException    如果写日志时发生异常
+     */
+    default void logErrorIgnoreException(String tableId, String deviceId, String msg) {
+        try {
+            this.logWarn(tableId, deviceId, msg);
+        } catch (Exception e) {
+            // ignore
+        }
+    }
 
     @Override
     default int getPhase() {

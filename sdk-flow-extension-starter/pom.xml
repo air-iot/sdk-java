@@ -10,8 +10,8 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>sdk-flow-plugin-starter</artifactId>
-    <description>AIRIOT 物联网平台流程插件开发 SDK</description>
+    <artifactId>sdk-flow-extension-starter</artifactId>
+    <description>AIRIOT 物联网平台扩展流程节点 SDK</description>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>

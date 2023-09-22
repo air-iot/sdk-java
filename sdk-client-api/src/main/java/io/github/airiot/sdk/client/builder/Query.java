@@ -160,20 +160,20 @@ public class Query {
             }
             return new FilterBuilder(this, this.filters);
         }
-
-        public FilterBuilder or() {
-            Map<String, Object> orFilters = null;
+        
+        public OrFilterBuilder or() {
+            List<Map<String, Object>> orFilters = null;
             if (this.filters == null) {
                 this.filters = new HashMap<>();
             } else {
-                orFilters = (Map<String, Object>) this.filters.get("$or");
+                orFilters = (List<Map<String, Object>>) this.filters.get("$or");
             }
 
             if (orFilters == null) {
-                orFilters = new HashMap<>();
+                orFilters = new ArrayList<>();
                 this.filters.put("$or", orFilters);
             }
-            return new FilterBuilder(this, orFilters);
+            return new OrFilterBuilder(this, orFilters);
         }
 
         /**

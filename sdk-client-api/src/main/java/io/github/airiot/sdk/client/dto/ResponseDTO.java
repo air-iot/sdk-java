@@ -143,21 +143,6 @@ public class ResponseDTO<T> {
         this.data = data;
     }
 
-    @Override
-    public String toString() {
-        return "ResponseDTO{" +
-                "success=" + success +
-                ", count=" + count +
-                ", code=" + code +
-                ", message='" + message + '\'' +
-                ", detail='" + detail + '\'' +
-                ", field='" + field + '\'' +
-                ", data=" + data +
-                ", fullMessage='" + getFullMessage() + '\'' +
-                ", unwrap=" + unwrap() +
-                '}';
-    }
-
     public String getFullMessage() {
         if (this.detail == null || this.detail.trim().isEmpty()) {
             return this.message;
@@ -191,5 +176,18 @@ public class ResponseDTO<T> {
             return this.data;
         }
         throw supplier.get();
+    }
+    
+    @Override
+    public String toString() {
+        return "ResponseDTO{" +
+                "success=" + success +
+                ", code=" + code +
+                ", message='" + message + '\'' +
+                ", detail='" + detail + '\'' +
+                ", field='" + field + '\'' +
+                ", count=" + count +
+                ", data=" + data +
+                '}';
     }
 }

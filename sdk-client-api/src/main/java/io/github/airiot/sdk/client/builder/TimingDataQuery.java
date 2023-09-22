@@ -371,7 +371,20 @@ public class TimingDataQuery {
             Map<LogicOp, Object> causes = this.where.getOrDefault("time", new HashMap<>(3));
             causes.put(LogicOp.LTE, endTime.format(DATE_TIME_FORMATTER));
             this.where.put("time", causes);
+            return this;
+        }
 
+        /**
+         * 查询最近一段时间的数据.
+         * <br>
+         * <b>注意: 该方法与时间过滤条件互斥, 会相互覆盖.</b>
+         *
+         * @param since 时间长度. 例如: 最近5分钟: 5m, 最近1天: 1d
+         */
+        public Builder since(String since, boolean containsStartTime) {
+            Map<LogicOp, Object> causes = this.where.getOrDefault("time", new HashMap<>(3));
+            causes.put(containsStartTime ? LogicOp.GTE : LogicOp.GT, String.format("now() - %s", since));
+            this.where.put("time", causes);
             return this;
         }
 
