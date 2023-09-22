@@ -24,6 +24,7 @@ import feign.codec.Encoder;
 import feign.form.FormEncoder;
 import io.github.airiot.sdk.client.http.clients.HttpProjectAuthorizationClientImpl;
 import io.github.airiot.sdk.client.http.clients.HttpTenantAuthorizationClientImpl;
+import io.github.airiot.sdk.client.http.clients.common.HttpCommonClient;
 import io.github.airiot.sdk.client.http.clients.core.*;
 import io.github.airiot.sdk.client.http.clients.ds.DataServiceClientImpl;
 import io.github.airiot.sdk.client.http.clients.ds.DataServiceFeignClient;
@@ -350,7 +351,7 @@ public class HttpClientAutoConfiguration {
             return new DataServiceClientImpl(dataServiceFeignClient);
         }
     }
-    
+
     /**
      * 空间管理接口服务
      */
@@ -375,5 +376,12 @@ public class HttpClientAutoConfiguration {
                     .responseInterceptor(UniResponseInterceptor.INSTANCE)
                     .target(SpmProjectFeignClient.class, properties.getHost());
         }
+    }
+
+    @Bean
+    public HttpCommonClient commonHttpClient(HttpClientProperties properties, AuthorizationClient authorizationClient) {
+        ServiceConfig config = properties.getDefaultConfig();
+        return new HttpCommonClient(properties.getHost(), authorizationClient,
+                config.getConnectTimeout(), config.getReadTimeout(), config.getReadTimeout());
     }
 }
