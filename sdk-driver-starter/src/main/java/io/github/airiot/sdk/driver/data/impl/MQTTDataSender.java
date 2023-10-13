@@ -165,14 +165,15 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
                 return;
             } catch (MqttException e) {
                 // 如果当前已连接
-                if (e.getReasonCode() == 32100) {
-                    log.info("MQTTDataSender: 已连接(32100)");
+                int code = e.getReasonCode();
+                if (code == MqttException.REASON_CODE_CLIENT_CONNECTED || code == MqttException.REASON_CODE_CONNECT_IN_PROGRESS) {
+                    log.info("MQTTDataSender: 已连接(" + code + ")");
                     return;
                 }
                 log.error("MQTTDataSender: 第 {} 次重连失败, 下次尝试时间[{}]", retryTimes,
                         LocalDateTime.now().plus(reconnectIntervalMs, ChronoUnit.MILLIS), e);
             }
-            
+
             try {
                 TimeUnit.MILLISECONDS.sleep(reconnectIntervalMs);
             } catch (InterruptedException e) {
