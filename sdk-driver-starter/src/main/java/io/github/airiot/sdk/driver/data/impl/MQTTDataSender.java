@@ -167,7 +167,7 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
                 // 如果当前已连接
                 int code = e.getReasonCode();
                 if (code == MqttException.REASON_CODE_CLIENT_CONNECTED || code == MqttException.REASON_CODE_CONNECT_IN_PROGRESS) {
-                    log.info("MQTTDataSender: 已连接(" + code + ")");
+                    log.info("MQTTDataSender: 已连接或连接中(" + code + ")");
                     return;
                 }
                 log.error("MQTTDataSender: 第 {} 次重连失败, 下次尝试时间[{}]", retryTimes,

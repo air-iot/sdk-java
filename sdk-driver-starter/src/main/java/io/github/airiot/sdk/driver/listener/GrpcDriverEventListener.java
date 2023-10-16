@@ -36,11 +36,13 @@ import io.github.airiot.sdk.driver.event.DriverReloadApplicationEvent;
 import io.github.airiot.sdk.driver.grpc.driver.Error;
 import io.github.airiot.sdk.driver.grpc.driver.*;
 import io.github.airiot.sdk.driver.model.Tag;
+import io.github.airiot.sdk.logger.LoggerContexts;
+import io.github.airiot.sdk.logger.LoggerFactory;
+import io.github.airiot.sdk.logger.driver.DriverModules;
 import io.grpc.*;
 import io.grpc.stub.MetadataUtils;
 import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -53,8 +55,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -67,7 +71,9 @@ import java.util.function.Consumer;
  */
 public class GrpcDriverEventListener implements DriverEventListener, ApplicationContextAware {
 
-    private final Logger log = LoggerFactory.getLogger(GrpcDriverEventListener.class);
+    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getLogger(GrpcDriverEventListener.class);
+
+    private final Logger healthCheckLogger = LoggerFactory.withContext().module(DriverModules.HEARTBEAT).getLogger(GrpcDriverEventListener.class);
 
     private static final Gson GSON = new Gson();
 
@@ -80,9 +86,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     private final Type[] parameterizedTypes;
     private final Metadata metadata;
 
-    private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
-    private final AtomicBoolean reconnecting = new AtomicBoolean(false);
+    private final ThreadPoolExecutor runExecutor;
 
+    private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
     private ApplicationContext applicationContext;
 
     private Thread connectThread;
@@ -124,6 +130,20 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         ClientInterceptor metadataInterceptor = MetadataUtils.newAttachHeadersInterceptor(new Metadata());
         this.driverGrpcClient = driverGrpcClient.withInterceptors(metadataInterceptor);
+
+        // 创建指令执行线程池
+        int cpus = Runtime.getRuntime().availableProcessors();
+        int corePoolSize = cpus / 2 + 1;
+        int maxPoolSize = cpus;
+        if (grpcProperties.getRunMaxThreads() != 0) {
+            corePoolSize = grpcProperties.getRunMaxThreads();
+            maxPoolSize = corePoolSize;
+        }
+
+        int queueSize = grpcProperties.getRunQueueSize();
+        queueSize = queueSize <= 0 ? 32 : queueSize;
+        this.runExecutor = new ThreadPoolExecutor(corePoolSize, maxPoolSize, 60, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(queueSize), new ThreadPoolExecutor.CallerRunsPolicy());
     }
 
     private void clearTagValueCache(DriverSingleConfig<BasicConfig<?>> driverConfigs) {
@@ -178,7 +198,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             this.healthCheckThread = null;
         }
 
-        log.info("创建心跳检测线程");
+        healthCheckLogger.info("创建心跳检测线程");
 
         this.healthCheckThread = new Thread(this::healthCheck, "healthCheck");
 //        this.healthCheckThread.setDaemon(true);
@@ -187,42 +207,42 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     private void healthCheck() {
         long keepalive = this.grpcProperties.getKeepalive().toMillis();
-        log.info("心跳检测已启动, 心跳间隔 {}ms", keepalive);
+        healthCheckLogger.info("心跳检测已启动, 心跳间隔 {}ms", keepalive);
         while (State.RUNNING.equals(this.state.get())) {
             try {
                 TimeUnit.MILLISECONDS.sleep(keepalive);
             } catch (InterruptedException e) {
-                log.info("心跳检测: 被终止");
+                healthCheckLogger.info("心跳检测: 被终止");
                 return;
             }
 
-            log.info("心跳检测: 发送心跳");
+            healthCheckLogger.info("心跳检测: 发送心跳");
 
             try {
                 HealthCheckResponse response = this.driverGrpcClient.healthCheck(HealthCheckRequest.newBuilder()
                         .setService(this.driverInstanceId)
                         .build());
-                log.info("心跳检测: 接收到心跳响应, status = {}", response.getStatus());
+                healthCheckLogger.info("心跳检测: 接收到心跳响应, status = {}", response.getStatus());
 
                 List<Error> errors = response.getErrorsList();
                 if (!CollectionUtils.isEmpty(errors)) {
                     for (Error error : errors) {
-                        log.error("心跳检测: 接收到错误信息, code = {}, message = {}", error.getCode(), error.getMessage());
+                        healthCheckLogger.error("心跳检测: 接收到错误信息, code = {}, message = {}", error.getCode(), error.getMessage());
                     }
                 }
 
                 if (!HealthCheckResponse.ServingStatus.SERVING.equals(response.getStatus())) {
-                    log.error("心跳检测: 响应状态不是 SERVING, 重新连接, status = {}", response.getStatus());
+                    healthCheckLogger.error("心跳检测: 响应状态不是 SERVING, 重新连接, status = {}", response.getStatus());
                     break;
                 }
             } catch (StatusRuntimeException e) {
-                log.error("心跳检测: 心跳检测异常", e);
+                healthCheckLogger.error("心跳检测: 心跳检测异常", e);
                 break;
             }
         }
 
         if (this.state.get().isRunning()) {
-            log.info("重新连接 Driver 服务");
+            healthCheckLogger.info("重新连接 Driver 服务");
             this.state.set(State.RECONNECTING);
             this.connect();
         }
@@ -322,7 +342,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata runMetadata = new Metadata();
                 runMetadata.merge(this.metadata);
-                RunHandler runHandler = new RunHandler(runCall, this.driverApp, commandType, this::handleStreamClosed);
+                RunHandler runHandler = new RunHandler(this.runExecutor, runCall, this.driverApp, commandType, this::handleStreamClosed);
                 runCall.start(runHandler, runMetadata);
                 runCall.request(Integer.MAX_VALUE);
 
@@ -333,7 +353,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata writeTagMetadata = new Metadata();
                 writeTagMetadata.merge(this.metadata);
-                WriteTagHandler writeTagHandler = new WriteTagHandler(writeTagCall, this.driverApp, commandType, this::handleStreamClosed);
+                WriteTagHandler writeTagHandler = new WriteTagHandler(this.runExecutor, writeTagCall, this.driverApp, commandType, this::handleStreamClosed);
                 writeTagCall.start(writeTagHandler, writeTagMetadata);
                 writeTagCall.request(Integer.MAX_VALUE);
 
@@ -344,7 +364,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata batchRunMetadata = new Metadata();
                 batchRunMetadata.merge(this.metadata);
-                BatchRunHandler batchRunHandler = new BatchRunHandler(batchRunCall, this.driverApp, commandType, this::handleStreamClosed);
+                BatchRunHandler batchRunHandler = new BatchRunHandler(this.runExecutor, batchRunCall, this.driverApp, commandType, this::handleStreamClosed);
                 batchRunCall.start(batchRunHandler, batchRunMetadata);
                 batchRunCall.request(Integer.MAX_VALUE);
 
@@ -420,16 +440,18 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     }
 
     static class RunHandler extends ClientCall.Listener<RunRequest> {
-        private final Logger log = LoggerFactory.getLogger("run-stream");
+        private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getLogger(RunHandler.class);
 
+        private final ThreadPoolExecutor executor;
         private final ClientCall<RunResult, RunRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final Type commandType;
         private final StreamClosedCallback closedCallback;
 
-        public RunHandler(ClientCall<RunResult, RunRequest> clientCall,
+        public RunHandler(ThreadPoolExecutor executor, ClientCall<RunResult, RunRequest> clientCall,
                           DriverApp<Object, Object, Object> driverApp,
                           Type commandType, StreamClosedCallback closedCallback) {
+            this.executor = executor;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.commandType = commandType;
@@ -449,53 +471,70 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         @Override
         public void onMessage(RunRequest request) {
+            LoggerContexts.initial().setModule(DriverModules.RUN);
+            Logger logger = LoggerFactory.getLogger(RunHandler.class);
+
             String req = request.getRequest();
             String serialNo = request.getSerialNo();
 
-            log.info("下发指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
+            logger.info("接收到指令请求, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
-            Result result = new Result();
-            result.setCode(200);
+            CompletableFuture.supplyAsync(() -> {
+                LoggerContexts.push();
 
-            try {
-                Object command = new Gson().fromJson(request.getCommand().toStringUtf8(), this.commandType);
-                Cmd<Object> cmd = new Cmd<>(req, request.getTableId(), request.getId(), serialNo, command);
-                Object runResult = this.driverApp.run(cmd);
-                result.setResult(runResult);
-                log.info("下发指令, 成功, req = {}, serialNo = {}, command = {}, result = {}",
-                        req, serialNo, request.getCommand().toStringUtf8(), runResult);
-            } catch (JsonSyntaxException e) {
-                log.error("下发指令, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                result.setResult(500);
-                result.setResult(e.getMessage());
-            } catch (Exception e) {
-                log.error("下发指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                result.setResult(500);
-                result.setResult(e.getMessage());
-            }
+                logger.info("开始执行指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
-            try {
-                clientCall.sendMessage(RunResult.newBuilder()
-                        .setRequest(req)
-                        .setMessage(GrpcDriverEventListener.encode(result))
-                        .build());
-            } catch (Exception e) {
-                log.error("上报指令下发结果失败, req = {}, serialNo = {}, command = {}",
-                        req, serialNo, request.getCommand().toStringUtf8(), e);
-            }
+                Result result = new Result();
+                result.setCode(200);
+
+                try {
+                    Object command = new Gson().fromJson(request.getCommand().toStringUtf8(), this.commandType);
+                    Cmd<Object> cmd = new Cmd<>(req, request.getTableId(), request.getId(), serialNo, command);
+                    Object runResult = this.driverApp.run(cmd);
+                    result.setResult(runResult);
+                    logger.info("指令执行成功, req = {}, serialNo = {}, command = {}, result = {}",
+                            req, serialNo, request.getCommand().toStringUtf8(), runResult);
+                } catch (JsonSyntaxException e) {
+                    logger.error("指令执行失败, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
+                    result.setResult(500);
+                    result.setResult(e.getMessage());
+                } catch (Exception e) {
+                    logger.error("指令执行失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
+                    result.setResult(500);
+                    result.setResult(e.getMessage());
+                }
+                return result;
+            }, this.executor).handle((r, e) -> {
+                try {
+                    clientCall.sendMessage(RunResult.newBuilder()
+                            .setRequest(req)
+                            .setMessage(GrpcDriverEventListener.encode(r))
+                            .build());
+                } catch (Exception ex) {
+                    logger.error("上报指令下发结果失败, req = {}, serialNo = {}, command = {}",
+                            req, serialNo, request.getCommand().toStringUtf8(), ex);
+                }
+
+                return r;
+            }).whenComplete((r, e) -> {
+                LoggerContexts.destroy();
+            });
         }
     }
 
     static class WriteTagHandler extends ClientCall.Listener<RunRequest> {
-        private final Logger log = LoggerFactory.getLogger("write-tag-stream");
+        private final Logger log = LoggerFactory.withContext().module(DriverModules.WRITE_TAG).getLogger("write-tag-stream");
+
+        private final ThreadPoolExecutor executor;
         private final ClientCall<RunResult, RunRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final Type commandType;
         private final StreamClosedCallback closedCallback;
 
-        public WriteTagHandler(ClientCall<RunResult, RunRequest> clientCall,
+        public WriteTagHandler(ThreadPoolExecutor executor, ClientCall<RunResult, RunRequest> clientCall,
                                DriverApp<Object, Object, Object> driverApp,
                                Type commandType, StreamClosedCallback closedCallback) {
+            this.executor = executor;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.commandType = commandType;
@@ -515,53 +554,68 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         @Override
         public void onMessage(RunRequest request) {
+            LoggerContexts.initial().setModule(DriverModules.WRITE_TAG);
+            Logger logger = LoggerFactory.getLogger(WriteTagHandler.class);
+
             String req = request.getRequest();
             String serialNo = request.getSerialNo();
 
-            log.info("写数据点, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
+            logger.info("接收到写数据点指令请求, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
-            Result result = new Result();
-            result.setCode(200);
+            CompletableFuture.supplyAsync(() -> {
+                LoggerContexts.push();
+                logger.info("执行写数据点指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
-            try {
-                Object command = new Gson().fromJson(request.getCommand().toStringUtf8(), this.commandType);
-                Cmd<Object> cmd = new Cmd<>(req, request.getTableId(), request.getId(), serialNo, command);
-                Object runResult = this.driverApp.writeTag(cmd);
-                result.setResult(runResult);
-                log.info("写数据点, 成功, req = {}, serialNo = {}, command = {}, result = {}",
-                        req, serialNo, request.getCommand().toStringUtf8(), runResult);
-            } catch (JsonSyntaxException e) {
-                log.error("写数据点, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                result.setResult(500);
-                result.setResult(e.getMessage());
-            } catch (Exception e) {
-                log.error("写数据点, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                result.setResult(500);
-                result.setResult(e.getMessage());
-            }
+                Result result = new Result();
+                result.setCode(200);
 
-            try {
-                clientCall.sendMessage(RunResult.newBuilder()
-                        .setRequest(req)
-                        .setMessage(GrpcDriverEventListener.encode(result))
-                        .build());
-            } catch (Exception e) {
-                log.error("上报写数据点结果失败, req = {}, serialNo = {}, command = {}",
-                        req, serialNo, request.getCommand().toStringUtf8(), e);
-            }
+                try {
+                    Object command = new Gson().fromJson(request.getCommand().toStringUtf8(), this.commandType);
+                    Cmd<Object> cmd = new Cmd<>(req, request.getTableId(), request.getId(), serialNo, command);
+                    Object runResult = this.driverApp.writeTag(cmd);
+                    result.setResult(runResult);
+                    logger.info("写数据点成功, req = {}, serialNo = {}, command = {}, result = {}",
+                            req, serialNo, request.getCommand().toStringUtf8(), runResult);
+                } catch (JsonSyntaxException e) {
+                    logger.error("写数据点失败, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
+                    result.setResult(500);
+                    result.setResult(e.getMessage());
+                } catch (Exception e) {
+                    logger.error("写数据点失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
+                    result.setResult(500);
+                    result.setResult(e.getMessage());
+                }
+                return result;
+            }, this.executor).handle((r, e) -> {
+                try {
+                    clientCall.sendMessage(RunResult.newBuilder()
+                            .setRequest(req)
+                            .setMessage(GrpcDriverEventListener.encode(r))
+                            .build());
+                } catch (Exception ex) {
+                    logger.error("上报写数据点结果失败, req = {}, serialNo = {}, command = {}",
+                            req, serialNo, request.getCommand().toStringUtf8(), ex);
+                }
+                return r;
+            }).whenComplete((r, e) -> {
+                LoggerContexts.destroy();
+            });
         }
     }
 
     static class BatchRunHandler extends ClientCall.Listener<BatchRunRequest> {
-        private final Logger log = LoggerFactory.getLogger("batch-run-stream");
+        private final Logger log = LoggerFactory.withContext().module(DriverModules.BATCH_RUN).getLogger("batch-run-stream");
+
+        private final ThreadPoolExecutor executor;
         private final ClientCall<BatchRunResult, BatchRunRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final Type commandType;
         private final StreamClosedCallback closedCallback;
 
-        public BatchRunHandler(ClientCall<BatchRunResult, BatchRunRequest> clientCall,
+        public BatchRunHandler(ThreadPoolExecutor executor, ClientCall<BatchRunResult, BatchRunRequest> clientCall,
                                DriverApp<Object, Object, Object> driverApp,
                                Type commandType, StreamClosedCallback closedCallback) {
+            this.executor = executor;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.commandType = commandType;
@@ -581,45 +635,58 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         @Override
         public void onMessage(BatchRunRequest request) {
+            LoggerContexts.initial().setModule(DriverModules.BATCH_RUN);
+            Logger logger = LoggerFactory.getLogger(BatchRunHandler.class);
+
             String req = request.getRequest();
             String serialNo = request.getSerialNo();
 
-            log.info("批量下发指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
+            logger.info("接收到批量执行指令请求, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
-            Result result = new Result();
-            result.setCode(200);
+            CompletableFuture.supplyAsync(() -> {
+                LoggerContexts.push();
+                logger.info("开始批量执行指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
-            try {
-                Object command = new Gson().fromJson(request.getCommand().toStringUtf8(), this.commandType);
-                BatchCmd<Object> cmd = new BatchCmd<>(req, request.getTableId(), request.getIdList(), serialNo, command);
-                Object runResult = this.driverApp.batchRun(cmd);
-                result.setResult(runResult);
-                log.info("批量下发指令, 成功, req = {}, serialNo = {}, command = {}, result = {}",
-                        req, serialNo, request.getCommand().toStringUtf8(), runResult);
-            } catch (JsonSyntaxException e) {
-                log.error("批量下发指令, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                result.setResult(500);
-                result.setResult(e.getMessage());
-            } catch (Exception e) {
-                log.error("批量下发指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                result.setResult(500);
-                result.setResult(e.getMessage());
-            }
+                Result result = new Result();
+                result.setCode(200);
 
-            try {
-                clientCall.sendMessage(BatchRunResult.newBuilder()
-                        .setRequest(req)
-                        .setMessage(GrpcDriverEventListener.encode(result))
-                        .build());
-            } catch (Exception e) {
-                log.error("上报批量下发指令结果失败, req = {}, serialNo = {}, command = {}",
-                        req, serialNo, request.getCommand().toStringUtf8(), e);
-            }
+                try {
+                    Object command = new Gson().fromJson(request.getCommand().toStringUtf8(), this.commandType);
+                    BatchCmd<Object> cmd = new BatchCmd<>(req, request.getTableId(), request.getIdList(), serialNo, command);
+                    Object runResult = this.driverApp.batchRun(cmd);
+                    result.setResult(runResult);
+                    logger.info("批量下发指令, 成功, req = {}, serialNo = {}, command = {}, result = {}",
+                            req, serialNo, request.getCommand().toStringUtf8(), runResult);
+                } catch (JsonSyntaxException e) {
+                    logger.error("批量下发指令, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
+                    result.setResult(500);
+                    result.setResult(e.getMessage());
+                } catch (Exception e) {
+                    logger.error("批量下发指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
+                    result.setResult(500);
+                    result.setResult(e.getMessage());
+                }
+                return result;
+            }, this.executor).handle((r, e) -> {
+                try {
+                    clientCall.sendMessage(BatchRunResult.newBuilder()
+                            .setRequest(req)
+                            .setMessage(GrpcDriverEventListener.encode(r))
+                            .build());
+                } catch (Exception ex) {
+                    logger.error("上报批量下发指令结果失败, req = {}, serialNo = {}, command = {}",
+                            req, serialNo, request.getCommand().toStringUtf8(), ex);
+                }
+
+                return r;
+            }).whenComplete((r, e) -> {
+                LoggerContexts.destroy();
+            });
         }
     }
 
     static class DebugHandler extends ClientCall.Listener<Debug> {
-        private final Logger log = LoggerFactory.getLogger("debug-stream");
+        private final Logger log = LoggerFactory.withContext().module(DriverModules.DEBUG).getLogger("debug-stream");
         private final ClientCall<Debug, Debug> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final StreamClosedCallback closedCallback;
@@ -645,17 +712,18 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         @Override
         public void onMessage(Debug request) {
+            LoggerContexts.initial().setModule(DriverModules.DEBUG);
+            Logger logger = LoggerFactory.getLogger(StartHandler.class);
+
             String req = request.getRequest();
-            log.info("debug, req = {}", req);
+            logger.info("debug, req = {}", req);
             Debug debug;
             try {
                 debug = this.driverApp.debug(request);
-                if (log.isDebugEnabled()) {
-                    log.debug("debug, req = {}, result = {}", req, debug);
-                }
+                logger.debug("debug, req = {}, result = {}", req, debug);
 
                 if (debug == null) {
-                    log.warn("debug, req = {}, 无返回值", req);
+                    logger.warn("debug, req = {}, 无返回值", req);
                     return;
                 }
 
@@ -663,6 +731,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             } catch (Exception e) {
                 log.error("debug, req = {}", req, e);
                 return;
+            } finally {
+                LoggerContexts.destroy();
             }
 
             try {
@@ -674,7 +744,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     }
 
     static class StartHandler extends ClientCall.Listener<StartRequest> {
-        private final Logger log = LoggerFactory.getLogger("start-stream");
+        private final Logger logger = LoggerFactory.withContext().module(DriverModules.START).getLogger(StartHandler.class);
         private final ClientCall<StartResult, StartRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final GlobalContext globalContext;
@@ -701,13 +771,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         @Override
         public void onClose(Status status, Metadata trailers) {
-            log.error("closed, status = {}, metadata = {}", status, trailers);
+            logger.error("closed, status = {}, metadata = {}", status, trailers);
             this.closedCallback.handle(status, trailers);
         }
 
         @Override
         public void onReady() {
-            log.info("ready");
+            logger.info("ready");
         }
 
         @Override
@@ -715,9 +785,12 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             String req = message.getRequest();
             String config = message.getConfig().toString(StandardCharsets.UTF_8);
 
-            log.info("启动驱动, req = {}", req);
-            if (log.isDebugEnabled()) {
-                log.debug("启动驱动, req = {}, config  {}", req, config);
+            LoggerContexts.initial().setModule(DriverModules.START);
+            Logger logger = LoggerFactory.getLogger(StartHandler.class);
+
+            logger.info("启动驱动, req = {}", req);
+            if (logger.isDebugEnabled()) {
+                logger.debug("启动驱动, req = {}, config  {}", req, config);
             }
 
             Result result = new Result();
@@ -728,13 +801,12 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             DriverSingleConfig<BasicConfig<? extends Tag>> driverConfig = null;
             try {
                 Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
-//                Type driverConfigType = TypeReference.parametricType(DriverConfig.class, baseConfigType, baseConfigType, baseConfigType);
                 Type driverConfigType = TypeReference.parametricType(DriverSingleConfig.class, baseConfigType);
 
                 driverConfig = JSON.parseObject(config, driverConfigType);
 
-                if (log.isDebugEnabled()) {
-                    log.debug("启动驱动, config = {}", driverConfig);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("启动驱动, config = {}", driverConfig);
                 }
 
                 String instanceId = driverConfig.getId();
@@ -776,7 +848,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
                 this.globalContext.set(deviceInfos);
             } catch (Exception e) {
-                log.error("启动驱动, 解析启动配置失败, config = {}", config, e);
+                logger.error("启动驱动, 解析启动配置失败, config = {}", config, e);
                 passed = false;
                 result.setResult(400);
                 result.setResult("启动配置不正确: " + e.getMessage());
@@ -788,11 +860,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     this.driverApp.start(drvConfig);
                     this.clearCacheFn.accept(driverConfig);
                 } catch (Exception e) {
-                    log.error("启动驱动:", e);
+                    logger.error("启动驱动:", e);
                     result.setCode(400);
                     result.setResult("启动失败: " + e.getMessage());
                 }
             }
+
+            LoggerContexts.destroy();
 
             clientCall.sendMessage(StartResult.newBuilder()
                     .setRequest(message.getRequest())
@@ -803,7 +877,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     static class SchemaHandler extends ClientCall.Listener<SchemaRequest> {
 
-        private final Logger log = LoggerFactory.getLogger("schema-stream");
+        private final Logger logger = LoggerFactory.withContext().module(DriverModules.SCHEMA).getLogger(SchemaHandler.class);
 
         private final ClientCall<SchemaResult, SchemaRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
@@ -819,23 +893,27 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         @Override
         public void onClose(Status status, Metadata trailers) {
-            log.error("closed, status = {}, metadata = {}", status, trailers);
+            logger.error("closed, status = {}, metadata = {}", status, trailers);
             this.closedCallback.handle(status, trailers);
         }
 
         @Override
         public void onReady() {
-            log.info("ready");
+            logger.info("ready");
         }
 
         @Override
         public void onMessage(SchemaRequest request) {
-            log.info("req = {}, type = schema", request.getRequest());
+            LoggerContexts.initial().setModule(DriverModules.SCHEMA);
+            Logger logger = LoggerFactory.getLogger(SchemaHandler.class);
+
+            logger.info("req = {}, type = schema", request.getRequest());
+
             Result result = new Result();
             try {
                 String schema = this.driverApp.schema();
-                if (log.isDebugEnabled()) {
-                    log.debug("req = {}, type = schema, {}", request.getRequest(), schema);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("req = {}, type = schema, {}", request.getRequest(), schema);
                 }
 
                 // 替换版本号
@@ -845,9 +923,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 result.setCode(200);
                 result.setResult(schema);
             } catch (Exception e) {
-                log.error("req = {}, type = schema", request.getRequest(), e);
+                logger.error("req = {}, type = schema", request.getRequest(), e);
                 result.setCode(500);
                 result.setResult(e.getMessage());
+            } finally {
+                LoggerContexts.destroy();
             }
 
             String message = new Gson().toJson(result);
@@ -859,7 +939,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     }
 
     static class HttpProxyHandler extends ClientCall.Listener<HttpProxyRequest> {
-        private final Logger log = LoggerFactory.getLogger("http-proxy-stream");
+        private final Logger logger = LoggerFactory.withContext().module(DriverModules.HTTP_PROXY).getLogger(HttpProxyHandler.class);
 
         private final static Gson GSON = new Gson();
 
@@ -880,32 +960,37 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         @Override
         public void onClose(Status status, Metadata trailers) {
-            log.error("closed, status = {}, metadata = {}", status, trailers);
+            logger.error("closed, status = {}, metadata = {}", status, trailers);
             this.closedCallback.handle(status, trailers);
         }
 
         @Override
         public void onReady() {
-            log.info("ready");
+            logger.info("ready");
         }
 
         @Override
         public void onMessage(HttpProxyRequest request) {
-            log.info("req = {}, type = httpProxy", request.getRequest());
+            LoggerContexts.initial().setModule(DriverModules.HTTP_PROXY);
+            Logger logger = LoggerFactory.getLogger(HttpProxyHandler.class);
+
+            logger.info("req = {}, type = httpProxy", request.getRequest());
             Result result = new Result();
             try {
                 Map<String, List<String>> headers = GSON.fromJson(request.getHeaders().toStringUtf8(), HEADER_TYPE);
                 Object proxyResult = this.driverApp.httpProxy(request.getType(), headers, request.getData().toByteArray());
-                if (log.isDebugEnabled()) {
-                    log.debug("req = {}, type = httpProxy, {}", request.getRequest(), proxyResult);
+                if (logger.isDebugEnabled()) {
+                    logger.debug("req = {}, type = httpProxy, {}", request.getRequest(), proxyResult);
                 }
 
                 result.setCode(200);
                 result.setResult(proxyResult);
             } catch (Exception e) {
-                log.error("req = {}, type = schema", request.getRequest(), e);
+                logger.error("req = {}, type = schema", request.getRequest(), e);
                 result.setCode(400);
                 result.setResult(e.getMessage());
+            } finally {
+                LoggerContexts.destroy();
             }
 
             String message = GSON.toJson(result);

@@ -27,8 +27,9 @@ import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.grpc.driver.Request;
 import io.github.airiot.sdk.driver.grpc.driver.Response;
 import io.github.airiot.sdk.driver.model.*;
+import io.github.airiot.sdk.logger.LoggerFactory;
+import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.logging.LogLevel;
 import org.springframework.util.Assert;
@@ -45,8 +46,9 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public abstract class AbstractDataSender implements DataSender, InitializingBean {
-
-    private final Logger log = LoggerFactory.getLogger(AbstractDataSender.class);
+    
+    private final Logger writePointLogger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getLogger(AbstractDataSender.class);
+    private final Logger writeEventLogger = LoggerFactory.withContext().module(DriverModules.WRITE_EVENT).getLogger(AbstractDataSender.class);
 
     private final DateTimeFormatter logTimeFormatter = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
     protected final Gson gson = new Gson();
@@ -100,33 +102,33 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
             Map<String, Object> tagValues = new HashMap<>();
             for (Field<? extends Tag> field : point.getFields()) {
                 if (field == null || field.getTag() == null || !StringUtils.hasText(field.getTag().getId())) {
-                    log.warn("上报数据: 数据上报失败, 连接已断开. 数据点信息不正确, deviceId = {}, field = {}", deviceId, field);
+                    writePointLogger.warn("上报数据: 数据上报失败, 连接已断开. 数据点信息不正确, deviceId = {}, field = {}", deviceId, field);
                     continue;
                 }
                 tagValues.put(field.getTag().getId(), field.getValue());
             }
 
             if (tagValues.isEmpty()) {
-                log.warn("上报数据: 数据上报失败, 连接已断开. 数据点信息不正确, {}", point);
+                writePointLogger.warn("上报数据: 数据上报失败, 连接已断开. 数据点信息不正确, {}", point);
                 return;
             }
 
             switch (level) {
                 case TRACE:
-                    log.trace("上报数据: 数据上报失败, 连接已断开, Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
+                    writePointLogger.trace("上报数据: 数据上报失败, 连接已断开, Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
                     break;
                 case DEBUG:
-                    log.debug("上报数据: 数据上报失败, 连接已断开, Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
+                    writePointLogger.debug("上报数据: 数据上报失败, 连接已断开, Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
                     break;
                 case INFO:
-                    log.info("上报数据: 数据上报失败, 连接已断开, Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
+                    writePointLogger.info("上报数据: 数据上报失败, 连接已断开, Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
                     break;
                 case WARN:
-                    log.warn("上报数据: 数据上报失败, 连接已断开, Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
+                    writePointLogger.warn("上报数据: 数据上报失败, 连接已断开, Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
                     break;
                 case ERROR:
                 case FATAL:
-                    log.error("上报数据: 数据上报失败, 连接已断开, Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
+                    writePointLogger.error("上报数据: 数据上报失败, 连接已断开, Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
                     break;
             }
         };
@@ -161,7 +163,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
         if (tagValues.isEmpty()) {
             return;
         }
-        log.trace("上报数据: 连接断开, 丢弃数据. Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
+        writePointLogger.trace("上报数据: 连接断开, 丢弃数据. Device[{}], Time[{}], {}", deviceId, dateTime, tagValues);
     }
 
     /**
@@ -189,9 +191,9 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
             throw new EventSenderException(event, "未连接或连接中断");
         }
 
-        log.debug("MQTTDataSender: 发送事件, {} ", event);
+        writeEventLogger.debug("MQTTDataSender: 发送事件, {} ", event);
         if (event.getId().isEmpty() || event.getEventId().isEmpty()) {
-            log.warn("MQTTDataSender: 发送事件, 缺少资产ID或事件ID, {}", event);
+            writeEventLogger.warn("MQTTDataSender: 发送事件, 缺少资产ID或事件ID, {}", event);
             throw new EventSenderException(event, "非法的事件, 缺少资产ID或事件ID");
         }
 
@@ -208,6 +210,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                             .build()
             );
         } catch (Exception e) {
+            writeEventLogger.error("MQTTDataSender: 发送事件失败, {}", event, e);
             throw new EventSenderException(event, e);
         }
     }
@@ -260,12 +263,10 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
 
     @Override
     public void writePoint(Point point) {
-        if (log.isDebugEnabled()) {
-            log.debug("上报数据: {}", point);
-        }
+        writePointLogger.debug("上报数据: {}", point);
 
         if (CollectionUtils.isEmpty(point.getFields())) {
-            log.debug("上报数据: 无数据点信息, {}", point);
+            writePointLogger.debug("上报数据: 无数据点信息, {}", point);
             return;
         }
 
@@ -290,17 +291,15 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
 
         try {
             newPoint = this.chain.handle(point);
-            if (log.isDebugEnabled()) {
-                log.debug("采集数据处理: 原始数据: {}, 处理后数据: {}", point, newPoint);
-            }
+            writePointLogger.debug("采集数据处理: 原始数据: {}, 处理后数据: {}", point, newPoint);
 
             if (CollectionUtils.isEmpty(newPoint.getFields())) {
-                log.warn("采集数据处理: 处理后数据点列表为空, 原始数据: {}, 处理后数据: {}", point, newPoint);
+                writePointLogger.warn("采集数据处理: 处理后数据点列表为空, 原始数据: {}, 处理后数据: {}", point, newPoint);
                 return;
             }
 
             if (point.getFields().size() > newPoint.getFields().size()) {
-                log.debug("采集数据处理: 数据处理后数据点数量减少, table={}, device={}, 由 {} 减少到 {}. 处理前: {}, 处理后: {}",
+                writePointLogger.debug("采集数据处理: 数据处理后数据点数量减少, table={}, device={}, 由 {} 减少到 {}. 处理前: {}, 处理后: {}",
                         tableId, deviceId, point.getFields().size(), newPoint.getFields().size(), point, newPoint);
 
                 // 处理后剩余的数据点列表
@@ -313,7 +312,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                 Map<String, Object> droppedFields = new HashMap<>(point.getFields().size() - newPoint.getFields().size());
                 for (Field<?> field : point.getFields()) {
                     if (field == null || field.getTag() == null) {
-                        log.warn("采集数据处理: 数据点的 field 或 tag 信息为 null, point = {}, field = {}", point, field);
+                        writePointLogger.warn("采集数据处理: 数据点的 field 或 tag 信息为 null, point = {}, field = {}", point, field);
                         continue;
                     }
 
@@ -322,10 +321,10 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                     }
                 }
 
-                log.warn("采集数据处理: 处理后部分数据点数据被丢弃, table={}, device={}, dropped = {}",
+                writePointLogger.warn("采集数据处理: 处理后部分数据点数据被丢弃, table={}, device={}, dropped = {}",
                         tableId, deviceId, droppedFields);
             } else if (point.getFields().size() < newPoint.getFields().size()) {
-                log.debug("采集数据处理: 数据处理后数据点数量增加, table={}, device={}, 由 {} 增加到 {}. 处理前: {}, 处理后: {}",
+                writePointLogger.debug("采集数据处理: 数据处理后数据点数量增加, table={}, device={}, 由 {} 增加到 {}. 处理前: {}, 处理后: {}",
                         tableId, deviceId, point.getFields().size(), newPoint.getFields().size(), point, newPoint);
 
                 // 处理前的数据点列表
@@ -338,7 +337,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                 Map<String, Object> addedFields = new HashMap<>(newPoint.getFields().size() - point.getFields().size());
                 for (Field<?> field : newPoint.getFields()) {
                     if (field == null || field.getTag() == null) {
-                        log.warn("采集数据处理: 数据点的 field 或 tag 信息为 null, point = {}, field = {}", point, field);
+                        writePointLogger.warn("采集数据处理: 数据点的 field 或 tag 信息为 null, point = {}, field = {}", point, field);
                         continue;
                     }
 
@@ -347,16 +346,17 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                     }
                 }
 
-                log.warn("采集数据处理: 处理后增加了数据点, table={}, device={}, added = {}", tableId, deviceId, addedFields);
+                writePointLogger.warn("采集数据处理: 处理后增加了数据点, table={}, device={}, added = {}", tableId, deviceId, addedFields);
             }
         } catch (Exception e) {
-            log.error("采集数据处理: 数据处理失败, point = {}", point, e);
+            writePointLogger.error("采集数据处理: 数据处理失败, point = {}", point, e);
             throw new DataSenderException(point, "数据处理失败", e);
         }
 
         try {
             this.doWritePoint(newPoint);
         } catch (Exception e) {
+            writePointLogger.error("上报数据异常, point = {}", newPoint, e);
             throw new DataSenderException(point, "上报数据异常", e);
         }
     }

@@ -33,7 +33,17 @@ public class DriverListenerProperties {
     private int port = 9224;
     private Duration keepalive = Duration.ofSeconds(30);
     private Duration reconnectInterval = Duration.ofSeconds(15);
-
+    /**
+     * 指令处理线程池最大线程数.
+     * <br>
+     * 如果为 0 则为 CPU 核心数
+     */
+    private int runMaxThreads = 0;
+    /**
+     * 指令处理线程池队列大小
+     */
+    private int runQueueSize = 32;
+    
     public String getHost() {
         return host;
     }
@@ -64,5 +74,21 @@ public class DriverListenerProperties {
 
     public void setReconnectInterval(Duration reconnectInterval) {
         this.reconnectInterval = reconnectInterval;
+    }
+
+    public int getRunMaxThreads() {
+        return runMaxThreads;
+    }
+
+    public void setRunMaxThreads(int runMaxThreads) {
+        this.runMaxThreads = runMaxThreads;
+    }
+
+    public int getRunQueueSize() {
+        return runQueueSize;
+    }
+
+    public void setRunQueueSize(int runQueueSize) {
+        this.runQueueSize = runQueueSize;
     }
 }

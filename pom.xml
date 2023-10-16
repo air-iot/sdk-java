@@ -19,6 +19,7 @@
         <module>sdk-client-http-starter</module>
         <module>sdk-algorithm-starter</module>
         <module>sdk-flow-extension-starter</module>
+        <module>sdk-logger-starter</module>
     </modules>
 
     <properties>
@@ -28,7 +29,7 @@
 
         <java.version>1.8</java.version>
         <spring-boot.version>2.7.8</spring-boot.version>
-        <revision>4.1.9</revision>
+        <revision>4.1.10-SNAPSHOT</revision>
 
         <maven.compiler.version>3.8.1</maven.compiler.version>
         <maven-jar-plugin>3.2.0</maven-jar-plugin>
