@@ -21,15 +21,16 @@ import io.github.airiot.sdk.driver.data.handlers.*;
 import io.github.airiot.sdk.driver.model.Field;
 import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.driver.model.Tag;
+import io.github.airiot.sdk.logger.LoggerFactory;
+import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class DefaultDataHandlerChain implements DataHandlerChain {
-
-    private final Logger logger = LoggerFactory.getLogger(DefaultDataHandlerChain.class);
+    
+    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getLogger(AbstractDataSender.class);
 
     private final TagValueCache tagValueCache;
     private final List<DataHandler> handlers = new ArrayList<>();
@@ -52,6 +53,7 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
         this.handlers.addAll(handlers);
         this.handlers.sort(Comparator.comparing(DataHandler::getOrder));
 
+        Logger logger = LoggerFactory.withContext().module(DriverModules.START).getLogger(DefaultDataHandlerChain.class);
         logger.info("数据处理 Chain: 是否注册默认数据处理功能: {}, 自定义数据处理功能: {}",
                 registerDefaults,
                 handlers.stream().map(handler -> handler.getClass().getName()).collect(Collectors.toList())

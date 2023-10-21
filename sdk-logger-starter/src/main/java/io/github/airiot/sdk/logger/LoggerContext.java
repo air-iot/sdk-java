@@ -19,11 +19,21 @@ package io.github.airiot.sdk.logger;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 日志上下文
  */
 public class LoggerContext {
+
+    /**
+     * 该 key 可用来存储任意数据. 通常用来存储数据关联的 <b>工作表标识</b>.
+     */
+    public static final String KEY_ANY = "key1";
+    /**
+     * 关联的流程实例ID
+     */
+    public static final String KEY_GROUP = "group";
 
     public static final LoggerContext EMPTY = new LoggerContext(null);
 
@@ -64,7 +74,7 @@ public class LoggerContext {
      * <br>
      * 例如: 如果想将日志关联表, 可以将表名赋值给该字段.
      */
-    private String key;
+    private final Map<String, Object> keys = new HashMap<>();
 
     public Mode getMode() {
         return mode;
@@ -171,12 +181,32 @@ public class LoggerContext {
     }
 
     /**
-     * 获取自定义关联数据
+     * 获取自定义关联数据.
+     * <br>
+     * 会先在当前上下文中查找, 如果未找到则会在父级上下文中查找.
      *
-     * @return 关联数据
+     * @return 关联数据. 如果没找到则返回 {@link Optional#empty()}
      */
-    public String getKey() {
-        return key;
+    public Optional<Object> getKey(String key) {
+        Object value = this.keys.get(key);
+        if (value == null && parent != null) {
+            return parent.getKey(key);
+        }
+        return Optional.ofNullable(value);
+    }
+
+    /**
+     * 获取所有自定义关联数据.
+     *
+     * @param recursive 是否递归获取父级上下文中的关联数据
+     * @return 所有的关联数据
+     */
+    public Map<String, Object> getKeys(boolean recursive) {
+        Map<String, Object> allKeys = new HashMap<>(this.keys);
+        if (recursive && parent != null) {
+            allKeys.putAll(parent.getKeys(true));
+        }
+        return allKeys;
     }
 
     /**
@@ -185,7 +215,18 @@ public class LoggerContext {
      * @param value 关联数据
      */
     public void setKey(String value) {
-        this.key = value;
+        this.keys.put(KEY_ANY, value);
+    }
+    
+    /**
+     * 设置关联的驱动实例分组ID
+     * <br>
+     * <b>注: 该方法仅可用于驱动程序中</b>
+     *
+     * @param driverGroupId 驱动实例分组ID
+     */
+    public void setDriverGroup(String driverGroupId) {
+        this.keys.put(KEY_GROUP, driverGroupId);
     }
 
     public LoggerContext(LoggerContext parent) {

@@ -20,8 +20,9 @@ package io.github.airiot.sdk.driver.data.handlers;
 
 import io.github.airiot.sdk.driver.data.DataHandler;
 import io.github.airiot.sdk.driver.model.Tag;
+import io.github.airiot.sdk.logger.LoggerFactory;
+import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -51,7 +52,7 @@ import java.util.Map;
  */
 public class RoundAndScaleValueHandler implements DataHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(RoundAndScaleValueHandler.class);
+    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getLogger(RoundAndScaleValueHandler.class);
 
     @Override
     public boolean supports(String tableId, String deviceId, Tag tag, Object value) {

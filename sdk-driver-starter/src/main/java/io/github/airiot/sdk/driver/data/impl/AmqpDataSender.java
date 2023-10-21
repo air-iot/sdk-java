@@ -17,6 +17,10 @@
 
 package io.github.airiot.sdk.driver.data.impl;
 
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.MessageProperties;
 import io.github.airiot.sdk.driver.GlobalContext;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverMQProperties;
@@ -25,12 +29,9 @@ import io.github.airiot.sdk.driver.data.DataHandlerChain;
 import io.github.airiot.sdk.driver.data.LogSenderException;
 import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.model.Point;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.MessageProperties;
+import io.github.airiot.sdk.logger.LoggerFactory;
+import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -41,7 +42,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class AmqpDataSender extends AbstractDataSender {
 
-    private final Logger log = LoggerFactory.getLogger(AmqpDataSender.class);
+    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getLogger(MQTTDataSender.class);
     private final DriverMQProperties.Rabbit rabbitProperties;
     private final ThreadLocal<Channel> channel = ThreadLocal.withInitial(this::createChannel);
     private Connection connection;

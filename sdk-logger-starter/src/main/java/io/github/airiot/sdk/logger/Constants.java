@@ -17,20 +17,10 @@
 
 package io.github.airiot.sdk.logger;
 
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
-import ch.qos.logback.core.UnsynchronizedAppenderBase;
+public interface Constants {
 
-public class JsonConsoleAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
-
-    private final Appender<ILoggingEvent> delegate;
-
-    public JsonConsoleAppender(Appender<ILoggingEvent> delegate) {
-        this.delegate = delegate;
-    }
-
-    @Override
-    public void append(ILoggingEvent eventObject) {
-        this.delegate.doAppend(new LoggingEventWithContext(LoggerContexts.getContext(), eventObject));
-    }
+    /**
+     * 自定义 JSON 日志格式 appender 的名称
+     */
+    String APPENDER_NAME = "JSON_CONSOLE_APPENDER";
 }

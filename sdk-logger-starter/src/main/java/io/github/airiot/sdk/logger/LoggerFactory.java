@@ -36,7 +36,7 @@ public class LoggerFactory {
     }
 
     public static org.slf4j.Logger getLogger(String name) {
-        if (LoggerContexts.isEmpty() || LoggerContexts.getMode() == Mode.DEV) {
+        if (LoggerContexts.isDevMode()) {
             return org.slf4j.LoggerFactory.getLogger(name);
         }
         return LOGGER_CACHE.computeIfAbsent(name, loggerName -> {
@@ -44,18 +44,7 @@ public class LoggerFactory {
             return new JsonLogger((ch.qos.logback.classic.Logger) logger, true);
         });
     }
-
-    public static org.slf4j.Logger getContextLogger(Class<?> clazz) {
-        return getContextLogger(clazz.getName());
-    }
-
-    public static org.slf4j.Logger getContextLogger(String name) {
-        return LOGGER_CACHE.computeIfAbsent(name, loggerName -> {
-            org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(loggerName);
-            return new JsonLogger((ch.qos.logback.classic.Logger) logger, true);
-        });
-    }
-
+    
     public static class WithContext {
 
         private final LoggerContext context;
@@ -73,7 +62,7 @@ public class LoggerFactory {
             this.context.setModule(module);
             return this;
         }
-        
+
         public WithContext data(Object data) {
             this.context.setData(data);
             return this;

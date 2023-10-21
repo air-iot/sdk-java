@@ -28,6 +28,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.Map;
 
 import static java.time.temporal.ChronoField.*;
 
@@ -69,18 +70,37 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
             lineInfo = element.getClassName() + ":" + element.getLineNumber();
         }
 
-        String key = context.getKey();
+        Map<String, Object> keys = context.getKeys(true);
 
         String time = LocalDateTime.ofInstant(Instant.ofEpochMilli(event.getTimeStamp()), zoneId).format(DATE_TIME_FORMATTER);
         StringBuilder sb = new StringBuilder(initialBufferSize);
         sb.append("{")
                 .append("\"logType\":").append("\"__syslog__\"").append(",")
-                .append("\"key\":").append('"').append(key == null ? "" : key).append('"').append(",")
                 .append("\"level\":").append('"').append(event.getLevel().levelStr).append('"').append(",")
                 .append("\"time\":").append('"').append(time).append('"').append(",")
                 .append("\"projectId\":").append('"').append(context.getProjectId()).append('"').append(",")
                 .append("\"service\":").append('"').append(context.getService()).append('"').append(",")
                 .append("\"module\":").append('"').append(context.getModule()).append('"').append(",");
+
+        if (keys != null && !keys.isEmpty()) {
+            for (Map.Entry<String, Object> entry : keys.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                if (value == null) {
+                    continue;
+                }
+
+                sb.append('"').append(key).append('"').append(":");
+                
+                if (value instanceof Number) {
+                    sb.append(value);
+                } else {
+                    sb.append('"').append(value).append('"');
+                }
+
+                sb.append(",");
+            }
+        }
 
         String traceId = context.getTraceId();
         String spanId = context.getSpanId();

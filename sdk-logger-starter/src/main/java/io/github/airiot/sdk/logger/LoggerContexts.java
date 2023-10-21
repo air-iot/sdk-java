@@ -42,6 +42,13 @@ public class LoggerContexts {
     }
 
     /**
+     * 判断当前是否为 DEV 模式
+     */
+    public static boolean isDevMode() {
+        return ROOT_CONTEXT.getMode() == Mode.DEV;
+    }
+
+    /**
      * 设置默认的项目ID
      *
      * @param projectId 项目ID
@@ -76,6 +83,13 @@ public class LoggerContexts {
             CONTEXT.set(stack);
         }
         return stack.peek();
+    }
+    
+    /**
+     * 获取根上下文
+     */
+    public static LoggerContext getRootContext() {
+        return ROOT_CONTEXT;
     }
 
     /**
@@ -113,7 +127,7 @@ public class LoggerContexts {
         LoggerContext context = new LoggerContext(ROOT_CONTEXT);
         stack.push(ROOT_CONTEXT);
         stack.push(context);
-        
+
         return context;
     }
 
@@ -129,6 +143,7 @@ public class LoggerContexts {
 
     /**
      * 创建一个新的日志上下文. 如果当前线程已经有了日志上下文, 则会将当栈顶的日志上下文作为新创建的日志上下文的父上下文.
+     * <b>注: 在日志输出完成后, 调用 {@link #pop()} 方法弹出该元素, 否则可能产生内存泄漏</b>
      */
     public static LoggerContext push() {
         Stack<LoggerContext> stack = CONTEXT.get();
@@ -140,13 +155,23 @@ public class LoggerContexts {
 
         LoggerContext context = new LoggerContext(stack.peek());
         stack.push(context);
+
+        if (stack.size() > 10) {
+            System.out.println("[WARN] 当前线程的日志上下文栈中的元素个数已经超过 10 个, 可能存在内存泄漏. 请检查代码是否正确使用了 LoggerContexts.push() 和 LoggerContexts.pop() 方法.");
+        }
+
         return context;
     }
 
+    /**
+     * 弹出当前线程的日志上下文栈顶的元素
+     *
+     * @return 如果当前线程的日志上下文栈为空, 则返回 null, 否则返回栈顶的元素
+     */
     public static LoggerContext pop() {
         Stack<LoggerContext> stack = CONTEXT.get();
         if (stack == null) {
-            throw new IllegalStateException("the logger context stack is empty");
+            return null;
         }
         return stack.pop();
     }
@@ -222,5 +247,14 @@ public class LoggerContexts {
      */
     public static void clearData() {
         getTopContext().setData(null);
+    }
+
+    /**
+     * 设置自定义关联数据
+     *
+     * @param value 关联数据
+     */
+    public static void key(String value) {
+        getTopContext().setKey(value);
     }
 }

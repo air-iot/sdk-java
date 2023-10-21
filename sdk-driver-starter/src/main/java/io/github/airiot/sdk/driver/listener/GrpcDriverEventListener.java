@@ -17,6 +17,8 @@
 
 package io.github.airiot.sdk.driver.listener;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
 import com.google.gson.Gson;
@@ -852,6 +854,19 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 passed = false;
                 result.setResult(400);
                 result.setResult("启动配置不正确: " + e.getMessage());
+            }
+
+            if (driverConfig != null) {
+                // 设置驱动组ID
+                LoggerContexts.getRootContext().setDriverGroup(driverConfig.getGroupId());
+                
+                // 根据驱动实例中的 debug 配置设置 logger 的日志等级
+                LoggerContext loggerContext = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+                if (driverConfig.isDebug()) {
+                    loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.DEBUG);
+                } else {
+                    loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.INFO);
+                }
             }
 
             if (passed) {

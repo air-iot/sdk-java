@@ -17,32 +17,30 @@
 
 package io.github.airiot.sdk.logger;
 
+import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.encoder.LayoutWrappingEncoder;
+import ch.qos.logback.core.Appender;
 import org.slf4j.Marker;
 
 public class JsonLogger implements org.slf4j.Logger {
 
-    private static final JsonLayout LAYOUT = new JsonLayout();
     private final ch.qos.logback.classic.Logger delegate;
-    
+
     public JsonLogger(ch.qos.logback.classic.Logger delegate, boolean resetAppender) {
         this.delegate = delegate;
 
         if (resetAppender) {
             delegate.detachAndStopAllAppenders();
 
-            LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<>();
-            encoder.setLayout(LAYOUT);
+            Appender<ILoggingEvent> rootAppender = delegate.getLoggerContext().getLogger(Logger.ROOT_LOGGER_NAME).getAppender(Constants.APPENDER_NAME);
 
-            JsonConsoleAppender appender = new JsonConsoleAppender();
-            appender.setName("JSON_CONSOLE");
-            appender.setEncoder(encoder);
+            JsonConsoleAppender appender = new JsonConsoleAppender(rootAppender);
             appender.setContext(delegate.getLoggerContext());
-            appender.start();
 
             delegate.setAdditive(false);
             delegate.addAppender(appender);
+
+            appender.start();
         }
     }
 

@@ -18,18 +18,21 @@
 package io.github.airiot.sdk.logger;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.ConsoleAppender;
+import ch.qos.logback.core.Appender;
+import ch.qos.logback.core.UnsynchronizedAppenderBase;
 
-public class JsonConsoleAppenderWithContext extends ConsoleAppender<ILoggingEvent> {
+public class JsonConsoleAppenderWithContext extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
+    private final Appender<ILoggingEvent> delegate;
     private final LoggerContext context;
 
-    public JsonConsoleAppenderWithContext(LoggerContext context) {
+    public JsonConsoleAppenderWithContext(LoggerContext context, Appender<ILoggingEvent> delegate) {
         this.context = context;
+        this.delegate = delegate;
     }
-
+    
     @Override
-    public void doAppend(ILoggingEvent eventObject) {
-        super.doAppend(new LoggingEventWithContext(this.context, eventObject));
+    protected void append(ILoggingEvent eventObject) {
+        this.delegate.doAppend(new LoggingEventWithContext(this.context, eventObject));
     }
 }

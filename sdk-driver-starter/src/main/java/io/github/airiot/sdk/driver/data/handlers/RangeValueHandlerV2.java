@@ -3,8 +3,9 @@ package io.github.airiot.sdk.driver.data.handlers;
 import io.github.airiot.sdk.driver.data.DataHandler;
 import io.github.airiot.sdk.driver.model.Range;
 import io.github.airiot.sdk.driver.model.Tag;
+import io.github.airiot.sdk.logger.LoggerFactory;
+import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
@@ -21,7 +22,7 @@ import java.util.*;
  */
 public class RangeValueHandlerV2 implements DataHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(RangeValueHandlerV2.class);
+    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getLogger(RangeValueHandlerV2.class);
 
     private final Set<String> actions = new HashSet<>(Arrays.asList("fixed", "boundary", "discard", "latest"));
 

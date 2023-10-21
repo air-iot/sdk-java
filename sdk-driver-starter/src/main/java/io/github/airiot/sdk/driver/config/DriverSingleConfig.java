@@ -67,6 +67,10 @@ public class DriverSingleConfig<Config> {
      */
     private String id;
     /**
+     * 驱动实例所属组ID
+     */
+    private String groupId;
+    /**
      * 驱动名称
      */
     private String name;
@@ -74,6 +78,10 @@ public class DriverSingleConfig<Config> {
      * 驱动类型
      */
     private String driverType;
+    /**
+     * 是否开启调试模式
+     */
+    private boolean debug;
     /**
      * 驱动实例配置信息
      */
@@ -90,6 +98,14 @@ public class DriverSingleConfig<Config> {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(String groupId) {
+        this.groupId = groupId;
     }
 
     public String getName() {
@@ -123,13 +139,23 @@ public class DriverSingleConfig<Config> {
     public void setTables(List<Model<Config>> tables) {
         this.tables = tables;
     }
-    
+
+    public boolean isDebug() {
+        return debug;
+    }
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
+
     @Override
     public String toString() {
         return "DriverSingleConfig{" +
                 "id='" + id + '\'' +
+                ", groupId='" + groupId + '\'' +
                 ", name='" + name + '\'' +
                 ", driverType='" + driverType + '\'' +
+                ", debug=" + debug +
                 ", config=" + config +
                 ", tables=" + tables +
                 '}';

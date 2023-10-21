@@ -26,10 +26,11 @@ import io.github.airiot.sdk.driver.data.DataHandlerChain;
 import io.github.airiot.sdk.driver.data.LogSenderException;
 import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.model.Point;
+import io.github.airiot.sdk.logger.LoggerFactory;
+import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
 import java.nio.charset.StandardCharsets;
@@ -48,8 +49,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class MQTTDataSender extends AbstractDataSender implements MqttCallbackExtended {
 
-    private final Logger log = LoggerFactory.getLogger(MQTTDataSender.class);
-
+    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getLogger(MQTTDataSender.class);
+    
     private final DriverAppProperties driverAppProperties;
     private final DriverMQProperties.Mqtt mqttProperties;
     private final int qos;
