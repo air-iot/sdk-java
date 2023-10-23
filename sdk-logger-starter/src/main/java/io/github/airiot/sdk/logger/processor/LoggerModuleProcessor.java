@@ -115,22 +115,38 @@ public class LoggerModuleProcessor extends AbstractProcessor {
         options.setIndent(2);
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         Yaml dumpYaml = new Yaml(options);
-
+        
         for (File file : this.serviceYamlFiles) {
-            System.out.println("写入日志模块列表到文件 '" + file.getAbsolutePath() + "'");
-            Map<String, Object> keyValues = null;
-            try (FileInputStream fis = new FileInputStream(file)) {
-                keyValues = new Yaml().load(fis);
-                keyValues.put("Module", modules);
-            } catch (IOException e) {
-                throw new IllegalArgumentException("读取日志模块列表到文件 '" + file.getAbsolutePath() + "' 失败", e);
+            if (file.isDirectory()) {
+                File[] files = file.listFiles(subFile -> subFile.getName().endsWith(".yml") || subFile.getName().endsWith(".yaml"));
+                if (files == null || files.length == 0) {
+                    System.out.println("[WARN] 未在目录 '" + file.getAbsolutePath() + "' 中找到 yaml 文件");
+                    continue;
+                }
+
+                for (File subFile : files) {
+                    this.modifyServiceYamlFile(dumpYaml, subFile, modules);
+                }
+            } else {
+                this.modifyServiceYamlFile(dumpYaml, file, modules);
             }
-            
-            try (FileWriter writer = new FileWriter(file)) {
-                dumpYaml.dump(keyValues, writer);
-            } catch (IOException e) {
-                throw new IllegalArgumentException("写入日志模块列表到文件 '" + file.getAbsolutePath() + "' 失败", e);
-            }
+        }
+    }
+
+    private void modifyServiceYamlFile(Yaml dumpYaml, File file, List<String> modules) {
+        System.out.println("写入日志模块列表到文件 '" + file.getAbsolutePath() + "'");
+        Map<String, Object> keyValues = null;
+        try (FileInputStream fis = new FileInputStream(file)) {
+            keyValues = new Yaml().load(fis);
+            keyValues.put("Module", modules);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("读取日志模块列表到文件 '" + file.getAbsolutePath() + "' 失败", e);
+        }
+
+        try (FileWriter writer = new FileWriter(file)) {
+            dumpYaml.dump(keyValues, writer);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("写入日志模块列表到文件 '" + file.getAbsolutePath() + "' 失败", e);
         }
     }
 }
