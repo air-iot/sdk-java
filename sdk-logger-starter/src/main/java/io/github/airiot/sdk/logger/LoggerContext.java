@@ -37,8 +37,8 @@ public class LoggerContext {
 
     public static final LoggerContext EMPTY = new LoggerContext(null);
 
-    private final LoggerContext parent;
-
+    private LoggerContext parent;
+    
     /**
      * 日志模式
      */
@@ -75,6 +75,14 @@ public class LoggerContext {
      * 例如: 如果想将日志关联表, 可以将表名赋值给该字段.
      */
     private final Map<String, Object> keys = new HashMap<>();
+
+    void setParent(LoggerContext parent) {
+        this.parent = parent;
+    }
+
+    public LoggerContext getParent() {
+        return parent;
+    }
 
     public Mode getMode() {
         return mode;
@@ -113,10 +121,22 @@ public class LoggerContext {
         return pId;
     }
 
+    /**
+     * 设置项目ID
+     *
+     * @param projectId 项目ID
+     */
     public void setProjectId(String projectId) {
         this.projectId = projectId;
     }
 
+    /**
+     * 获取当前的服务实例ID.
+     * <br>
+     * 每次进程都会有一个独立的服务实例ID
+     *
+     * @return 服务实例ID
+     */
     public String getService() {
         String svc = null;
         if (service != null && !service.isEmpty()) {
@@ -130,10 +150,20 @@ public class LoggerContext {
         return svc;
     }
 
+    /**
+     * 设置服务实例ID.
+     *
+     * @param service 服务实例ID
+     */
     public void setService(String service) {
         this.service = service;
     }
 
+    /**
+     * 获取当前日志上下文绑定的模块名
+     *
+     * @return 模块名
+     */
     public String getModule() {
         String mod = null;
         if (module != null && !module.isEmpty()) {
@@ -147,14 +177,31 @@ public class LoggerContext {
         return mod;
     }
 
+    /**
+     * 设置当前日志上下文绑定的模块名
+     *
+     * @param module 模块名
+     */
     public void setModule(String module) {
         this.module = module;
     }
 
+    /**
+     * 获取自定义数据
+     *
+     * @return 自定义数据, 如果没有设置返回 {@code null}
+     */
     public Object getData() {
         return data;
     }
 
+    /**
+     * 设置自定义数据, 每次调用都会覆盖之前的数据
+     * <br>
+     * <b>注: 不能与 {@link #setData(String, Object)} 一起使用</b>
+     *
+     * @param data 自定义数据
+     */
     public void setData(Object data) {
         if (this.data != null && !(this.data instanceof Map)) {
             throw new IllegalStateException("the context data has been set to a non-map object");
@@ -162,6 +209,14 @@ public class LoggerContext {
         this.data = data;
     }
 
+    /**
+     * 设置自定义数据, 该方法可以多次调用. 最终所有的数据会组成一个 Map 对象
+     * <br>
+     * <b>注: 不能与 {@link #setData(Object)} 一起使用</b>
+     *
+     * @param key   自定义数据的 key
+     * @param value 自定义数据的值
+     */
     public void setData(String key, Object value) {
         if (this.data != null && !(this.data instanceof Map)) {
             throw new IllegalStateException("the context data has been set to a map object");
@@ -176,6 +231,9 @@ public class LoggerContext {
         }
     }
 
+    /**
+     * 清空已设置的自定义数据
+     */
     public void clearData() {
         this.data = null;
     }
@@ -217,7 +275,7 @@ public class LoggerContext {
     public void setKey(String value) {
         this.keys.put(KEY_ANY, value);
     }
-    
+
     /**
      * 设置关联的驱动实例分组ID
      * <br>
@@ -229,7 +287,7 @@ public class LoggerContext {
         this.keys.put(KEY_GROUP, driverGroupId);
     }
 
-    public LoggerContext(LoggerContext parent) {
+    LoggerContext(LoggerContext parent) {
         this.parent = parent;
     }
 }

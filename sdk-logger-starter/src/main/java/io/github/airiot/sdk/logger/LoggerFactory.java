@@ -44,7 +44,7 @@ public class LoggerFactory {
             return new JsonLogger((ch.qos.logback.classic.Logger) logger, true);
         });
     }
-    
+
     public static class WithContext {
 
         private final LoggerContext context;
@@ -53,36 +53,78 @@ public class LoggerFactory {
             this.context = LoggerContexts.createContext();
         }
 
+        /**
+         * 设置日志所属的项目ID
+         *
+         * @param projectId 项目ID
+         */
         public WithContext project(String projectId) {
             this.context.setProjectId(projectId);
             return this;
         }
 
+        /**
+         * 设置该日志所属的模块名
+         *
+         * @param module 模块名
+         */
         public WithContext module(String module) {
             this.context.setModule(module);
             return this;
         }
 
+        /**
+         * 设置自定义数据. 每次调用都会覆盖之前的数据
+         * <br>
+         *
+         * <b>注: 不能与 {@link #data(String, Object)} 一起使用</b>
+         *
+         * @param data 自定义数据
+         */
         public WithContext data(Object data) {
             this.context.setData(data);
             return this;
         }
 
+        /**
+         * 设置自定义数据. 该方法可以多次使用, 所有的数据会组成一个 Map 对象
+         * <br>
+         *
+         * <b>注: 该方法不能与 {@link #data(Object)} 一起使用</b>
+         *
+         * @param key   自定义数据的 key
+         * @param value 自定义数据的值
+         */
         public WithContext data(String key, Object value) {
             this.context.setData(key, value);
             return this;
         }
 
+        /**
+         * 设置自定义关联数据. 可以用来关联到工作表标识等.
+         *
+         * @param value 关联数据
+         */
         public WithContext key(String value) {
             this.context.setKey(value);
             return this;
         }
 
-        public org.slf4j.Logger getLogger(Class<?> clazz) {
-            return getLogger(clazz.getName());
+        /**
+         * 设置驱动实例组ID
+         *
+         * @param driverGroupId 驱动实例组ID
+         */
+        public WithContext group(String driverGroupId) {
+            this.context.setDriverGroup(driverGroupId);
+            return this;
         }
 
-        public org.slf4j.Logger getLogger(String name) {
+        public org.slf4j.Logger getStaticLogger(Class<?> clazz) {
+            return getStaticLogger(clazz.getName());
+        }
+
+        public org.slf4j.Logger getStaticLogger(String name) {
             if (this.context.getModule() == null) {
                 throw new IllegalArgumentException("未设置日志的模块名");
             }
@@ -92,8 +134,22 @@ public class LoggerFactory {
             }
 
             String module = this.context.getModule();
-            ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(String.format("%s#%s", name, module));
+            ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(String.format("%s#%s#static", name, module));
             return new JsonLoggerWithContext(logger, this.context, LoggerContexts.getMode() != Mode.DEV);
+        }
+
+        public org.slf4j.Logger getDynamicLogger(Class<?> clazz) {
+            return this.getDynamicLogger(clazz.getName());
+        }
+
+        public org.slf4j.Logger getDynamicLogger(String name) {
+            if (LoggerContexts.getMode() == Mode.DEV) {
+                return org.slf4j.LoggerFactory.getLogger(name);
+            }
+
+            String module = this.context.getModule();
+            ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(String.format("%s#%s#dynamic", name, module));
+            return new JsonLoggerWithDynamicContext(logger, this.context, LoggerContexts.getMode() != Mode.DEV);
         }
     }
 }

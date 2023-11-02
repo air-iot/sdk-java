@@ -19,8 +19,10 @@ package io.github.airiot.sdk.logger;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Stack;
 
+/**
+ * 日志上下文
+ */
 public class LoggerContexts {
 
     /**
@@ -28,7 +30,7 @@ public class LoggerContexts {
      */
     private static final LoggerContext ROOT_CONTEXT = new LoggerContext(null);
 
-    protected static final InheritableThreadLocal<Stack<LoggerContext>> CONTEXT = new InheritableThreadLocal<>();
+    protected static final InheritableThreadLocal<LoggerContext> CONTEXT = new InheritableThreadLocal<>();
 
     /**
      * 设置日志模式为开发模式. 即使用默认的日志格式输出日志, 不使用 JSON 格式.
@@ -72,19 +74,22 @@ public class LoggerContexts {
      * @return 如果没有初始化日志上下文, 则返回 true, 否则返回 false
      */
     public static boolean isEmpty() {
-        return CONTEXT.get() == null || CONTEXT.get().isEmpty();
+        return CONTEXT.get() == null;
     }
 
+    /**
+     * 获取栈顶的的日志上下文. 如果当前日志上下文为空, 则会创建一个新的日志下文并将 ROOT 上下文作为上级上下文
+     *
+     * @return 如果当前日志上下文为空, 则将 ROOT 上下文作为
+     */
     static LoggerContext getTopContext() {
-        Stack<LoggerContext> stack = CONTEXT.get();
-        if (stack == null) {
-            stack = new Stack<>();
-            stack.push(ROOT_CONTEXT);
-            CONTEXT.set(stack);
+        LoggerContext context = CONTEXT.get();
+        if (context == null) {
+            CONTEXT.set(createContext());
         }
-        return stack.peek();
+        return CONTEXT.get();
     }
-    
+
     /**
      * 获取根上下文
      */
@@ -103,6 +108,8 @@ public class LoggerContexts {
 
     /**
      * 创建一个新的日志上下文, 并以 ROOT_CONTEXT 作为父上下文.
+     * <br>
+     * <b>注: 新创建的上下文不会加入到当前日志上下文中</b>
      *
      * @return 新上下文
      */
@@ -116,29 +123,16 @@ public class LoggerContexts {
      * @return 新的日志上下文
      */
     public static LoggerContext initial() {
-        Stack<LoggerContext> stack = CONTEXT.get();
-        if (stack == null) {
-            stack = new Stack<>();
-            CONTEXT.set(stack);
-        } else {
-            stack.clear();
-        }
-
-        LoggerContext context = new LoggerContext(ROOT_CONTEXT);
-        stack.push(ROOT_CONTEXT);
-        stack.push(context);
-
+        LoggerContext context = createContext();
+        CONTEXT.set(context);
         return context;
     }
-
+    
     /**
      * 销毁当前线程的日志上下文
      */
     public static void destroy() {
-        Stack<LoggerContext> stack = CONTEXT.get();
-        if (stack != null) {
-            stack.clear();
-        }
+        CONTEXT.set(createContext());
     }
 
     /**
@@ -146,19 +140,14 @@ public class LoggerContexts {
      * <b>注: 在日志输出完成后, 调用 {@link #pop()} 方法弹出该元素, 否则可能产生内存泄漏</b>
      */
     public static LoggerContext push() {
-        Stack<LoggerContext> stack = CONTEXT.get();
-        if (stack == null) {
-            stack = new Stack<>();
-            stack.push(ROOT_CONTEXT);
-            CONTEXT.set(stack);
+        LoggerContext context = CONTEXT.get();
+        if (context == null) {
+            context = createContext();
+        } else {
+            context = new LoggerContext(context);
         }
 
-        LoggerContext context = new LoggerContext(stack.peek());
-        stack.push(context);
-
-        if (stack.size() > 10) {
-            System.out.println("[WARN] 当前线程的日志上下文栈中的元素个数已经超过 10 个, 可能存在内存泄漏. 请检查代码是否正确使用了 LoggerContexts.push() 和 LoggerContexts.pop() 方法.");
-        }
+        CONTEXT.set(context);
 
         return context;
     }
@@ -166,14 +155,17 @@ public class LoggerContexts {
     /**
      * 弹出当前线程的日志上下文栈顶的元素
      *
-     * @return 如果当前线程的日志上下文栈为空, 则返回 null, 否则返回栈顶的元素
+     * @return 如果当前线程的日志上下文栈为空或者为 ROOT 上下文, 则返回 null, 否则返回栈顶的元素
      */
     public static LoggerContext pop() {
-        Stack<LoggerContext> stack = CONTEXT.get();
-        if (stack == null) {
+        LoggerContext context = CONTEXT.get();
+        if (context == null || context == ROOT_CONTEXT) {
             return null;
         }
-        return stack.pop();
+
+        CONTEXT.set(context.getParent());
+
+        return context;
     }
 
     /**
