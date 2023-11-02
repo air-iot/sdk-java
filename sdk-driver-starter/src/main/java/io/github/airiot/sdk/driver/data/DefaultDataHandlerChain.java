@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 public class DefaultDataHandlerChain implements DataHandlerChain {
     
-    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getLogger(AbstractDataSender.class);
+    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(AbstractDataSender.class);
 
     private final TagValueCache tagValueCache;
     private final List<DataHandler> handlers = new ArrayList<>();
@@ -53,7 +53,7 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
         this.handlers.addAll(handlers);
         this.handlers.sort(Comparator.comparing(DataHandler::getOrder));
 
-        Logger logger = LoggerFactory.withContext().module(DriverModules.START).getLogger(DefaultDataHandlerChain.class);
+        Logger logger = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(DefaultDataHandlerChain.class);
         logger.info("数据处理 Chain: 是否注册默认数据处理功能: {}, 自定义数据处理功能: {}",
                 registerDefaults,
                 handlers.stream().map(handler -> handler.getClass().getName()).collect(Collectors.toList())

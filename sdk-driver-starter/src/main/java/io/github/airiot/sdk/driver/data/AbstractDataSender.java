@@ -47,8 +47,8 @@ import java.util.stream.Collectors;
 
 public abstract class AbstractDataSender implements DataSender, InitializingBean {
     
-    private final Logger writePointLogger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getLogger(AbstractDataSender.class);
-    private final Logger writeEventLogger = LoggerFactory.withContext().module(DriverModules.WRITE_EVENT).getLogger(AbstractDataSender.class);
+    private final Logger writePointLogger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(AbstractDataSender.class);
+    private final Logger writeEventLogger = LoggerFactory.withContext().module(DriverModules.WRITE_EVENT).getStaticLogger(AbstractDataSender.class);
 
     private final DateTimeFormatter logTimeFormatter = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
     protected final Gson gson = new Gson();

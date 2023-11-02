@@ -52,7 +52,7 @@ import java.util.Map;
  */
 public class RoundAndScaleValueHandler implements DataHandler {
 
-    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getLogger(RoundAndScaleValueHandler.class);
+    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(RoundAndScaleValueHandler.class);
 
     @Override
     public boolean supports(String tableId, String deviceId, Tag tag, Object value) {

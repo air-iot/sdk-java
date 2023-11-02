@@ -62,7 +62,7 @@ import java.util.Map;
  */
 public class ConvertValueHandler implements DataHandler {
 
-    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getLogger(ConvertValueHandler.class);
+    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(ConvertValueHandler.class);
 
     /**
      * 计算精度

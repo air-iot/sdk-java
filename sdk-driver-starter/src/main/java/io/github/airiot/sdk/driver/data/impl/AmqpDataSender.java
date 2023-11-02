@@ -42,7 +42,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class AmqpDataSender extends AbstractDataSender {
 
-    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getLogger(MQTTDataSender.class);
+    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(MQTTDataSender.class);
     private final DriverMQProperties.Rabbit rabbitProperties;
     private final ThreadLocal<Channel> channel = ThreadLocal.withInitial(this::createChannel);
     private Connection connection;

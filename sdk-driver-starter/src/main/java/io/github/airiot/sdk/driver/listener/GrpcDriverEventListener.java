@@ -18,7 +18,6 @@
 package io.github.airiot.sdk.driver.listener;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
 import com.google.gson.Gson;
@@ -38,6 +37,7 @@ import io.github.airiot.sdk.driver.event.DriverReloadApplicationEvent;
 import io.github.airiot.sdk.driver.grpc.driver.Error;
 import io.github.airiot.sdk.driver.grpc.driver.*;
 import io.github.airiot.sdk.driver.model.Tag;
+import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
 import io.github.airiot.sdk.logger.driver.DriverModules;
@@ -73,9 +73,9 @@ import java.util.function.Consumer;
  */
 public class GrpcDriverEventListener implements DriverEventListener, ApplicationContextAware {
 
-    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getLogger(GrpcDriverEventListener.class);
+    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(GrpcDriverEventListener.class);
 
-    private final Logger healthCheckLogger = LoggerFactory.withContext().module(DriverModules.HEARTBEAT).getLogger(GrpcDriverEventListener.class);
+    private final Logger healthCheckLogger = LoggerFactory.withContext().module(DriverModules.HEARTBEAT).getStaticLogger(GrpcDriverEventListener.class);
 
     private static final Gson GSON = new Gson();
 
@@ -442,7 +442,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     }
 
     static class RunHandler extends ClientCall.Listener<RunRequest> {
-        private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getLogger(RunHandler.class);
+        private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(RunHandler.class);
 
         private final ThreadPoolExecutor executor;
         private final ClientCall<RunResult, RunRequest> clientCall;
@@ -482,7 +482,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             logger.info("接收到指令请求, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
             CompletableFuture.supplyAsync(() -> {
-                LoggerContexts.push();
+                LoggerContext context = LoggerContexts.push();
+                context.setKey(request.getTableId());
 
                 logger.info("开始执行指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
@@ -519,13 +520,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
                 return r;
             }).whenComplete((r, e) -> {
-                LoggerContexts.destroy();
+                LoggerContexts.pop();
             });
         }
     }
 
     static class WriteTagHandler extends ClientCall.Listener<RunRequest> {
-        private final Logger log = LoggerFactory.withContext().module(DriverModules.WRITE_TAG).getLogger("write-tag-stream");
+        private final Logger log = LoggerFactory.withContext().module(DriverModules.WRITE_TAG).getStaticLogger("write-tag-stream");
 
         private final ThreadPoolExecutor executor;
         private final ClientCall<RunResult, RunRequest> clientCall;
@@ -565,7 +566,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             logger.info("接收到写数据点指令请求, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
             CompletableFuture.supplyAsync(() -> {
-                LoggerContexts.push();
+                LoggerContext context = LoggerContexts.push();
+                context.setKey(request.getTableId());
+
                 logger.info("执行写数据点指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
                 Result result = new Result();
@@ -600,13 +603,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 }
                 return r;
             }).whenComplete((r, e) -> {
-                LoggerContexts.destroy();
+                LoggerContexts.pop();
             });
         }
     }
 
     static class BatchRunHandler extends ClientCall.Listener<BatchRunRequest> {
-        private final Logger log = LoggerFactory.withContext().module(DriverModules.BATCH_RUN).getLogger("batch-run-stream");
+        private final Logger log = LoggerFactory.withContext().module(DriverModules.BATCH_RUN).getStaticLogger("batch-run-stream");
 
         private final ThreadPoolExecutor executor;
         private final ClientCall<BatchRunResult, BatchRunRequest> clientCall;
@@ -646,7 +649,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             logger.info("接收到批量执行指令请求, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
             CompletableFuture.supplyAsync(() -> {
-                LoggerContexts.push();
+                LoggerContext context = LoggerContexts.push();
+                context.setKey(request.getTableId());
+
                 logger.info("开始批量执行指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
                 Result result = new Result();
@@ -682,13 +687,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
                 return r;
             }).whenComplete((r, e) -> {
-                LoggerContexts.destroy();
+                LoggerContexts.pop();
             });
         }
     }
 
     static class DebugHandler extends ClientCall.Listener<Debug> {
-        private final Logger log = LoggerFactory.withContext().module(DriverModules.DEBUG).getLogger("debug-stream");
+        private final Logger log = LoggerFactory.withContext().module(DriverModules.DEBUG).getStaticLogger("debug-stream");
         private final ClientCall<Debug, Debug> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final StreamClosedCallback closedCallback;
@@ -746,7 +751,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     }
 
     static class StartHandler extends ClientCall.Listener<StartRequest> {
-        private final Logger logger = LoggerFactory.withContext().module(DriverModules.START).getLogger(StartHandler.class);
+        private final Logger logger = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(StartHandler.class);
         private final ClientCall<StartResult, StartRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final GlobalContext globalContext;
@@ -859,16 +864,16 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             if (driverConfig != null) {
                 // 设置驱动组ID
                 LoggerContexts.getRootContext().setDriverGroup(driverConfig.getGroupId());
-                
+
                 // 根据驱动实例中的 debug 配置设置 logger 的日志等级
-                LoggerContext loggerContext = (LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+                ch.qos.logback.classic.LoggerContext loggerContext = (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
                 if (driverConfig.isDebug()) {
                     loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.DEBUG);
                 } else {
                     loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.INFO);
                 }
             }
-
+            
             if (passed) {
                 try {
                     Object drvConfig = JSON.parseObject(config, this.driverConfigType);
@@ -892,7 +897,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     static class SchemaHandler extends ClientCall.Listener<SchemaRequest> {
 
-        private final Logger logger = LoggerFactory.withContext().module(DriverModules.SCHEMA).getLogger(SchemaHandler.class);
+        private final Logger logger = LoggerFactory.withContext().module(DriverModules.SCHEMA).getStaticLogger(SchemaHandler.class);
 
         private final ClientCall<SchemaResult, SchemaRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
@@ -954,7 +959,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     }
 
     static class HttpProxyHandler extends ClientCall.Listener<HttpProxyRequest> {
-        private final Logger logger = LoggerFactory.withContext().module(DriverModules.HTTP_PROXY).getLogger(HttpProxyHandler.class);
+        private final Logger logger = LoggerFactory.withContext().module(DriverModules.HTTP_PROXY).getStaticLogger(HttpProxyHandler.class);
 
         private final static Gson GSON = new Gson();
 

@@ -44,7 +44,7 @@ import java.util.*;
  */
 public class RangeValueHandler implements DataHandler {
 
-    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getLogger(RangeValueHandler.class);
+    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(RangeValueHandler.class);
 
     private final Set<String> actions = new HashSet<>(Arrays.asList("fixed", "boundary", "discard"));
 
