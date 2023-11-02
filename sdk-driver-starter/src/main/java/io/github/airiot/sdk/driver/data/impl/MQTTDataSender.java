@@ -31,15 +31,10 @@ import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.slf4j.Logger;
-import org.slf4j.MDC;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -49,21 +44,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class MQTTDataSender extends AbstractDataSender implements MqttCallbackExtended {
 
-    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getLogger(MQTTDataSender.class);
-    
+    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(MQTTDataSender.class);
+
     private final DriverAppProperties driverAppProperties;
     private final DriverMQProperties.Mqtt mqttProperties;
     private final int qos;
     private final long publishTimeoutMs;
     private final AtomicBoolean running = new AtomicBoolean(false);
-    /**
-     * 缓存设备ID与上报数据 topic 的映射关系
-     */
-    private final Map<String, String> deviceTopicCache = new ConcurrentHashMap<>();
 
-    private ScheduledExecutorService executorService;
-    private MqttClient mqttClient;
     private MqttConnectOptions options;
+    private MqttClient mqttClient;
 
     public MQTTDataSender(DataHandlerChain chain,
                           DriverDataProperties properties,
@@ -76,42 +66,8 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
         this.mqttProperties = mqttProperties;
         this.publishTimeoutMs = mqttProperties.getPublishTimeout().toMillis();
         this.qos = mqttProperties.getQos();
-    }
-
-    private Runnable wrapRunnable(Map<String, String> mdcContext, Runnable r) {
-        return () -> {
-            if (mdcContext != null) {
-                for (Map.Entry<String, String> entry : mdcContext.entrySet()) {
-                    MDC.put(entry.getKey(), entry.getValue());
-                }
-            }
-            r.run();
-        };
-    }
-
-    private ScheduledThreadPoolExecutor createScheduledThreadPoolExecutor(int corePoolSize) {
-        return new ScheduledThreadPoolExecutor(corePoolSize,
-                r -> {
-                    Thread t = new Thread(wrapRunnable(MDC.getCopyOfContextMap(), r));
-                    t.setDaemon(true);
-                    return t;
-                });
-    }
-
-    @Override
-    public void start() {
-        if (!this.running.compareAndSet(false, true)) {
-            log.info("MQTTDataSender: 已启动");
-            return;
-        }
-
-        String broker = "tcp://" + this.mqttProperties.getHost() + ":" + this.mqttProperties.getPort();
-        String clientId = "sdk_" + this.driverAppProperties.getId() + "_" + this.driverAppProperties.getInstanceId();
-
-        log.info("MQTTDataSender: 开始连接, Broker[{}], ClientId[{}]", broker, clientId);
-
-        MemoryPersistence persistence = new MemoryPersistence();
-        options = new MqttConnectOptions();
+        
+        this.options = new MqttConnectOptions();
         options.setCleanSession(true);
         options.setUserName(this.mqttProperties.getUsername());
         options.setPassword(this.mqttProperties.getPassword().toCharArray());
@@ -129,16 +85,16 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
         int reconnectIntervalMs = (int) this.mqttProperties.getReconnectInterval().toMillis();
         options.setAutomaticReconnect(true);
         options.setMaxReconnectDelay(Math.max(reconnectIntervalMs, 5000));
+    }
 
-        this.executorService = this.createScheduledThreadPoolExecutor(Runtime.getRuntime().availableProcessors());
-
-        try {
-            this.mqttClient = new MqttClient(broker, clientId, persistence, this.executorService);
-            this.mqttClient.setTimeToWait(this.mqttProperties.getActionTimeout().toMillis());
-            this.mqttClient.setCallback(this);
-        } catch (MqttException e) {
-            throw new IllegalStateException("MQTTDataSender: 初始化失败", e);
+    @Override
+    public void start() {
+        if (!this.running.compareAndSet(false, true)) {
+            log.info("MQTTDataSender: 已启动");
+            return;
         }
+
+        this.mqttClient = this.createClient();
 
         try {
             this.mqttClient.connect(options);
@@ -151,6 +107,24 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
         }
     }
 
+    private MqttClient createClient() {
+        String broker = "tcp://" + this.mqttProperties.getHost() + ":" + this.mqttProperties.getPort();
+        String clientId = "sdk_" + this.driverAppProperties.getId() + "_" + this.driverAppProperties.getInstanceId();
+
+        MemoryPersistence persistence = new MemoryPersistence();
+
+        log.info("MQTTDataSender: 客户端配置, {}", options);
+
+        try {
+            MqttClient mqttClient = new MqttClient(broker, clientId, persistence);
+            mqttClient.setTimeToWait(this.mqttProperties.getActionTimeout().toMillis());
+            mqttClient.setCallback(this);
+            return mqttClient;
+        } catch (MqttException e) {
+            throw new IllegalStateException("MQTTDataSender: 初始化失败", e);
+        }
+    }
+
     private void connectTask() {
         int reconnectIntervalMs = (int) this.mqttProperties.getReconnectInterval().toMillis();
         int retryTimes = 1;
@@ -159,7 +133,12 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
                 return;
             }
 
-            log.info("MQTTDataSender: 连接断开, 第 {} 次重试", retryTimes);
+            if (this.mqttClient == null) {
+                log.info("MQTTDataSender: MQTTClient is null, running = {}", this.running.get());
+                return;
+            }
+
+            log.info("MQTTDataSender: 第 {} 次重试", retryTimes);
 
             try {
                 this.mqttClient.connect(this.options);
@@ -167,10 +146,27 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
             } catch (MqttException e) {
                 // 如果当前已连接
                 int code = e.getReasonCode();
-                if (code == MqttException.REASON_CODE_CLIENT_CONNECTED || code == MqttException.REASON_CODE_CONNECT_IN_PROGRESS) {
-                    log.info("MQTTDataSender: 已连接或连接中(" + code + ")");
+                if (code == MqttException.REASON_CODE_CLIENT_CONNECTED) {
+                    log.info("MQTTDataSender: 已连接(" + code + ")");
                     return;
                 }
+
+                if (code == MqttException.REASON_CODE_CONNECT_IN_PROGRESS) {
+                    try {
+                        this.mqttClient.close();
+                    } catch (MqttException e1) {
+                        log.warn("MQTTDataSender: 断开当前连接", e1);
+                    }
+
+                    try {
+                        this.mqttClient.disconnectForcibly(5000);
+                    } catch (MqttException e1) {
+                        log.warn("MQTTDataSender: 断开当前连接", e1);
+                    }
+
+                    this.mqttClient = this.createClient();
+                }
+
                 log.error("MQTTDataSender: 第 {} 次重连失败, 下次尝试时间[{}]", retryTimes,
                         LocalDateTime.now().plus(reconnectIntervalMs, ChronoUnit.MILLIS), e);
             }
@@ -199,11 +195,6 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
             log.info("MQTTDataSender: 已关闭");
         } catch (MqttException e) {
             log.warn("MQTTDataSender: 关闭发生异常", e);
-        } finally {
-            if (this.executorService != null && !this.executorService.isShutdown() && !this.executorService.isTerminated()) {
-                this.executorService.shutdown();
-                this.executorService = null;
-            }
         }
 
         this.mqttClient = null;
