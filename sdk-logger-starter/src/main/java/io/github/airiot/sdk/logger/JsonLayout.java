@@ -17,10 +17,10 @@
 
 package io.github.airiot.sdk.logger;
 
-import ch.qos.logback.classic.pattern.ThrowableProxyConverter;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.LayoutBase;
 import com.google.gson.Gson;
+import org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -28,6 +28,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.util.Collections;
 import java.util.Map;
 
 import static java.time.temporal.ChronoField.*;
@@ -37,7 +38,7 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
     private final static int initialBufferSize = 512;
     private final Gson gson = new Gson();
     private final ZoneId zoneId = ZonedDateTime.now().getZone();
-    private final ThrowableProxyConverter throwableProxyConverter = new ThrowableProxyConverter();
+    private final ExtendedWhitespaceThrowableProxyConverter throwableProxyConverter = new ExtendedWhitespaceThrowableProxyConverter();
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
@@ -55,6 +56,13 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
             .optionalStart()
             .appendOffset("+HH:MM", "GMT")
             .toFormatter();
+
+    @Override
+    public void start() {
+        super.start();
+        throwableProxyConverter.setOptionList(Collections.singletonList("10"));
+        throwableProxyConverter.start();
+    }
 
     @Override
     public String doLayout(ILoggingEvent event) {
@@ -91,7 +99,7 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
                 }
 
                 sb.append('"').append(key).append('"').append(":");
-                
+
                 if (value instanceof Number) {
                     sb.append(value);
                 } else {

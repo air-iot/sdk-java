@@ -26,6 +26,11 @@ import java.util.Map;
 public class LoggerContexts {
 
     /**
+     * 最大日志上下文层级
+     */
+    public static final int MAX_LEVEL = Integer.parseInt(System.getProperty("LOGGING_MAX_LEVELS", "10"));
+
+    /**
      * 根日志上下文
      */
     private static final LoggerContext ROOT_CONTEXT = new LoggerContext(null);
@@ -127,7 +132,7 @@ public class LoggerContexts {
         CONTEXT.set(context);
         return context;
     }
-    
+
     /**
      * 销毁当前线程的日志上下文
      */
@@ -136,20 +141,51 @@ public class LoggerContexts {
     }
 
     /**
+     * 重置当前日志上下文
+     * <br>
+     * 方法只会重置最上层的自定义日志上下文, 如果当前上下文内容为空则会初始化上下文. 如果当前日志上下文中只有 ROOT 上下文时, 则不会执行任何操作
+     */
+    public static LoggerContext reset() {
+        LoggerContext context = CONTEXT.get();
+        if (context == null) {
+            context = createContext();
+            CONTEXT.set(context);
+            return context;
+        }
+
+        LoggerContext newContext = new LoggerContext(context.getParent());
+        CONTEXT.set(newContext);
+        return newContext;
+    }
+
+    /**
      * 创建一个新的日志上下文. 如果当前线程已经有了日志上下文, 则会将当栈顶的日志上下文作为新创建的日志上下文的父上下文.
+     * <br>
+     * 每个线程最多保留 {@link #MAX_LEVEL} 层日志. 当超过该层数时, 调用该方法, 会重置最上级的日志上下文
      * <b>注: 在日志输出完成后, 调用 {@link #pop()} 方法弹出该元素, 否则可能产生内存泄漏</b>
      */
     public static LoggerContext push() {
         LoggerContext context = CONTEXT.get();
         if (context == null) {
             context = createContext();
-        } else {
-            context = new LoggerContext(context);
+            CONTEXT.set(context);
+            return context;
         }
 
-        CONTEXT.set(context);
+        // 如果达到最大层级
+        if (context.getLevel() >= MAX_LEVEL) {
+            System.err.println("[WARN] 当前线程 "
+                    + Thread.currentThread().getName()
+                    + "[" + Thread.currentThread().getId() + "] 创建的日志上下文层级已达到 " + context.getLevel()
+                    + " 层, 可能存在未释放日志上下文的代码, 需要在使用完日志上下文后调用 pop() 方法释放"
+            );
+            return reset();
+        }
 
-        return context;
+        LoggerContext newContext = new LoggerContext(context);
+        CONTEXT.set(newContext);
+
+        return newContext;
     }
 
     /**

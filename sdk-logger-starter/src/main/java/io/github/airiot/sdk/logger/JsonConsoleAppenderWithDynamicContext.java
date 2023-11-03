@@ -35,11 +35,16 @@ public class JsonConsoleAppenderWithDynamicContext extends UnsynchronizedAppende
     protected void append(ILoggingEvent eventObject) {
         LoggerContext current = LoggerContexts.getContext();
         LoggerContext parent = current.getParent();
+
         current.setParent(this.context);
         if (parent != null) {
             this.context.setParent(parent);
         }
-
-        this.delegate.doAppend(new LoggingEventWithContext(current, eventObject));
+        
+        try {
+            this.delegate.doAppend(new LoggingEventWithContext(current, eventObject));
+        } finally {
+            current.setParent(this.context.getParent());
+        }
     }
 }

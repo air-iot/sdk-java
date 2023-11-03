@@ -34,9 +34,12 @@ public class JsonLoggerApplicationRunListener implements SpringApplicationRunLis
 
     @Override
     public void contextLoaded(ConfigurableApplicationContext context) {
-        LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<>();
-        encoder.setLayout(new JsonLayout());
+        JsonLayout layout = new JsonLayout();
+        layout.start();
 
+        LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<>();
+        encoder.setLayout(layout);
+        
         ch.qos.logback.classic.LoggerContext lc = (ch.qos.logback.classic.LoggerContext) StaticLoggerBinder.getSingleton().getLoggerFactory();
         ConsoleAppender<ILoggingEvent> appender = new ConsoleAppender<>();
 

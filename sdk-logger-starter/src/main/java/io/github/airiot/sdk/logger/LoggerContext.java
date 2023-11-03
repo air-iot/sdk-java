@@ -38,11 +38,13 @@ public class LoggerContext {
     public static final LoggerContext EMPTY = new LoggerContext(null);
 
     private LoggerContext parent;
-    
+
     /**
      * 日志模式
      */
     private Mode mode = Mode.valueOf(System.getenv("LOGGING_MODE"), Mode.PRODUCT);
+
+    private int level;
 
     /**
      * 链路追踪ID
@@ -76,8 +78,13 @@ public class LoggerContext {
      */
     private final Map<String, Object> keys = new HashMap<>();
 
+    public int getLevel() {
+        return level;
+    }
+
     void setParent(LoggerContext parent) {
         this.parent = parent;
+        this.level = parent.getLevel() + 1;
     }
 
     public LoggerContext getParent() {
@@ -261,9 +268,30 @@ public class LoggerContext {
      */
     public Map<String, Object> getKeys(boolean recursive) {
         Map<String, Object> allKeys = new HashMap<>(this.keys);
-        if (recursive && parent != null) {
-            allKeys.putAll(parent.getKeys(true));
+        if (!recursive) {
+            return allKeys;
         }
+
+        LoggerContext previous = parent;
+        for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
+            if (previous == null) {
+                return allKeys;
+            }
+
+            Map<String, Object> parentKeys = previous.getKeys(true);
+            if (parentKeys == null || parentKeys.isEmpty()) {
+                continue;
+            }
+            
+            for (Map.Entry<String, Object> entry : parentKeys.entrySet()) {
+                if (!allKeys.containsKey(entry.getKey())) {
+                    allKeys.put(entry.getKey(), entry.getValue());
+                }
+            }
+
+            previous = previous.parent;
+        }
+
         return allKeys;
     }
 
@@ -289,5 +317,10 @@ public class LoggerContext {
 
     LoggerContext(LoggerContext parent) {
         this.parent = parent;
+        if (parent == null) {
+            this.level = 0;
+        } else {
+            this.level = parent.level + 1;
+        }
     }
 }

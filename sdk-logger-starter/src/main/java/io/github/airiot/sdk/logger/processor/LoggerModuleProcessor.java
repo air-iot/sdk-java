@@ -30,8 +30,9 @@ import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -115,7 +116,7 @@ public class LoggerModuleProcessor extends AbstractProcessor {
         options.setIndent(2);
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
         Yaml dumpYaml = new Yaml(options);
-        
+
         for (File file : this.serviceYamlFiles) {
             if (file.isDirectory()) {
                 File[] files = file.listFiles(subFile -> subFile.getName().endsWith(".yml") || subFile.getName().endsWith(".yaml"));
@@ -142,9 +143,10 @@ public class LoggerModuleProcessor extends AbstractProcessor {
         } catch (IOException e) {
             throw new IllegalArgumentException("读取日志模块列表到文件 '" + file.getAbsolutePath() + "' 失败", e);
         }
-
-        try (FileWriter writer = new FileWriter(file)) {
-            dumpYaml.dump(keyValues, writer);
+        
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            String content = dumpYaml.dump(keyValues);
+            fos.write(content.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new IllegalArgumentException("写入日志模块列表到文件 '" + file.getAbsolutePath() + "' 失败", e);
         }
