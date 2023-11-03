@@ -20,8 +20,9 @@ package io.github.airiot.sdk.driver.data.handlers;
 import io.github.airiot.sdk.driver.data.DataHandler;
 import io.github.airiot.sdk.driver.model.Tag;
 import io.github.airiot.sdk.driver.model.TagValue;
+import io.github.airiot.sdk.logger.LoggerFactory;
+import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -61,7 +62,7 @@ import java.util.Map;
  */
 public class ConvertValueHandler implements DataHandler {
 
-    private final Logger logger = LoggerFactory.getLogger(ConvertValueHandler.class);
+    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(ConvertValueHandler.class);
 
     /**
      * 计算精度

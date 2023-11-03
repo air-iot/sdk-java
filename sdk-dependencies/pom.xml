@@ -51,6 +51,11 @@
                 <artifactId>sdk-algorithm-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.github.air-iot</groupId>
+                <artifactId>sdk-jsonLogger-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>

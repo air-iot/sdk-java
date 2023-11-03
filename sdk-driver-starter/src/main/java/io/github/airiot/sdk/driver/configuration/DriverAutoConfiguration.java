@@ -34,10 +34,13 @@ import io.github.airiot.sdk.driver.data.impl.MQTTDataSender;
 import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.listener.DriverEventListener;
 import io.github.airiot.sdk.driver.listener.GrpcDriverEventListener;
+import io.github.airiot.sdk.logger.LoggerContexts;
+import io.github.airiot.sdk.logger.LoggerFactory;
 import io.grpc.Channel;
 import io.grpc.ManagedChannelBuilder;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -45,6 +48,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 
+import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -66,7 +70,7 @@ public class DriverAutoConfiguration {
         List<DataHandler> dataHandlers = handlers.stream().collect(Collectors.toList());
         return new DefaultDataHandlerChain(tagValueCache, dataHandlers);
     }
-    
+
     @Bean
     public GlobalContext globalContext() {
         return new GlobalContext();
@@ -137,5 +141,21 @@ public class DriverAutoConfiguration {
         }
     }
 
+    @Configuration
+    @ConditionalOnClass(LoggerFactory.class)
+    static class LoggerConfiguration {
+
+        private final DriverAppProperties properties;
+
+        public LoggerConfiguration(DriverAppProperties properties) {
+            this.properties = properties;
+        }
+
+        @PostConstruct
+        public void init() {
+            LoggerContexts.setDefaultProjectId(properties.getProjectId());
+            LoggerContexts.setDefaultService(properties.getProjectId() + "-" + properties.getInstanceId() + "-" + properties.getId());
+        }
+    }
 }
 
