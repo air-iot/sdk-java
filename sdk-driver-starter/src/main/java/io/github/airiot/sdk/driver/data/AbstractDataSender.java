@@ -27,6 +27,8 @@ import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.grpc.driver.Request;
 import io.github.airiot.sdk.driver.grpc.driver.Response;
 import io.github.airiot.sdk.driver.model.*;
+import io.github.airiot.sdk.logger.LoggerContext;
+import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
 import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.slf4j.Logger;
@@ -46,8 +48,8 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public abstract class AbstractDataSender implements DataSender, InitializingBean {
-    
-    private final Logger writePointLogger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(AbstractDataSender.class);
+
+    private final Logger writePointLogger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getDynamicLogger(AbstractDataSender.class);
     private final Logger writeEventLogger = LoggerFactory.withContext().module(DriverModules.WRITE_EVENT).getStaticLogger(AbstractDataSender.class);
 
     private final DateTimeFormatter logTimeFormatter = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
@@ -258,7 +260,13 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
     @Override
     public void writePoint(String tableId, String deviceId, long time, Map<String, Object> tagValues) {
         Point point = this.globalContext.createPoint(tableId, deviceId, time, tagValues);
-        this.writePoint(point);
+        LoggerContext context = LoggerContexts.push();
+        context.setKey(tableId);
+        try {
+            this.writePoint(point);
+        } finally {
+            LoggerContexts.pop();
+        }
     }
 
     @Override
@@ -286,6 +294,9 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
 
         String tableId = point.getTable();
         String deviceId = point.getId();
+
+        LoggerContext context = LoggerContexts.push();
+        context.setKey(tableId);
 
         Point newPoint = null;
 
@@ -351,8 +362,10 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
         } catch (Exception e) {
             writePointLogger.error("采集数据处理: 数据处理失败, point = {}", point, e);
             throw new DataSenderException(point, "数据处理失败", e);
+        } finally {
+            LoggerContexts.pop();
         }
-
+        
         try {
             this.doWritePoint(newPoint);
         } catch (Exception e) {

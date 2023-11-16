@@ -22,7 +22,7 @@ import java.util.*;
  */
 public class RangeValueHandlerV2 implements DataHandler {
 
-    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(RangeValueHandlerV2.class);
+    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getDynamicLogger(RangeValueHandlerV2.class);
 
     private final Set<String> actions = new HashSet<>(Arrays.asList("fixed", "boundary", "discard", "latest"));
 
