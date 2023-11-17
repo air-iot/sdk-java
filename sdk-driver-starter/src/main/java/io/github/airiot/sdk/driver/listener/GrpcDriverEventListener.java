@@ -873,7 +873,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.INFO);
                 }
             }
-            
+
             if (passed) {
                 try {
                     Object drvConfig = JSON.parseObject(config, this.driverConfigType);
@@ -936,9 +936,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     logger.debug("req = {}, type = schema, {}", request.getRequest(), schema);
                 }
 
-                // 替换版本号
-                schema = schema.replaceAll("__version__", driverApp.getVersion());
-                schema = schema.replaceAll("__sdk_version__", GlobalContext.getVersion());
+                if (schema != null) {
+                    // 替换版本号
+                    schema = schema.replaceAll("__version__", driverApp.getVersion());
+                    schema = schema.replaceAll("__sdk_version__", GlobalContext.getVersion());
+                }
 
                 result.setCode(200);
                 result.setResult(schema);
