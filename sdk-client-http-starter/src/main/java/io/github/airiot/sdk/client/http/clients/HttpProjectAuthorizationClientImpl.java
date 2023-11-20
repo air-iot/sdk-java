@@ -17,6 +17,7 @@
 
 package io.github.airiot.sdk.client.http.clients;
 
+import feign.FeignException;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dto.Token;
 import io.github.airiot.sdk.client.exception.AuthorizationException;
@@ -44,10 +45,18 @@ public class HttpProjectAuthorizationClientImpl implements AuthorizationClient {
         if (token != null && token.equals(this.properties) && !token.getToken().isExpired(Duration.ofSeconds(60))) {
             return token.getToken();
         }
-
-        ResponseDTO<Token> response = this.appClient.getToken(this.properties.getAppKey(), this.properties.getAppSecret());
-        Token t = response.unwrap(() -> new AuthorizationException(response.getCode(), response.getMessage(), response.getDetail()));
-        this.holder.set(new TokenHolder(this.properties.getAppKey(), this.properties.getAppSecret(), t));
-        return t;
+        
+        try {
+            ResponseDTO<Token> response = this.appClient.getToken(this.properties.getAppKey(), this.properties.getAppSecret());
+            Token t = response.unwrap(() -> new AuthorizationException(response.getCode(), response.getMessage(), response.getDetail()));
+            this.holder.set(new TokenHolder(this.properties.getAppKey(), this.properties.getAppSecret(), t));
+            return t;
+        } catch (FeignException.NotFound e) {
+            throw new AuthorizationException(404, "获取平台 token 失败", "请检查平台地址及端口是否正确", e);
+        } catch (FeignException e) {
+            throw new AuthorizationException(e.status(), e.getMessage(), e.contentUTF8());
+        } catch (Exception e) {
+            throw new AuthorizationException(500, "获取平台 token 失败", e.getMessage(), e);
+        }
     }
 }

@@ -41,13 +41,13 @@ public class RequestFailedException extends PlatformException {
     }
 
     public RequestFailedException(int code, String message, String details) {
-        super(message);
+        super(String.format("%s, %s", message, details));
         this.code = code;
         this.details = details;
     }
-    
+
     public RequestFailedException(int code, String message, String details, Throwable cause) {
-        super(message, cause);
+        super(String.format("%s, %s", message, details), cause);
         this.code = code;
         this.details = details;
     }
