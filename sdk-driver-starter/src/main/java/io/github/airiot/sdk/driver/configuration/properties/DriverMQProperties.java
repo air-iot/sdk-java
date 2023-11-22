@@ -23,6 +23,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 @ConfigurationProperties(prefix = "mq")
 public class DriverMQProperties {
@@ -42,6 +44,11 @@ public class DriverMQProperties {
      */
     @NestedConfigurationProperty
     private Rabbit rabbit = new Rabbit();
+    /**
+     * kafka 上报数据方式相关配置, 只有 {@link #type} 为 {@link DataSenderType#KAFKA} 时有效
+     */
+    @NestedConfigurationProperty
+    private Kafka kafka = new Kafka();
 
     public DataSenderType getType() {
         return type;
@@ -65,6 +72,14 @@ public class DriverMQProperties {
 
     public void setAmqp(Rabbit rabbit) {
         this.rabbit = rabbit;
+    }
+
+    public Kafka getKafka() {
+        return kafka;
+    }
+
+    public void setKafka(Kafka kafka) {
+        this.kafka = kafka;
     }
 
     public static class Mqtt {
@@ -275,6 +290,106 @@ public class DriverMQProperties {
         }
     }
 
+
+    /**
+     * kafka 消息组件
+     */
+    public static class Kafka {
+        /**
+         * kafka 服务地址列表
+         * <br>
+         * 例如:
+         * <pre>
+         *  mq:
+         *    kafka:
+         *      brokers:
+         *      - 192.168.88.130:9092
+         *      - 192.168.88.131:9092
+         * </pre>
+         */
+        private List<String> brokers = new ArrayList<>();
+        /**
+         * 客户端 ID. 如果不填写则自动生成
+         */
+        private String clientId;
+        /**
+         * 数据发送的目标分区. 如果不填写则根据消息的 key 分配到对应的分区
+         */
+        private Integer partition;
+        /**
+         * 连接超时
+         */
+        private Duration connectTimeout = Duration.ofSeconds(5);
+        /**
+         * 重连间隔
+         */
+        private Duration reconnectInterval = Duration.ofSeconds(5);
+        /**
+         * 发布消息超时
+         */
+        private Duration deliverTimeout = Duration.ofSeconds(5);
+
+        public List<String> getBrokers() {
+            return brokers;
+        }
+
+        public void setBrokers(List<String> brokers) {
+            this.brokers = brokers;
+        }
+
+        public String getClientId() {
+            return clientId;
+        }
+
+        public void setClientId(String clientId) {
+            this.clientId = clientId;
+        }
+
+        public Integer getPartition() {
+            return partition;
+        }
+
+        public void setPartition(Integer partition) {
+            this.partition = partition;
+        }
+
+        public Duration getConnectTimeout() {
+            return connectTimeout;
+        }
+
+        public void setConnectTimeout(Duration connectTimeout) {
+            this.connectTimeout = connectTimeout;
+        }
+
+        public Duration getReconnectInterval() {
+            return reconnectInterval;
+        }
+
+        public void setReconnectInterval(Duration reconnectInterval) {
+            this.reconnectInterval = reconnectInterval;
+        }
+
+        public Duration getDeliverTimeout() {
+            return deliverTimeout;
+        }
+
+        public void setDeliverTimeout(Duration deliverTimeout) {
+            this.deliverTimeout = deliverTimeout;
+        }
+
+        @Override
+        public String toString() {
+            return "Kafka{" +
+                    "brokers=" + brokers +
+                    ", clientId='" + clientId + '\'' +
+                    ", partition=" + partition +
+                    ", connectTimeout=" + connectTimeout +
+                    ", reconnectInterval=" + reconnectInterval +
+                    ", deliverTimeout=" + deliverTimeout +
+                    '}';
+        }
+    }
+
     public enum DataSenderType {
         /**
          * MQTT 协议
@@ -284,6 +399,10 @@ public class DriverMQProperties {
         /**
          * Rabbitmq 协议
          */
-        RABBIT
+        RABBIT,
+        /**
+         * kafka 消息组件
+         */
+        KAFKA,
     }
 }

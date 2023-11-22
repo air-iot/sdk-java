@@ -365,7 +365,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
         } finally {
             LoggerContexts.pop();
         }
-        
+
         try {
             this.doWritePoint(newPoint);
         } catch (Exception e) {
@@ -376,26 +376,26 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
 
     @Override
     public void logDebug(String tableId, String deviceId, String msg) throws LogSenderException {
-        this.doWriteLog(tableId, deviceId, "debug", this.formatLog(deviceId, msg));
+        this.doWriteLog(tableId, deviceId, "debug", this.formatLog(tableId, deviceId, msg));
     }
 
     @Override
     public void logInfo(String tableId, String deviceId, String msg) throws LogSenderException {
-        this.doWriteLog(tableId, deviceId, "info", this.formatLog(deviceId, msg));
+        this.doWriteLog(tableId, deviceId, "info", this.formatLog(tableId, deviceId, msg));
     }
 
     @Override
     public void logWarn(String tableId, String deviceId, String msg) throws LogSenderException {
-        this.doWriteLog(tableId, deviceId, "warn", this.formatLog(deviceId, msg));
+        this.doWriteLog(tableId, deviceId, "warn", this.formatLog(tableId, deviceId, msg));
     }
 
     @Override
     public void logError(String tableId, String deviceId, String msg) throws LogSenderException {
-        this.doWriteLog(tableId, deviceId, "error", this.formatLog(deviceId, msg));
+        this.doWriteLog(tableId, deviceId, "error", this.formatLog(tableId, deviceId, msg));
     }
 
-    private String formatLog(String deviceId, String msg) {
-        return "{\"time\":\"" + LocalDateTime.now().format(logTimeFormatter) + "\",\"message\":\"" + msg + "\",\"deviceId\":\"" + deviceId + "\"}";
+    private String formatLog(String tableId, String deviceId, String msg) {
+        return "{\"time\":\"" + LocalDateTime.now().format(logTimeFormatter) + "\",\"message\":\"" + msg + "\",\"tableId\":\"" + tableId + "\",\"deviceId\":\"" + deviceId + "\"}";
     }
 
     /**
