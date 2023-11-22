@@ -89,10 +89,20 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     private final Metadata metadata;
 
     private final ThreadPoolExecutor runExecutor;
-
     private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
     private ApplicationContext applicationContext;
 
+    private ClientCall<SchemaResult, SchemaRequest> schemaCall = null;
+    private ClientCall<RunResult, RunRequest> runCall = null;
+    private ClientCall<RunResult, RunRequest> writeTagCall = null;
+    private ClientCall<BatchRunResult, BatchRunRequest> batchRunCall = null;
+    private ClientCall<Debug, Debug> debugCall = null;
+    private ClientCall<StartResult, StartRequest> startCall = null;
+    private ClientCall<HttpProxyResult, HttpProxyRequest> httpProxyCall = null;
+    /**
+     * 上次连接时间
+     */
+    private volatile long lastConnectTime = System.currentTimeMillis();
     private Thread connectThread;
     private Thread healthCheckThread;
 
@@ -218,6 +228,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 return;
             }
 
+            if (!State.RUNNING.equals(this.state.get())) {
+                healthCheckLogger.info("心跳检测: 被终止");
+                return;
+            }
+
             healthCheckLogger.info("心跳检测: 发送心跳");
 
             try {
@@ -301,6 +316,28 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             this.connectThread = null;
         }
 
+        if (this.schemaCall != null) {
+            this.schemaCall.cancel("重新连接", null);
+        }
+        if (this.runCall != null) {
+            this.runCall.cancel("重新连接", null);
+        }
+        if (this.writeTagCall != null) {
+            this.writeTagCall.cancel("重新连接", null);
+        }
+        if (this.batchRunCall != null) {
+            this.batchRunCall.cancel("重新连接", null);
+        }
+        if (this.debugCall != null) {
+            this.debugCall.cancel("重新连接", null);
+        }
+        if (this.startCall != null) {
+            this.startCall.cancel("重新连接", null);
+        }
+        if (this.httpProxyCall != null) {
+            this.httpProxyCall.cancel("重新连接", null);
+        }
+
         log.info("创建连接 Driver 服务线程");
         this.connectThread = new Thread(this::connectTask);
         this.connectThread.setName("connectTask");
@@ -316,6 +353,18 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         int retryTimes = 0;
         long retryInterval = this.grpcProperties.getReconnectInterval().toMillis();
 
+        long waitTime = retryInterval - (System.currentTimeMillis() - this.lastConnectTime);
+        if (waitTime > 0) {
+            try {
+                log.info("连接 Driver 服务: 等待 {}ms", waitTime);
+                TimeUnit.MILLISECONDS.sleep(waitTime);
+            } catch (InterruptedException e) {
+                return;
+            }
+        }
+        
+        this.lastConnectTime = System.currentTimeMillis();
+
         log.info("连接 Driver 服务线程已启动, 重连间隔 {}ms", retryInterval);
 
         while (this.state.get().isRunning()) {
@@ -325,86 +374,86 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             try {
                 // schema
-                ClientCall<SchemaResult, SchemaRequest> schemaCall = channel.newCall(
+                this.schemaCall = channel.newCall(
                         DriverServiceGrpc.getSchemaStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata schemaMetadata = new Metadata();
                 schemaMetadata.merge(this.metadata);
-                SchemaHandler schemaHandler = new SchemaHandler(schemaCall, this.driverApp, this::handleStreamClosed);
-                schemaCall.start(schemaHandler, schemaMetadata);
-                schemaCall.request(Integer.MAX_VALUE);
+                SchemaHandler schemaHandler = new SchemaHandler(this.schemaCall, this.driverApp, this::handleStreamClosed);
+                this.schemaCall.start(schemaHandler, schemaMetadata);
+                this.schemaCall.request(Integer.MAX_VALUE);
 
                 Type commandType = this.getCommandType();
 
                 // run
-                ClientCall<RunResult, RunRequest> runCall = channel.newCall(
+                this.runCall = channel.newCall(
                         DriverServiceGrpc.getRunStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata runMetadata = new Metadata();
                 runMetadata.merge(this.metadata);
-                RunHandler runHandler = new RunHandler(this.runExecutor, runCall, this.driverApp, commandType, this::handleStreamClosed);
-                runCall.start(runHandler, runMetadata);
-                runCall.request(Integer.MAX_VALUE);
+                RunHandler runHandler = new RunHandler(this.runExecutor, this.runCall, this.driverApp, commandType, this::handleStreamClosed);
+                this.runCall.start(runHandler, runMetadata);
+                this.runCall.request(Integer.MAX_VALUE);
 
                 // writeTag
-                ClientCall<RunResult, RunRequest> writeTagCall = channel.newCall(
+                this.writeTagCall = channel.newCall(
                         DriverServiceGrpc.getWriteTagStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata writeTagMetadata = new Metadata();
                 writeTagMetadata.merge(this.metadata);
-                WriteTagHandler writeTagHandler = new WriteTagHandler(this.runExecutor, writeTagCall, this.driverApp, commandType, this::handleStreamClosed);
-                writeTagCall.start(writeTagHandler, writeTagMetadata);
-                writeTagCall.request(Integer.MAX_VALUE);
+                WriteTagHandler writeTagHandler = new WriteTagHandler(this.runExecutor, this.writeTagCall, this.driverApp, commandType, this::handleStreamClosed);
+                this.writeTagCall.start(writeTagHandler, writeTagMetadata);
+                this.writeTagCall.request(Integer.MAX_VALUE);
 
                 // batchRun
-                ClientCall<BatchRunResult, BatchRunRequest> batchRunCall = channel.newCall(
+                this.batchRunCall = channel.newCall(
                         DriverServiceGrpc.getBatchRunStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata batchRunMetadata = new Metadata();
                 batchRunMetadata.merge(this.metadata);
-                BatchRunHandler batchRunHandler = new BatchRunHandler(this.runExecutor, batchRunCall, this.driverApp, commandType, this::handleStreamClosed);
-                batchRunCall.start(batchRunHandler, batchRunMetadata);
-                batchRunCall.request(Integer.MAX_VALUE);
+                BatchRunHandler batchRunHandler = new BatchRunHandler(this.runExecutor, this.batchRunCall, this.driverApp, commandType, this::handleStreamClosed);
+                this.batchRunCall.start(batchRunHandler, batchRunMetadata);
+                this.batchRunCall.request(Integer.MAX_VALUE);
 
                 // debug
-                ClientCall<Debug, Debug> debugCall = channel.newCall(
+                this.debugCall = channel.newCall(
                         DriverServiceGrpc.getDebugStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata debugRunMetadata = new Metadata();
                 debugRunMetadata.merge(this.metadata);
-                DebugHandler debugHandler = new DebugHandler(debugCall, this.driverApp, this::handleStreamClosed);
-                debugCall.start(debugHandler, debugRunMetadata);
-                debugCall.request(Integer.MAX_VALUE);
+                DebugHandler debugHandler = new DebugHandler(this.debugCall, this.driverApp, this::handleStreamClosed);
+                this.debugCall.start(debugHandler, debugRunMetadata);
+                this.debugCall.request(Integer.MAX_VALUE);
 
                 // start
-                ClientCall<StartResult, StartRequest> startCall = channel.newCall(
+                this.startCall = channel.newCall(
                         DriverServiceGrpc.getStartStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata startMetadata = new Metadata();
                 startMetadata.merge(this.metadata);
-                StartHandler startHandler = new StartHandler(startCall, this.driverApp, this.globalContext,
+                StartHandler startHandler = new StartHandler(this.startCall, this.driverApp, this.globalContext,
                         this.getDriverConfigType(), this.getTagType(),
                         this::handleStreamClosed, this::clearTagValueCache);
-                startCall.start(startHandler, startMetadata);
-                startCall.request(Integer.MAX_VALUE);
+                this.startCall.start(startHandler, startMetadata);
+                this.startCall.request(Integer.MAX_VALUE);
 
                 // httpProxy
                 if (this.driverApp.supportHttpProxy()) {
-                    ClientCall<HttpProxyResult, HttpProxyRequest> httpProxyCall = channel.newCall(
+                    this.httpProxyCall = channel.newCall(
                             DriverServiceGrpc.getHttpProxyStreamMethod(),
                             CallOptions.DEFAULT.withWaitForReady()
                     );
                     Metadata httpProxyMetadata = new Metadata();
                     httpProxyMetadata.merge(this.metadata);
-                    HttpProxyHandler httpProxyHandler = new HttpProxyHandler(httpProxyCall, this.driverApp, this::handleStreamClosed);
-                    httpProxyCall.start(httpProxyHandler, httpProxyMetadata);
-                    httpProxyCall.request(Integer.MAX_VALUE);
+                    HttpProxyHandler httpProxyHandler = new HttpProxyHandler(this.httpProxyCall, this.driverApp, this::handleStreamClosed);
+                    this.httpProxyCall.start(httpProxyHandler, httpProxyMetadata);
+                    this.httpProxyCall.request(Integer.MAX_VALUE);
                 }
 
                 this.state.set(State.RUNNING);
@@ -435,10 +484,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     }
 
     private void handleStreamClosed(Status status, Metadata trailers) {
-//        if (this.reconnecting.compareAndSet(false, true)) {
-//            log.warn("stream closed, reconnecting, status = {}, metadata = {}", status, trailers);
-//            this.state.set(State.CONNECTING);
-//        }
+        log.warn("stream closed, reconnecting, status = {}, metadata = {}", status, trailers);
+        if (State.RUNNING.equals(this.state.get())) {
+            this.state.set(State.RECONNECTING);
+            this.connect();
+        }
     }
 
     static class RunHandler extends ClientCall.Listener<RunRequest> {
