@@ -22,6 +22,7 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.MessageProperties;
 import io.github.airiot.sdk.driver.GlobalContext;
+import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverMQProperties;
 import io.github.airiot.sdk.driver.data.AbstractDataSender;
@@ -59,12 +60,12 @@ public class AmqpDataSender extends AbstractDataSender {
         }
     }
 
-    public AmqpDataSender(DriverDataProperties properties, String projectId,
+    public AmqpDataSender(DriverDataProperties properties, DriverAppProperties appProperties,
                           DataHandlerChain chain,
                           DriverMQProperties.Rabbit rabbitProperties,
                           GlobalContext globalContext,
                           DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
-        super(properties, projectId, globalContext, chain, driverGrpcClient);
+        super(properties, appProperties, globalContext, chain, driverGrpcClient);
         this.rabbitProperties = rabbitProperties;
     }
 

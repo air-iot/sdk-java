@@ -19,13 +19,16 @@ package io.github.airiot.sdk.driver.data;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.GlobalContext;
+import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
 import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.grpc.driver.Request;
 import io.github.airiot.sdk.driver.grpc.driver.Response;
+import io.github.airiot.sdk.driver.grpc.driver.TableDataRequest;
 import io.github.airiot.sdk.driver.model.*;
 import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
@@ -62,6 +65,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
             .create();
 
     protected final String projectId;
+    protected final String serviceId;
     private final DataHandlerChain chain;
     private final GlobalContext globalContext;
     private final DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient;
@@ -70,11 +74,12 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
 
     private Consumer<Point> dataHandlerOnConnectionLost;
 
-    public AbstractDataSender(DriverDataProperties properties, String projectId, GlobalContext globalContext,
+    public AbstractDataSender(DriverDataProperties properties, DriverAppProperties appProperties, GlobalContext globalContext,
                               DataHandlerChain chain,
                               DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
         this.properties = properties;
-        this.projectId = projectId;
+        this.projectId = appProperties.getProjectId();
+        this.serviceId = appProperties.getInstanceId();
         this.globalContext = globalContext;
         this.chain = chain;
         this.driverGrpcClient = driverGrpcClient;
@@ -233,6 +238,49 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
         } catch (Exception e) {
             throw new RunLogSenderException(runLog, e);
         }
+    }
+
+
+    protected Response internalFindTableData(String tableId, String deviceId) {
+        TableDataRequest request = TableDataRequest.newBuilder()
+                .setService(this.serviceId)
+                .setTableDataId(tableId)
+                .setTableDataId(deviceId)
+                .build();
+        Response response = this.driverGrpcClient.findTableData(request);
+        if (!response.getStatus()) {
+            throw new QueryTableDataException(response.getCode(), response.getInfo(), response.getDetail());
+        }
+        return response;
+    }
+
+    @Override
+    public <T> T findTableData(Class<T> tClass, String tableId, String deviceId) {
+        Response response = this.internalFindTableData(tableId, deviceId);
+        if (response.getResult().isEmpty()) {
+            return null;
+        }
+
+        if (tClass == String.class) {
+            return (T) response.getResult().toStringUtf8();
+        }
+
+        return gson.fromJson(response.getResult().toStringUtf8(), tClass);
+    }
+
+    @Override
+    public <T> T findTableData(TypeToken<T> tClass, String tableId, String deviceId) throws QueryTableDataException {
+        Response response = this.internalFindTableData(tableId, deviceId);
+        if (response.getResult().isEmpty()) {
+            return null;
+        }
+
+        return gson.fromJson(response.getResult().toStringUtf8(), tClass);
+    }
+    
+    @Override
+    public Map<String, Object> findTableData(String tableId, String deviceId) {
+        return this.findTableData(MAP_TYPE_TOKEN, tableId, deviceId);
     }
 
     @Override

@@ -137,10 +137,10 @@ public class DriverAutoConfiguration {
                                          DriverMQProperties mqProperties,
                                          DataHandlerChain dataHandlerChain, GlobalContext globalContext,
                                          DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
-            return new AmqpDataSender(driverDataProperties, driverAppProperties.getProjectId(),
+            return new AmqpDataSender(driverDataProperties, driverAppProperties,
                     dataHandlerChain, mqProperties.getAmqp(), globalContext, driverGrpcClient);
         }
-        
+
         @Bean
         @ConditionalOnProperty(prefix = "mq", name = "type", havingValue = "kafka")
         @ConditionalOnMissingBean(DataSender.class)
@@ -149,9 +149,8 @@ public class DriverAutoConfiguration {
                                           DriverMQProperties mqProperties,
                                           DataHandlerChain dataHandlerChain, GlobalContext globalContext,
                                           DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
-            return new KafkaDataSender(driverDataProperties, driverAppProperties, mqProperties.getKafka(),
-                    driverAppProperties.getProjectId(),
-                    globalContext, dataHandlerChain, driverGrpcClient);
+            return new KafkaDataSender(driverDataProperties, driverAppProperties,
+                    mqProperties.getKafka(), globalContext, dataHandlerChain, driverGrpcClient);
         }
     }
 

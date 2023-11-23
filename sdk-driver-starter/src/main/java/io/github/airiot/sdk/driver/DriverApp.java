@@ -23,6 +23,7 @@ import io.github.airiot.sdk.driver.listener.BatchCmd;
 import io.github.airiot.sdk.driver.listener.Cmd;
 import io.github.airiot.sdk.driver.model.RunLog;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -43,6 +44,26 @@ public interface DriverApp<DriverConfig, Command, Tag> {
      * @return 版本号
      */
     String getVersion();
+
+    /**
+     * 获取可启用调式日志的包名列表
+     * <br>
+     * 当驱动实例中勾选了调试模式时, 会将这些包内的输出日志等级调整为 DEBUG 级别, 以便于调试.
+     * <br>
+     * 默认开启调试日志的包名列表: <br>
+     * 1. 默认将 {@link org.springframework.boot.autoconfigure.SpringBootApplication} 注解修饰类所在的包添加到日志根目录列表中. <br>
+     * 2. 配置文件中 {@code logging.level} 中定义的包名也会添加到日志根目录列表中. <br>
+     * 3. SDK 中所有包都会添加到日志根目录列表中. <br>
+     * <pre>
+     *     // 示例
+     *     return Arrays.asList("cn.demo.driver", "cn.demo.server");
+     * </pre>
+     *
+     * @return 日志根目录列表
+     */
+    default List<String> getDebugLoggerPackages() {
+        return Collections.emptyList();
+    }
 
     /**
      * HTTP 请求代理. 可以将驱动中的功能通过 HTTP 暴露到平台.

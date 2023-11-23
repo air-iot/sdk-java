@@ -17,6 +17,7 @@
 
 package io.github.airiot.sdk.driver.data;
 
+import com.google.gson.reflect.TypeToken;
 import io.github.airiot.sdk.driver.grpc.driver.Response;
 import io.github.airiot.sdk.driver.model.Event;
 import io.github.airiot.sdk.driver.model.Point;
@@ -33,6 +34,9 @@ import java.util.Map;
  * 主要用于驱动向平台上报采集到的数据, 运行过程中的重要事件, 日志等信息
  */
 public interface DataSender extends SmartLifecycle {
+
+    TypeToken<Map<String, Object>> MAP_TYPE_TOKEN = new TypeToken<Map<String, Object>>() {
+    };
 
     /**
      * 上报驱动采集到的数据
@@ -91,6 +95,40 @@ public interface DataSender extends SmartLifecycle {
      * @throws RunLogSenderException 如果发送运行日志时发生异常
      */
     Response writeRunLog(RunLog runLog) throws RunLogSenderException;
+
+    /**
+     * 查询表中指定的设备信息
+     *
+     * @param tClass   设备信息类型
+     * @param tableId  表标识
+     * @param deviceId 设备编号
+     * @param <T>      设备信息类型泛型
+     * @return 设备信息
+     * @throws QueryTableDataException 如果查询失败
+     */
+    <T> T findTableData(Class<T> tClass, String tableId, String deviceId) throws QueryTableDataException;
+
+    /**
+     * 查询表中指定的设备信息
+     *
+     * @param tClass   设备信息类型
+     * @param tableId  表标识
+     * @param deviceId 设备编号
+     * @param <T>      设备信息类型泛型
+     * @return 设备信息
+     * @throws QueryTableDataException 如果查询失败
+     */
+    <T> T findTableData(TypeToken<T> tClass, String tableId, String deviceId) throws QueryTableDataException;
+
+    /**
+     * 查询表中指定的设备信息, 并以 Map 的结构返回
+     *
+     * @param tableId  表标识
+     * @param deviceId 设备编号
+     * @return 设备信息
+     * @throws QueryTableDataException 如果查询失败
+     */
+    Map<String, Object> findTableData(String tableId, String deviceId) throws QueryTableDataException;
 
     /**
      * 更新设备信息

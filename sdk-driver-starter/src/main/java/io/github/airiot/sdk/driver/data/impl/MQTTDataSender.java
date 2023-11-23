@@ -49,7 +49,6 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
     private final DriverAppProperties driverAppProperties;
     private final DriverMQProperties.Mqtt mqttProperties;
     private final int qos;
-    private final long publishTimeoutMs;
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private MqttConnectOptions options;
@@ -61,10 +60,9 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
                           DriverMQProperties.Mqtt mqttProperties,
                           GlobalContext globalContext,
                           DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
-        super(properties, driverAppProperties.getProjectId(), globalContext, chain, driverGrpcClient);
+        super(properties, driverAppProperties, globalContext, chain, driverGrpcClient);
         this.driverAppProperties = driverAppProperties;
         this.mqttProperties = mqttProperties;
-        this.publishTimeoutMs = mqttProperties.getPublishTimeout().toMillis();
         this.qos = mqttProperties.getQos();
         
         this.options = new MqttConnectOptions();

@@ -60,10 +60,9 @@ public class KafkaDataSender extends AbstractDataSender {
     public KafkaDataSender(DriverDataProperties properties,
                            DriverAppProperties driverAppProperties,
                            DriverMQProperties.Kafka kafkaProperties,
-                           String projectId,
                            GlobalContext globalContext, DataHandlerChain chain,
                            DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
-        super(properties, projectId, globalContext, chain, driverGrpcClient);
+        super(properties, driverAppProperties, globalContext, chain, driverGrpcClient);
         this.driverAppProperties = driverAppProperties;
         this.kafkaProperties = kafkaProperties;
         this.partition = kafkaProperties.getPartition();
@@ -142,7 +141,7 @@ public class KafkaDataSender extends AbstractDataSender {
     public void doWriteLog(String tableId, String deviceId, String level, String message) throws LogSenderException {
         String key = String.format("%s/%s/%s/%s", this.projectId, level, tableId, deviceId);
         ProducerRecord<String, Bytes> record = new ProducerRecord<>("logs", key, new Bytes(message.getBytes()));
-        
+
         try {
             this.kafkaClient.send(record).get();
         } catch (Exception e) {
