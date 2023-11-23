@@ -46,17 +46,16 @@ import io.grpc.stub.MetadataUtils;
 import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.springframework.beans.BeansException;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.core.env.*;
 import org.springframework.util.CollectionUtils;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -90,6 +89,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     private final ThreadPoolExecutor runExecutor;
     private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
+
+    private final Set<String> loggerRoots = new HashSet<>();
     private ApplicationContext applicationContext;
 
     private ClientCall<SchemaResult, SchemaRequest> schemaCall = null;
@@ -102,13 +103,40 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     /**
      * 上次连接时间
      */
-    private volatile long lastConnectTime = System.currentTimeMillis();
+    private volatile long lastConnectTime = 0;
     private Thread connectThread;
     private Thread healthCheckThread;
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
+        Map<String, Object> springApplications = applicationContext.getBeansWithAnnotation(SpringBootApplication.class);
+        if (!CollectionUtils.isEmpty(springApplications)) {
+            // 找出所有的日志配置, 即 logging.level 下的配置
+            Environment environment = applicationContext.getEnvironment();
+            if (environment instanceof ConfigurableEnvironment) {
+                String prefix = "logging.level.";
+                int prefixLength = prefix.length();
+                MutablePropertySources propertySources = ((ConfigurableEnvironment) environment).getPropertySources();
+                for (PropertySource<?> propertySource : propertySources) {
+                    if (!(propertySource instanceof EnumerablePropertySource)) {
+                        continue;
+                    }
+                    String[] propertyNames = ((EnumerablePropertySource<?>) propertySource).getPropertyNames();
+                    for (String propertyName : propertyNames) {
+                        if (propertyName.startsWith(prefix)) {
+                            loggerRoots.add(propertyName.substring(prefixLength));
+                        }
+                    }
+                }
+            }
+            loggerRoots.add("io.github.airiot.sdk");
+            for (Map.Entry<String, Object> entry : springApplications.entrySet()) {
+                if (entry.getValue() != null) {
+                    loggerRoots.add(entry.getValue().getClass().getPackage().getName());
+                }
+            }
+        }
     }
 
     public static <T> ByteString encode(T data) {
@@ -353,16 +381,18 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         int retryTimes = 0;
         long retryInterval = this.grpcProperties.getReconnectInterval().toMillis();
 
-        long waitTime = retryInterval - (System.currentTimeMillis() - this.lastConnectTime);
-        if (waitTime > 0) {
-            try {
-                log.info("连接 Driver 服务: 等待 {}ms", waitTime);
-                TimeUnit.MILLISECONDS.sleep(waitTime);
-            } catch (InterruptedException e) {
-                return;
+        if (this.lastConnectTime != 0) {
+            long waitTime = retryInterval - (System.currentTimeMillis() - this.lastConnectTime);
+            if (waitTime > 0) {
+                try {
+                    log.info("连接 Driver 服务: 等待 {}ms", waitTime);
+                    TimeUnit.MILLISECONDS.sleep(waitTime);
+                } catch (InterruptedException e) {
+                    return;
+                }
             }
         }
-        
+
         this.lastConnectTime = System.currentTimeMillis();
 
         log.info("连接 Driver 服务线程已启动, 重连间隔 {}ms", retryInterval);
@@ -439,7 +469,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 startMetadata.merge(this.metadata);
                 StartHandler startHandler = new StartHandler(this.startCall, this.driverApp, this.globalContext,
                         this.getDriverConfigType(), this.getTagType(),
-                        this::handleStreamClosed, this::clearTagValueCache);
+                        this::handleStreamClosed, this.loggerRoots, this::clearTagValueCache);
                 this.startCall.start(startHandler, startMetadata);
                 this.startCall.request(Integer.MAX_VALUE);
 
@@ -802,6 +832,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     static class StartHandler extends ClientCall.Listener<StartRequest> {
         private final Logger logger = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(StartHandler.class);
+        private final Set<String> loggerRoots;
         private final ClientCall<StartResult, StartRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final GlobalContext globalContext;
@@ -815,6 +846,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             GlobalContext globalContext,
                             Type driverConfigType, Type tagType,
                             StreamClosedCallback closedCallback,
+                            Set<String> loggerRoots,
                             Consumer<DriverSingleConfig<BasicConfig<?>>> clearCacheFn
         ) {
             this.clientCall = clientCall;
@@ -823,6 +855,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             this.driverConfigType = driverConfigType;
             this.tagType = tagType;
             this.closedCallback = closedCallback;
+            this.loggerRoots = loggerRoots;
             this.clearCacheFn = clearCacheFn;
         }
 
@@ -917,10 +950,27 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
                 // 根据驱动实例中的 debug 配置设置 logger 的日志等级
                 ch.qos.logback.classic.LoggerContext loggerContext = (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
+
+                Level level = Level.INFO;
                 if (driverConfig.isDebug()) {
-                    loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.DEBUG);
+                    level = Level.DEBUG;
+                }
+
+                List<String> driverLoggerRoots = driverApp.getDebugLoggerPackages();
+
+                // 如果没有指定日志根节点, 则设置根节点的日志等级
+                if (this.loggerRoots.isEmpty() && CollectionUtils.isEmpty(driverLoggerRoots)) {
+                    loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(level);
                 } else {
-                    loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.INFO);
+                    for (String loggerRoot : this.loggerRoots) {
+                        loggerContext.getLogger(loggerRoot).setLevel(level);
+                    }
+
+                    if (driverLoggerRoots != null) {
+                        for (String driverLoggerRoot : driverLoggerRoots) {
+                            loggerContext.getLogger(driverLoggerRoot).setLevel(level);
+                        }
+                    }
                 }
             }
 
