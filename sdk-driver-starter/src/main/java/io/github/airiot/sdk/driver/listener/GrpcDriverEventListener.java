@@ -55,7 +55,10 @@ import org.springframework.util.CollectionUtils;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -90,7 +93,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     private final ThreadPoolExecutor runExecutor;
     private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
 
-    private final Set<String> loggerRoots = new HashSet<>();
+    private final Map<String, Level> loggerRoots = new HashMap<>();
     private ApplicationContext applicationContext;
 
     private ClientCall<SchemaResult, SchemaRequest> schemaCall = null;
@@ -125,15 +128,15 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     String[] propertyNames = ((EnumerablePropertySource<?>) propertySource).getPropertyNames();
                     for (String propertyName : propertyNames) {
                         if (propertyName.startsWith(prefix)) {
-                            loggerRoots.add(propertyName.substring(prefixLength));
+                            loggerRoots.putIfAbsent(propertyName.substring(prefixLength), Level.toLevel(String.valueOf(propertySource.getProperty(propertyName)), Level.INFO));
                         }
                     }
                 }
             }
-            loggerRoots.add("io.github.airiot.sdk");
+            loggerRoots.putIfAbsent("io.github.airiot.sdk", Level.INFO);
             for (Map.Entry<String, Object> entry : springApplications.entrySet()) {
                 if (entry.getValue() != null) {
-                    loggerRoots.add(entry.getValue().getClass().getPackage().getName());
+                    loggerRoots.putIfAbsent(entry.getValue().getClass().getPackage().getName(), Level.INFO);
                 }
             }
         }
@@ -832,7 +835,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     static class StartHandler extends ClientCall.Listener<StartRequest> {
         private final Logger logger = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(StartHandler.class);
-        private final Set<String> loggerRoots;
+        private final Map<String, Level> loggerRoots;
         private final ClientCall<StartResult, StartRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final GlobalContext globalContext;
@@ -846,7 +849,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             GlobalContext globalContext,
                             Type driverConfigType, Type tagType,
                             StreamClosedCallback closedCallback,
-                            Set<String> loggerRoots,
+                            Map<String, Level> loggerRoots,
                             Consumer<DriverSingleConfig<BasicConfig<?>>> clearCacheFn
         ) {
             this.clientCall = clientCall;
@@ -951,24 +954,33 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 // 根据驱动实例中的 debug 配置设置 logger 的日志等级
                 ch.qos.logback.classic.LoggerContext loggerContext = (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
 
-                Level level = Level.INFO;
-                if (driverConfig.isDebug()) {
-                    level = Level.DEBUG;
-                }
 
                 List<String> driverLoggerRoots = driverApp.getDebugLoggerPackages();
 
                 // 如果没有指定日志根节点, 则设置根节点的日志等级
                 if (this.loggerRoots.isEmpty() && CollectionUtils.isEmpty(driverLoggerRoots)) {
-                    loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(level);
-                } else {
-                    for (String loggerRoot : this.loggerRoots) {
-                        loggerContext.getLogger(loggerRoot).setLevel(level);
+                    if (driverConfig.isDebug()) {
+                        loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.DEBUG);
+                    } else {
+                        loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.INFO);
                     }
-
+                } else {
                     if (driverLoggerRoots != null) {
+                        Level level = driverConfig.isDebug() ? Level.DEBUG : Level.INFO;
                         for (String driverLoggerRoot : driverLoggerRoots) {
                             loggerContext.getLogger(driverLoggerRoot).setLevel(level);
+                        }
+                    }
+
+                    if (driverConfig.isDebug()) {
+                        // 如果是调试模式则修改为 DEBUG 等级
+                        for (Map.Entry<String, Level> entry : this.loggerRoots.entrySet()) {
+                            loggerContext.getLogger(entry.getKey()).setLevel(Level.DEBUG);
+                        }
+                    } else {
+                        // 如果不是调试模式, 则恢复为之前的日志等级
+                        for (Map.Entry<String, Level> entry : this.loggerRoots.entrySet()) {
+                            loggerContext.getLogger(entry.getKey()).setLevel(entry.getValue());
                         }
                     }
                 }
