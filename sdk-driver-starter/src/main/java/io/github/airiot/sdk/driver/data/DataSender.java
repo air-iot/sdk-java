@@ -18,6 +18,9 @@
 package io.github.airiot.sdk.driver.data;
 
 import com.google.gson.reflect.TypeToken;
+import io.github.airiot.sdk.driver.data.warning.Warning;
+import io.github.airiot.sdk.driver.data.warning.WarningRecovery;
+import io.github.airiot.sdk.driver.data.warning.WarningSenderException;
 import io.github.airiot.sdk.driver.grpc.driver.Response;
 import io.github.airiot.sdk.driver.model.Event;
 import io.github.airiot.sdk.driver.model.Point;
@@ -279,6 +282,24 @@ public interface DataSender extends SmartLifecycle {
             // ignore
         }
     }
+
+    /**
+     * 发送报警信息
+     *
+     * @param warning 报警信息
+     * @throws WarningSenderException 如果报警信息发送失败
+     */
+    void sendWarning(Warning warning) throws WarningSenderException;
+
+    /**
+     * 发送报警恢复信息
+     *
+     * @param tableId  报警设备所属工作表标识
+     * @param deviceId 报警设备的编号
+     * @param recovery 报警恢复信息
+     * @throws WarningSenderException 如果报警恢复信息发送失败
+     */
+    void recoverWarning(String tableId, String deviceId, WarningRecovery recovery) throws WarningSenderException;
 
     @Override
     default int getPhase() {

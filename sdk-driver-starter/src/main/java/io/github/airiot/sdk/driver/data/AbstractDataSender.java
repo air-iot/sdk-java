@@ -19,9 +19,13 @@ package io.github.airiot.sdk.driver.data;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
 import com.google.gson.reflect.TypeToken;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
+import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.GlobalContext;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
@@ -33,7 +37,6 @@ import io.github.airiot.sdk.driver.model.*;
 import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.logging.LogLevel;
@@ -41,22 +44,40 @@ import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+
 public abstract class AbstractDataSender implements DataSender, InitializingBean {
 
     private final Logger writePointLogger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getDynamicLogger(AbstractDataSender.class);
     private final Logger writeEventLogger = LoggerFactory.withContext().module(DriverModules.WRITE_EVENT).getStaticLogger(AbstractDataSender.class);
+    protected final Logger warningLogger = LoggerFactory.withContext().module(DriverModules.WARNING).getStaticLogger(AbstractDataSender.class);
 
     private final DateTimeFormatter logTimeFormatter = DateTimeFormatter.ofPattern("yyyy:MM:dd HH:mm:ss");
     protected final Gson gson = new Gson();
+    protected final Gson warningGson = new GsonBuilder()
+            .registerTypeAdapter(ZonedDateTime.class, new TypeAdapter<ZonedDateTime>() {
+                @Override
+                public void write(JsonWriter out, ZonedDateTime value) throws IOException {
+                    out.value(value.format(ISO_OFFSET_DATE_TIME));
+                }
+
+                @Override
+                public ZonedDateTime read(JsonReader in) throws IOException {
+                    return ZonedDateTime.parse(in.nextString(), ISO_OFFSET_DATE_TIME);
+                }
+            })
+            .create();
     /**
      * {@link Point} 序列化专用对象
      */
@@ -277,7 +298,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
 
         return gson.fromJson(response.getResult().toStringUtf8(), tClass);
     }
-    
+
     @Override
     public Map<String, Object> findTableData(String tableId, String deviceId) {
         return this.findTableData(MAP_TYPE_TOKEN, tableId, deviceId);
