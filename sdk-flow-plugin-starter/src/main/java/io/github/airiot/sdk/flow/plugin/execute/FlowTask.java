@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.flow.plugin;
+package io.github.airiot.sdk.flow.plugin.execute;
 
 
 /**

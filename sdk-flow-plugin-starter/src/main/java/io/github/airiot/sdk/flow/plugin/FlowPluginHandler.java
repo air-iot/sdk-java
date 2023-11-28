@@ -17,103 +17,90 @@
 
 package io.github.airiot.sdk.flow.plugin;
 
-import com.google.gson.Gson;
-import com.google.protobuf.ByteString;
+import io.github.airiot.sdk.flow.plugin.debug.FlowPluginDebugHandler;
+import io.github.airiot.sdk.flow.plugin.execute.FlowPluginExecuteHandler;
+import io.grpc.CallOptions;
+import io.grpc.Channel;
 import io.grpc.ClientCall;
 import io.grpc.Metadata;
-import io.grpc.Status;
+import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 
-class FlowPluginHandler extends ClientCall.Listener<FlowRequest> {
+public class FlowPluginHandler {
 
     private final Logger logger = LoggerFactory.getLogger(FlowPluginHandler.class);
 
-    private final Gson gson = new Gson();
-
-    private final ClientCall<FlowResponse, FlowRequest> call;
+    private final Channel channel;
     private final FlowPluginDelegate plugin;
+    private final FlowPluginClosedListener listener;
+    private FlowPluginExecuteHandler executeHandler;
+    private FlowPluginDebugHandler debugHandler;
 
-    private final String name;
-    private final String mode;
-
-    public FlowPluginHandler(ClientCall<FlowResponse, FlowRequest> call, FlowPluginDelegate plugin) {
-        this.call = call;
+    public FlowPluginHandler(Channel channel, FlowPluginDelegate plugin, FlowPluginClosedListener listener) {
+        this.channel = channel;
         this.plugin = plugin;
-        this.name = plugin.getName();
-        this.mode = plugin.getPluginType().getType();
+        this.listener = listener;
     }
 
-    public void close() {
-        this.call.cancel("主动关闭", null);
+    Metadata getMetadata() {
+        Metadata metadata = new Metadata();
+        metadata.put(
+                Metadata.Key.of("name", Metadata.ASCII_STRING_MARSHALLER),
+                Hex.encodeHexString(plugin.getName().getBytes(StandardCharsets.UTF_8))
+        );
+        metadata.put(
+                Metadata.Key.of("mode", Metadata.ASCII_STRING_MARSHALLER),
+                Hex.encodeHexString(plugin.getPluginType().getType().getBytes(StandardCharsets.UTF_8))
+        );
+        return metadata;
     }
 
-    @Override
-    public void onClose(Status status, Metadata trailers) {
-        logger.warn("流程插件已关闭, name={}, mode={}", name, mode);
-    }
-
-    @Override
-    public void onReady() {
-        logger.info("流程插件已就绪, name={}, mode={}", name, mode);
-    }
-
-    @Override
-    public void onMessage(FlowRequest request) {
-        String config = request.getConfig().toStringUtf8();
-        logger.info("流程插件[{}-{}]: 收到请求, project={}, flowId={}, job={}, elementId={}, elementJob={}, config={}",
-                name, mode, request.getProjectId(), request.getFlowId(), request.getJob(),
-                request.getElementId(), request.getElementJob(), config);
-
-        FlowResponse response = null;
-        try {
-            FlowTaskResult result = this.plugin.execute(request);
-            response = FlowResponse.newBuilder()
-                    .setStatus(true)
-                    .setInfo(result.getMessage())
-                    .setDetail(result.getDetails())
-                    .setElementJob(request.getElementJob())
-                    .setResult(ByteString.copyFrom(gson.toJson(result.getData()), StandardCharsets.UTF_8))
-                    .build();
-
-            logger.info("流程插件[{}-{}]: 处理结果, project={}, flowId={}, job={}, elementId={}, elementJob={}, result={}",
-                    name, mode, request.getProjectId(), request.getFlowId(), request.getJob(),
-                    request.getElementId(), request.getElementJob(), result);
-        } catch (FlowPluginException e) {
-            logger.error("流程插件[{}-{}]: 处理请求异常, project={}, flowId={}, job={}, elementId={}, elementJob={}, config={}",
-                    name, mode, request.getProjectId(), request.getFlowId(), request.getJob(),
-                    request.getElementId(), request.getElementJob(), config, e);
-
-            response = FlowResponse.newBuilder()
-                    .setStatus(false)
-                    .setInfo(e.getInfo())
-                    .setDetail(e.getDetails())
-                    .setElementJob(request.getElementJob())
-                    .build();
-        } catch (Exception e) {
-            logger.error("流程插件[{}-{}]: 处理请求异常, project={}, flowId={}, job={}, elementId={}, elementJob={}, config={}",
-                    name, mode, request.getProjectId(), request.getFlowId(), request.getJob(),
-                    request.getElementId(), request.getElementJob(), config, e);
-
-            response = FlowResponse.newBuilder()
-                    .setStatus(false)
-                    .setInfo(e.getMessage())
-                    .setDetail("")
-                    .setElementJob(request.getElementJob())
-                    .build();
+    public void start() {
+        logger.info("注册插件: name={}, mode={}", plugin.getName(), plugin.getPluginType().getType());
+        if (this.executeHandler != null) {
+            this.executeHandler.close();
         }
 
-        try {
-            this.call.sendMessage(response);
-            logger.info("流程插件[{}-{}]: 处理结果已发送, project={}, flowId={}, job={}, elementId={}, elementJob={}",
-                    name, mode, request.getProjectId(), request.getFlowId(), request.getJob(),
-                    request.getElementId(), request.getElementJob());
-        } catch (Exception e) {
-            logger.error("流程插件[{}-{}]: 发送处理结果异常, project={}, flowId={}, job={}, elementId={}, elementJob={}, config={}, response={}",
-                    name, mode, request.getProjectId(), request.getFlowId(), request.getJob(),
-                    request.getElementId(), request.getElementJob(), config, response, e);
+        if (this.debugHandler != null) {
+            this.debugHandler.close();
         }
+
+        ClientCall<FlowResponse, FlowRequest> executeCall = channel.newCall(
+                PluginServiceGrpc.getRegisterMethod(),
+                CallOptions.DEFAULT.withWaitForReady()
+        );
+
+        this.executeHandler = new FlowPluginExecuteHandler(executeCall, plugin, this.listener);
+        executeCall.start(executeHandler, this.getMetadata());
+        executeCall.request(Integer.MAX_VALUE);
+
+
+        ClientCall<DebugResponse, DebugRequest> debugCall = channel.newCall(
+                PluginServiceGrpc.getDebugStreamMethod(),
+                CallOptions.DEFAULT.withWaitForReady()
+        );
+
+        this.debugHandler = new FlowPluginDebugHandler(debugCall, plugin, this.listener);
+        debugCall.start(this.debugHandler, this.getMetadata());
+        debugCall.request(Integer.MAX_VALUE);
+
+        logger.info("注册插件: 成功, name={}, mode={}", plugin.getName(), plugin.getPluginType());
+    }
+
+    public void stop() {
+        logger.info("注销插件: name={}, mode={}", plugin.getName(), plugin.getPluginType().getType());
+
+        if (this.executeHandler != null) {
+            this.executeHandler.close();
+        }
+
+        if (this.debugHandler != null) {
+            this.debugHandler.close();
+        }
+
+        logger.info("注销插件: 成功, name={}, mode={}", plugin.getName(), plugin.getPluginType());
     }
 }
