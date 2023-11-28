@@ -86,6 +86,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
             .create();
 
     protected final String projectId;
+    protected final String driverId;
     protected final String serviceId;
     private final DataHandlerChain chain;
     private final GlobalContext globalContext;
@@ -100,6 +101,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                               DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
         this.properties = properties;
         this.projectId = appProperties.getProjectId();
+        this.driverId = appProperties.getId();
         this.serviceId = appProperties.getInstanceId();
         this.globalContext = globalContext;
         this.chain = chain;
@@ -264,6 +266,8 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
 
     protected Response internalFindTableData(String tableId, String deviceId) {
         TableDataRequest request = TableDataRequest.newBuilder()
+                .setProjectId(this.projectId)
+                .setDriverId(this.driverId)
                 .setService(this.serviceId)
                 .setTableDataId(tableId)
                 .setTableDataId(deviceId)

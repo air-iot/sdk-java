@@ -81,6 +81,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     private static final Gson GSON = new Gson();
 
+    private final String projectId;
+    private final String driverId;
     private final String driverInstanceId;
     private final DriverListenerProperties grpcProperties;
     private final GlobalContext globalContext;
@@ -158,6 +160,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         this.driverApp = driverApp;
         this.grpcProperties = grpcProperties;
 
+        this.projectId = driverProperties.getProjectId();
+        this.driverId = driverProperties.getId();
         this.driverInstanceId = driverProperties.getInstanceId();
         this.parameterizedTypes = this.parseParameterizedTypes();
 
@@ -268,6 +272,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             try {
                 HealthCheckResponse response = this.driverGrpcClient.healthCheck(HealthCheckRequest.newBuilder()
+                        .setProjectId(this.projectId)
+                        .setDriverId(this.driverId)
+                        .setDriverId(this.driverInstanceId)
                         .setService(this.driverInstanceId)
                         .build());
                 healthCheckLogger.info("心跳检测: 接收到心跳响应, status = {}", response.getStatus());
@@ -546,7 +553,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -630,7 +639,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -713,7 +724,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -792,7 +805,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -865,7 +880,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             logger.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -1026,7 +1043,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             logger.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -1095,7 +1114,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             logger.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
