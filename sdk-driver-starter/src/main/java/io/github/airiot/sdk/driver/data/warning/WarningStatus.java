@@ -15,40 +15,22 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.exception;
-
+package io.github.airiot.sdk.driver.data.warning;
 
 /**
- * 请求失败异常
+ * 报警确认状态
  */
-public class RequestFailedException extends PlatformException {
+public enum WarningStatus {
+    CONFIRMED("已确认"),
+    UNCONFIRMED("未确认");
 
-    /**
-     * 错误码
-     */
-    private final int code;
-    /**
-     * 详细说明
-     */
-    private final String details;
+    private final String value;
 
-    public int getCode() {
-        return code;
+    public String getValue() {
+        return value;
     }
 
-    public String getDetails() {
-        return details;
-    }
-
-    public RequestFailedException(int code, String message, String details) {
-        super(String.format("%s, %s", message, details));
-        this.code = code;
-        this.details = details;
-    }
-
-    public RequestFailedException(int code, String message, String details, Throwable cause) {
-        super(String.format("%s, %s", message, details), cause);
-        this.code = code;
-        this.details = details;
+    WarningStatus(String value) {
+        this.value = value;
     }
 }

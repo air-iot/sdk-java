@@ -15,40 +15,20 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.exception;
+package io.github.airiot.sdk.flow.plugin;
 
 
-/**
- * 请求失败异常
- */
-public class RequestFailedException extends PlatformException {
+import io.grpc.Metadata;
+import io.grpc.Status;
+
+@FunctionalInterface
+public interface FlowPluginClosedListener {
 
     /**
-     * 错误码
+     * 插件关闭时回调
+     *
+     * @param status   关闭信息
+     * @param trailers 元数据
      */
-    private final int code;
-    /**
-     * 详细说明
-     */
-    private final String details;
-
-    public int getCode() {
-        return code;
-    }
-
-    public String getDetails() {
-        return details;
-    }
-
-    public RequestFailedException(int code, String message, String details) {
-        super(String.format("%s, %s", message, details));
-        this.code = code;
-        this.details = details;
-    }
-
-    public RequestFailedException(int code, String message, String details, Throwable cause) {
-        super(String.format("%s, %s", message, details), cause);
-        this.code = code;
-        this.details = details;
-    }
+    void onClose(Status status, Metadata trailers);
 }

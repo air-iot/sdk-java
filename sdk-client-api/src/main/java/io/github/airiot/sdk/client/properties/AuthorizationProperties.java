@@ -22,15 +22,24 @@ import io.github.airiot.sdk.client.context.RequestContext;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.core.env.CommandLinePropertySource;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.PropertySource;
 import org.springframework.util.StringUtils;
+
+import java.util.Optional;
 
 /**
  * 平台认证配置
  */
 @ConfigurationProperties(prefix = AuthorizationProperties.PREFIX)
-public class AuthorizationProperties implements InitializingBean {
+public class AuthorizationProperties implements InitializingBean, EnvironmentAware {
 
     public static final String PREFIX = "airiot.client.authorization";
+
+    private Environment environment;
 
     /**
      * 认证类型
@@ -85,6 +94,20 @@ public class AuthorizationProperties implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
+        if (this.environment instanceof ConfigurableEnvironment) {
+            ConfigurableEnvironment env = (ConfigurableEnvironment) this.environment;
+            Optional<PropertySource<?>> propertySource = env.getPropertySources().stream()
+                    .filter(ps -> ps instanceof CommandLinePropertySource)
+                    .findAny();
+            if (propertySource.isPresent()) {
+                PropertySource<?> ps = propertySource.get();
+                Object projectId = ps.getProperty("project");
+                if (projectId != null) {
+                    this.projectId = String.valueOf(projectId);
+                }
+            }
+        }
+        
         if (Type.PROJECT.equals(this.type) && !StringUtils.hasText(this.projectId)) {
             throw new IllegalArgumentException("设置 airiot.client.authorization.type=PROJECT 时, 必须设置 airiot.client.authorization.project-id");
         }
@@ -95,6 +118,11 @@ public class AuthorizationProperties implements InitializingBean {
         if (!StringUtils.hasText(this.appKey) || !StringUtils.hasText(this.appSecret)) {
             throw new IllegalArgumentException("未设置 appKey 或 appSecret");
         }
+    }
+
+    @Override
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
     }
 
     public enum Type {

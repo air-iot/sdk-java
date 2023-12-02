@@ -17,6 +17,11 @@
 
 package io.github.airiot.sdk.flow.plugin;
 
+import io.github.airiot.sdk.flow.plugin.debug.DebugResult;
+import io.github.airiot.sdk.flow.plugin.debug.DebugTask;
+import io.github.airiot.sdk.flow.plugin.execute.FlowTask;
+import io.github.airiot.sdk.flow.plugin.execute.FlowTaskResult;
+
 /**
  * 流程插件接口
  */
@@ -81,4 +86,13 @@ public interface FlowPlugin<Request> {
      * @throws FlowPluginException 如果请求执行失败
      */
     FlowTaskResult execute(FlowTask<Request> task) throws FlowPluginException;
+
+    /**
+     * 流程插件调试接口
+     *
+     * @param task 调试任务信息
+     * @return 调试结果及调试日志
+     * @throws FlowPluginException 如果调试失败
+     */
+    DebugResult debug(DebugTask<Request> task) throws FlowPluginException;
 }

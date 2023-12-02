@@ -15,40 +15,40 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.exception;
-
+package io.github.airiot.sdk.flow.plugin.debug;
 
 /**
- * 请求失败异常
+ * 调试日志
  */
-public class RequestFailedException extends PlatformException {
-
+public class DebugLog {
     /**
-     * 错误码
+     * 日志的等级
      */
-    private final int code;
+    private final String level;
     /**
-     * 详细说明
+     * 日志的时间
      */
-    private final String details;
+    private final String time;
+    /**
+     * 日志的内容
+     */
+    private final String msg;
 
-    public int getCode() {
-        return code;
+    public String getLevel() {
+        return level;
     }
 
-    public String getDetails() {
-        return details;
+    public String getTime() {
+        return time;
     }
 
-    public RequestFailedException(int code, String message, String details) {
-        super(String.format("%s, %s", message, details));
-        this.code = code;
-        this.details = details;
+    public String getMsg() {
+        return msg;
     }
 
-    public RequestFailedException(int code, String message, String details, Throwable cause) {
-        super(String.format("%s, %s", message, details), cause);
-        this.code = code;
-        this.details = details;
+    public DebugLog(String level, String time, String msg) {
+        this.level = level;
+        this.time = time;
+        this.msg = msg;
     }
 }

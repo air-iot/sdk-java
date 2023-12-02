@@ -19,11 +19,15 @@ package io.github.airiot.sdk.flow.plugin;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import io.github.airiot.sdk.flow.plugin.debug.DebugResult;
+import io.github.airiot.sdk.flow.plugin.debug.DebugTask;
+import io.github.airiot.sdk.flow.plugin.execute.FlowTask;
+import io.github.airiot.sdk.flow.plugin.execute.FlowTaskResult;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
-class FlowPluginDelegate implements FlowPlugin<Object> {
+public class FlowPluginDelegate implements FlowPlugin<Object> {
 
     private final Gson gson = new Gson();
     private final FlowPlugin<Object> delegate;
@@ -71,6 +75,11 @@ class FlowPluginDelegate implements FlowPlugin<Object> {
         return this.delegate.execute(request);
     }
 
+    @Override
+    public DebugResult debug(DebugTask<Object> request) throws FlowPluginException {
+        return this.delegate.debug(request);
+    }
+
     public FlowTaskResult execute(FlowRequest request) throws FlowPluginException {
         Object config;
         if (this.requestType == Void.class) {
@@ -85,6 +94,23 @@ class FlowPluginDelegate implements FlowPlugin<Object> {
         return this.delegate.execute(new FlowTask<>(
                 request.getProjectId(), request.getFlowId(), request.getJob(),
                 request.getElementId(), request.getElementJob(), config
+        ));
+    }
+
+    public DebugResult debug(DebugRequest request) throws FlowPluginException {
+        Object config;
+        if (this.requestType == Void.class) {
+            config = null;
+        } else {
+            try {
+                config = this.gson.fromJson(request.getConfig().toStringUtf8(), this.requestType);
+            } catch (JsonSyntaxException e) {
+                throw new FlowPluginException("解析节点配置信息失败", e);
+            }
+        }
+        return this.delegate.debug(new DebugTask<>(
+                request.getProjectId(), request.getFlowId(),
+                request.getElementId(), config
         ));
     }
 }

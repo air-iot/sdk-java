@@ -30,6 +30,7 @@ import io.github.airiot.sdk.driver.data.DataSender;
 import io.github.airiot.sdk.driver.data.DefaultDataHandlerChain;
 import io.github.airiot.sdk.driver.data.handlers.TagValueCache;
 import io.github.airiot.sdk.driver.data.impl.AmqpDataSender;
+import io.github.airiot.sdk.driver.data.impl.KafkaDataSender;
 import io.github.airiot.sdk.driver.data.impl.MQTTDataSender;
 import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.listener.DriverEventListener;
@@ -136,8 +137,20 @@ public class DriverAutoConfiguration {
                                          DriverMQProperties mqProperties,
                                          DataHandlerChain dataHandlerChain, GlobalContext globalContext,
                                          DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
-            return new AmqpDataSender(driverDataProperties, driverAppProperties.getProjectId(),
+            return new AmqpDataSender(driverDataProperties, driverAppProperties,
                     dataHandlerChain, mqProperties.getAmqp(), globalContext, driverGrpcClient);
+        }
+
+        @Bean
+        @ConditionalOnProperty(prefix = "mq", name = "type", havingValue = "kafka")
+        @ConditionalOnMissingBean(DataSender.class)
+        public DataSender kafkaDataSender(DriverDataProperties driverDataProperties,
+                                          DriverAppProperties driverAppProperties,
+                                          DriverMQProperties mqProperties,
+                                          DataHandlerChain dataHandlerChain, GlobalContext globalContext,
+                                          DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
+            return new KafkaDataSender(driverDataProperties, driverAppProperties,
+                    mqProperties.getKafka(), globalContext, dataHandlerChain, driverGrpcClient);
         }
     }
 

@@ -15,40 +15,25 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.exception;
+package io.github.airiot.sdk.driver;
 
+import org.apache.kafka.common.protocol.types.Field;
 
 /**
- * 请求失败异常
+ * 驱动默认内置模块
  */
-public class RequestFailedException extends PlatformException {
+public interface DriverModules {
 
-    /**
-     * 错误码
-     */
-    private final int code;
-    /**
-     * 详细说明
-     */
-    private final String details;
+    String HEARTBEAT = "健康检查";
+    String START = "启动驱动";
+    String RUN = "执行指令";
+    String BATCH_RUN = "批量执行指令";
+    String WRITE_TAG = "写数据点";
+    String WRITE_POINTS = "写数据点值";
+    String WRITE_EVENT = "发送事件";
+    String SCHEMA = "Schema";
+    String DEBUG = "调试";
+    String HTTP_PROXY = "Http代理";
+    String WARNING = "报警";
 
-    public int getCode() {
-        return code;
-    }
-
-    public String getDetails() {
-        return details;
-    }
-
-    public RequestFailedException(int code, String message, String details) {
-        super(String.format("%s, %s", message, details));
-        this.code = code;
-        this.details = details;
-    }
-
-    public RequestFailedException(int code, String message, String details, Throwable cause) {
-        super(String.format("%s, %s", message, details), cause);
-        this.code = code;
-        this.details = details;
-    }
 }

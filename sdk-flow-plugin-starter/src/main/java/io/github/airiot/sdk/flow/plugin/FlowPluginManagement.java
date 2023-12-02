@@ -18,14 +18,15 @@
 package io.github.airiot.sdk.flow.plugin;
 
 import io.github.airiot.sdk.flow.configuration.FlowPluginProperties;
-import io.grpc.*;
-import org.apache.commons.codec.binary.Hex;
+import io.grpc.Channel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
+import io.grpc.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.util.StringUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -36,7 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * 流程插件管理器
  */
-public class FlowPluginManagement implements SmartLifecycle {
+public class FlowPluginManagement implements SmartLifecycle, FlowPluginClosedListener {
 
     private final Logger logger = LoggerFactory.getLogger(FlowPluginManagement.class);
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -47,6 +48,11 @@ public class FlowPluginManagement implements SmartLifecycle {
     private final List<FlowPluginHandler> handlers;
 
     private final Channel channel;
+
+    /**
+     * 上次连接时间
+     */
+    private volatile long lastConnectTime = 0;
 
     /**
      * 连接线程
@@ -87,11 +93,15 @@ public class FlowPluginManagement implements SmartLifecycle {
 
     @Override
     public void start() {
-        this.running.set(true);
+        if (!this.running.compareAndSet(false, true)) {
+            throw new IllegalStateException("流程插件已启动, 不能重复启动");
+        }
 
         // 执行各个插件的 onStart 方法
         for (FlowPluginDelegate plugin : this.plugins) {
             plugin.onStart();
+            FlowPluginHandler handler = new FlowPluginHandler(this.channel, plugin, this);
+            this.handlers.add(handler);
         }
 
         this.startConnect();
@@ -102,7 +112,7 @@ public class FlowPluginManagement implements SmartLifecycle {
         this.running.set(false);
 
         for (FlowPluginHandler handler : this.handlers) {
-            handler.close();
+            handler.stop();
         }
         this.handlers.clear();
 
@@ -132,14 +142,13 @@ public class FlowPluginManagement implements SmartLifecycle {
      */
     private void reconnect() {
         if (!this.running.get()) {
-            logger.warn("服务已停止, 无法重连");
+            logger.warn("服务已停止");
             return;
         }
 
         for (FlowPluginHandler handler : this.handlers) {
-            handler.close();
+            handler.stop();
         }
-        this.handlers.clear();
 
         // 执行状态变更回调函数
         for (FlowPluginDelegate value : this.plugins) {
@@ -171,29 +180,8 @@ public class FlowPluginManagement implements SmartLifecycle {
             logger.info("第 {} 次连接流程引擎服务", retryTimes);
 
             try {
-                for (FlowPluginDelegate plugin : this.plugins) {
-                    logger.info("注册插件: name={}, mode={}", plugin.getName(), plugin.getPluginType().getType());
-                    Metadata metadata = new Metadata();
-                    metadata.put(
-                            Metadata.Key.of("name", Metadata.ASCII_STRING_MARSHALLER),
-                            Hex.encodeHexString(plugin.getName().getBytes(StandardCharsets.UTF_8))
-                    );
-                    metadata.put(
-                            Metadata.Key.of("mode", Metadata.ASCII_STRING_MARSHALLER),
-                            Hex.encodeHexString(plugin.getPluginType().getType().getBytes(StandardCharsets.UTF_8))
-                    );
-
-                    ClientCall<FlowResponse, FlowRequest> call = channel.newCall(
-                            PluginServiceGrpc.getRegisterMethod(),
-                            CallOptions.DEFAULT.withWaitForReady()
-                    );
-                    FlowPluginHandler startHandler = new FlowPluginHandler(call, plugin);
-                    call.start(startHandler, metadata);
-                    call.request(Integer.MAX_VALUE);
-
-                    this.handlers.add(startHandler);
-
-                    logger.info("注册插件: 成功, name={}, mode={}", plugin.getName(), plugin.getPluginType());
+                for (FlowPluginHandler handler : this.handlers) {
+                    handler.start();
                 }
 
                 // 所有插件都注册成功后, 执行回调函数
@@ -283,5 +271,15 @@ public class FlowPluginManagement implements SmartLifecycle {
                 }
             }
         }
+    }
+
+    @Override
+    public void onClose(Status status, Metadata trailers) {
+        if (!this.running.get()) {
+            return;
+        }
+
+        logger.error("流程插件服务连接已断开, status = {}, metadata = {}", status, trailers);
+        this.reconnect();
     }
 }

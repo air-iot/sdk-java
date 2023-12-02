@@ -46,8 +46,10 @@ import io.grpc.stub.MetadataUtils;
 import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.springframework.beans.BeansException;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.core.env.*;
 import org.springframework.util.CollectionUtils;
 
 import java.lang.reflect.ParameterizedType;
@@ -61,6 +63,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -72,13 +75,15 @@ import java.util.function.Consumer;
  * @see DriverApp 具体的驱动实现类
  */
 public class GrpcDriverEventListener implements DriverEventListener, ApplicationContextAware {
-
+    
     private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(GrpcDriverEventListener.class);
 
     private final Logger healthCheckLogger = LoggerFactory.withContext().module(DriverModules.HEARTBEAT).getStaticLogger(GrpcDriverEventListener.class);
 
     private static final Gson GSON = new Gson();
 
+    private final String projectId;
+    private final String driverId;
     private final String driverInstanceId;
     private final DriverListenerProperties grpcProperties;
     private final GlobalContext globalContext;
@@ -89,16 +94,55 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     private final Metadata metadata;
 
     private final ThreadPoolExecutor runExecutor;
-
     private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
+
+    private final Map<String, Level> loggerRoots = new HashMap<>();
     private ApplicationContext applicationContext;
 
+    private ClientCall<SchemaResult, SchemaRequest> schemaCall = null;
+    private ClientCall<RunResult, RunRequest> runCall = null;
+    private ClientCall<RunResult, RunRequest> writeTagCall = null;
+    private ClientCall<BatchRunResult, BatchRunRequest> batchRunCall = null;
+    private ClientCall<Debug, Debug> debugCall = null;
+    private ClientCall<StartResult, StartRequest> startCall = null;
+    private ClientCall<HttpProxyResult, HttpProxyRequest> httpProxyCall = null;
+    /**
+     * 上次连接时间
+     */
+    private volatile long lastConnectTime = 0;
     private Thread connectThread;
     private Thread healthCheckThread;
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
         this.applicationContext = applicationContext;
+        Map<String, Object> springApplications = applicationContext.getBeansWithAnnotation(SpringBootApplication.class);
+        if (!CollectionUtils.isEmpty(springApplications)) {
+            // 找出所有的日志配置, 即 logging.level 下的配置
+            Environment environment = applicationContext.getEnvironment();
+            if (environment instanceof ConfigurableEnvironment) {
+                String prefix = "logging.level.";
+                int prefixLength = prefix.length();
+                MutablePropertySources propertySources = ((ConfigurableEnvironment) environment).getPropertySources();
+                for (PropertySource<?> propertySource : propertySources) {
+                    if (!(propertySource instanceof EnumerablePropertySource)) {
+                        continue;
+                    }
+                    String[] propertyNames = ((EnumerablePropertySource<?>) propertySource).getPropertyNames();
+                    for (String propertyName : propertyNames) {
+                        if (propertyName.startsWith(prefix)) {
+                            loggerRoots.putIfAbsent(propertyName.substring(prefixLength), Level.toLevel(String.valueOf(propertySource.getProperty(propertyName)), Level.INFO));
+                        }
+                    }
+                }
+            }
+            loggerRoots.putIfAbsent("io.github.airiot.sdk", Level.INFO);
+            for (Map.Entry<String, Object> entry : springApplications.entrySet()) {
+                if (entry.getValue() != null) {
+                    loggerRoots.putIfAbsent(entry.getValue().getClass().getPackage().getName(), Level.INFO);
+                }
+            }
+        }
     }
 
     public static <T> ByteString encode(T data) {
@@ -117,6 +161,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         this.driverApp = driverApp;
         this.grpcProperties = grpcProperties;
 
+        this.projectId = driverProperties.getProjectId();
+        this.driverId = driverProperties.getId();
         this.driverInstanceId = driverProperties.getInstanceId();
         this.parameterizedTypes = this.parseParameterizedTypes();
 
@@ -218,10 +264,18 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 return;
             }
 
+            if (!State.RUNNING.equals(this.state.get())) {
+                healthCheckLogger.info("心跳检测: 被终止");
+                return;
+            }
+
             healthCheckLogger.info("心跳检测: 发送心跳");
 
             try {
                 HealthCheckResponse response = this.driverGrpcClient.healthCheck(HealthCheckRequest.newBuilder()
+                        .setProjectId(this.projectId)
+                        .setDriverId(this.driverId)
+                        .setDriverId(this.driverInstanceId)
                         .setService(this.driverInstanceId)
                         .build());
                 healthCheckLogger.info("心跳检测: 接收到心跳响应, status = {}", response.getStatus());
@@ -301,6 +355,28 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             this.connectThread = null;
         }
 
+        if (this.schemaCall != null) {
+            this.schemaCall.cancel("重新连接", null);
+        }
+        if (this.runCall != null) {
+            this.runCall.cancel("重新连接", null);
+        }
+        if (this.writeTagCall != null) {
+            this.writeTagCall.cancel("重新连接", null);
+        }
+        if (this.batchRunCall != null) {
+            this.batchRunCall.cancel("重新连接", null);
+        }
+        if (this.debugCall != null) {
+            this.debugCall.cancel("重新连接", null);
+        }
+        if (this.startCall != null) {
+            this.startCall.cancel("重新连接", null);
+        }
+        if (this.httpProxyCall != null) {
+            this.httpProxyCall.cancel("重新连接", null);
+        }
+
         log.info("创建连接 Driver 服务线程");
         this.connectThread = new Thread(this::connectTask);
         this.connectThread.setName("connectTask");
@@ -316,6 +392,20 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         int retryTimes = 0;
         long retryInterval = this.grpcProperties.getReconnectInterval().toMillis();
 
+        if (this.lastConnectTime != 0) {
+            long waitTime = retryInterval - (System.currentTimeMillis() - this.lastConnectTime);
+            if (waitTime > 0) {
+                try {
+                    log.info("连接 Driver 服务: 等待 {}ms", waitTime);
+                    TimeUnit.MILLISECONDS.sleep(waitTime);
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
+        }
+
+        this.lastConnectTime = System.currentTimeMillis();
+
         log.info("连接 Driver 服务线程已启动, 重连间隔 {}ms", retryInterval);
 
         while (this.state.get().isRunning()) {
@@ -323,88 +413,90 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             log.info("连接 Driver 服务: 第 {} 次连接", retryTimes);
 
+            StreamClosedCallback callback = new OnceStreamClosedCallback(this::handleStreamClosed);
+
             try {
                 // schema
-                ClientCall<SchemaResult, SchemaRequest> schemaCall = channel.newCall(
+                this.schemaCall = channel.newCall(
                         DriverServiceGrpc.getSchemaStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata schemaMetadata = new Metadata();
                 schemaMetadata.merge(this.metadata);
-                SchemaHandler schemaHandler = new SchemaHandler(schemaCall, this.driverApp, this::handleStreamClosed);
-                schemaCall.start(schemaHandler, schemaMetadata);
-                schemaCall.request(Integer.MAX_VALUE);
+                SchemaHandler schemaHandler = new SchemaHandler(this.schemaCall, this.driverApp, callback);
+                this.schemaCall.start(schemaHandler, schemaMetadata);
+                this.schemaCall.request(Integer.MAX_VALUE);
 
                 Type commandType = this.getCommandType();
 
                 // run
-                ClientCall<RunResult, RunRequest> runCall = channel.newCall(
+                this.runCall = channel.newCall(
                         DriverServiceGrpc.getRunStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata runMetadata = new Metadata();
                 runMetadata.merge(this.metadata);
-                RunHandler runHandler = new RunHandler(this.runExecutor, runCall, this.driverApp, commandType, this::handleStreamClosed);
-                runCall.start(runHandler, runMetadata);
-                runCall.request(Integer.MAX_VALUE);
+                RunHandler runHandler = new RunHandler(this.runExecutor, this.runCall, this.driverApp, commandType, callback);
+                this.runCall.start(runHandler, runMetadata);
+                this.runCall.request(Integer.MAX_VALUE);
 
                 // writeTag
-                ClientCall<RunResult, RunRequest> writeTagCall = channel.newCall(
+                this.writeTagCall = channel.newCall(
                         DriverServiceGrpc.getWriteTagStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata writeTagMetadata = new Metadata();
                 writeTagMetadata.merge(this.metadata);
-                WriteTagHandler writeTagHandler = new WriteTagHandler(this.runExecutor, writeTagCall, this.driverApp, commandType, this::handleStreamClosed);
-                writeTagCall.start(writeTagHandler, writeTagMetadata);
-                writeTagCall.request(Integer.MAX_VALUE);
+                WriteTagHandler writeTagHandler = new WriteTagHandler(this.runExecutor, this.writeTagCall, this.driverApp, commandType, callback);
+                this.writeTagCall.start(writeTagHandler, writeTagMetadata);
+                this.writeTagCall.request(Integer.MAX_VALUE);
 
                 // batchRun
-                ClientCall<BatchRunResult, BatchRunRequest> batchRunCall = channel.newCall(
+                this.batchRunCall = channel.newCall(
                         DriverServiceGrpc.getBatchRunStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata batchRunMetadata = new Metadata();
                 batchRunMetadata.merge(this.metadata);
-                BatchRunHandler batchRunHandler = new BatchRunHandler(this.runExecutor, batchRunCall, this.driverApp, commandType, this::handleStreamClosed);
-                batchRunCall.start(batchRunHandler, batchRunMetadata);
-                batchRunCall.request(Integer.MAX_VALUE);
+                BatchRunHandler batchRunHandler = new BatchRunHandler(this.runExecutor, this.batchRunCall, this.driverApp, commandType, callback);
+                this.batchRunCall.start(batchRunHandler, batchRunMetadata);
+                this.batchRunCall.request(Integer.MAX_VALUE);
 
                 // debug
-                ClientCall<Debug, Debug> debugCall = channel.newCall(
+                this.debugCall = channel.newCall(
                         DriverServiceGrpc.getDebugStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata debugRunMetadata = new Metadata();
                 debugRunMetadata.merge(this.metadata);
-                DebugHandler debugHandler = new DebugHandler(debugCall, this.driverApp, this::handleStreamClosed);
-                debugCall.start(debugHandler, debugRunMetadata);
-                debugCall.request(Integer.MAX_VALUE);
+                DebugHandler debugHandler = new DebugHandler(this.debugCall, this.driverApp, callback);
+                this.debugCall.start(debugHandler, debugRunMetadata);
+                this.debugCall.request(Integer.MAX_VALUE);
 
                 // start
-                ClientCall<StartResult, StartRequest> startCall = channel.newCall(
+                this.startCall = channel.newCall(
                         DriverServiceGrpc.getStartStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
                 Metadata startMetadata = new Metadata();
                 startMetadata.merge(this.metadata);
-                StartHandler startHandler = new StartHandler(startCall, this.driverApp, this.globalContext,
+                StartHandler startHandler = new StartHandler(this.startCall, this.driverApp, this.globalContext,
                         this.getDriverConfigType(), this.getTagType(),
-                        this::handleStreamClosed, this::clearTagValueCache);
-                startCall.start(startHandler, startMetadata);
-                startCall.request(Integer.MAX_VALUE);
+                        callback, this.loggerRoots, this::clearTagValueCache);
+                this.startCall.start(startHandler, startMetadata);
+                this.startCall.request(Integer.MAX_VALUE);
 
                 // httpProxy
                 if (this.driverApp.supportHttpProxy()) {
-                    ClientCall<HttpProxyResult, HttpProxyRequest> httpProxyCall = channel.newCall(
+                    this.httpProxyCall = channel.newCall(
                             DriverServiceGrpc.getHttpProxyStreamMethod(),
                             CallOptions.DEFAULT.withWaitForReady()
                     );
                     Metadata httpProxyMetadata = new Metadata();
                     httpProxyMetadata.merge(this.metadata);
-                    HttpProxyHandler httpProxyHandler = new HttpProxyHandler(httpProxyCall, this.driverApp, this::handleStreamClosed);
-                    httpProxyCall.start(httpProxyHandler, httpProxyMetadata);
-                    httpProxyCall.request(Integer.MAX_VALUE);
+                    HttpProxyHandler httpProxyHandler = new HttpProxyHandler(this.httpProxyCall, this.driverApp, callback);
+                    this.httpProxyCall.start(httpProxyHandler, httpProxyMetadata);
+                    this.httpProxyCall.request(Integer.MAX_VALUE);
                 }
 
                 this.state.set(State.RUNNING);
@@ -435,10 +527,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     }
 
     private void handleStreamClosed(Status status, Metadata trailers) {
-//        if (this.reconnecting.compareAndSet(false, true)) {
-//            log.warn("stream closed, reconnecting, status = {}, metadata = {}", status, trailers);
-//            this.state.set(State.CONNECTING);
-//        }
+        log.warn("stream closed, reconnecting, status = {}, metadata = {}", status, trailers);
+        if (State.RUNNING.equals(this.state.get())) {
+            this.state.set(State.RECONNECTING);
+            this.connect();
+        }
     }
 
     static class RunHandler extends ClientCall.Listener<RunRequest> {
@@ -463,7 +556,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -547,7 +642,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -630,7 +727,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -709,7 +808,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -752,6 +853,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     static class StartHandler extends ClientCall.Listener<StartRequest> {
         private final Logger logger = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(StartHandler.class);
+        private final Map<String, Level> loggerRoots;
         private final ClientCall<StartResult, StartRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final GlobalContext globalContext;
@@ -765,6 +867,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             GlobalContext globalContext,
                             Type driverConfigType, Type tagType,
                             StreamClosedCallback closedCallback,
+                            Map<String, Level> loggerRoots,
                             Consumer<DriverSingleConfig<BasicConfig<?>>> clearCacheFn
         ) {
             this.clientCall = clientCall;
@@ -773,13 +876,16 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             this.driverConfigType = driverConfigType;
             this.tagType = tagType;
             this.closedCallback = closedCallback;
+            this.loggerRoots = loggerRoots;
             this.clearCacheFn = clearCacheFn;
         }
 
         @Override
         public void onClose(Status status, Metadata trailers) {
             logger.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -867,13 +973,39 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
                 // 根据驱动实例中的 debug 配置设置 logger 的日志等级
                 ch.qos.logback.classic.LoggerContext loggerContext = (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
-                if (driverConfig.isDebug()) {
-                    loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.DEBUG);
+
+
+                List<String> driverLoggerRoots = driverApp.getDebugLoggerPackages();
+
+                // 如果没有指定日志根节点, 则设置根节点的日志等级
+                if (this.loggerRoots.isEmpty() && CollectionUtils.isEmpty(driverLoggerRoots)) {
+                    if (driverConfig.isDebug()) {
+                        loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.DEBUG);
+                    } else {
+                        loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.INFO);
+                    }
                 } else {
-                    loggerContext.getLogger(Logger.ROOT_LOGGER_NAME).setLevel(Level.INFO);
+                    if (driverLoggerRoots != null) {
+                        Level level = driverConfig.isDebug() ? Level.DEBUG : Level.INFO;
+                        for (String driverLoggerRoot : driverLoggerRoots) {
+                            loggerContext.getLogger(driverLoggerRoot).setLevel(level);
+                        }
+                    }
+
+                    if (driverConfig.isDebug()) {
+                        // 如果是调试模式则修改为 DEBUG 等级
+                        for (Map.Entry<String, Level> entry : this.loggerRoots.entrySet()) {
+                            loggerContext.getLogger(entry.getKey()).setLevel(Level.DEBUG);
+                        }
+                    } else {
+                        // 如果不是调试模式, 则恢复为之前的日志等级
+                        for (Map.Entry<String, Level> entry : this.loggerRoots.entrySet()) {
+                            loggerContext.getLogger(entry.getKey()).setLevel(entry.getValue());
+                        }
+                    }
                 }
             }
-            
+
             if (passed) {
                 try {
                     Object drvConfig = JSON.parseObject(config, this.driverConfigType);
@@ -914,7 +1046,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             logger.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -936,9 +1070,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     logger.debug("req = {}, type = schema, {}", request.getRequest(), schema);
                 }
 
-                // 替换版本号
-                schema = schema.replaceAll("__version__", driverApp.getVersion());
-                schema = schema.replaceAll("__sdk_version__", GlobalContext.getVersion());
+                if (schema != null) {
+                    // 替换版本号
+                    schema = schema.replaceAll("__version__", driverApp.getVersion());
+                    schema = schema.replaceAll("__sdk_version__", GlobalContext.getVersion());
+                }
 
                 result.setCode(200);
                 result.setResult(schema);
@@ -981,7 +1117,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             logger.error("closed, status = {}, metadata = {}", status, trailers);
-            this.closedCallback.handle(status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(status, trailers);
+            }
         }
 
         @Override
@@ -1024,6 +1162,22 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     @FunctionalInterface
     interface StreamClosedCallback {
         void handle(Status status, Metadata trailers);
+    }
+
+    static class OnceStreamClosedCallback implements StreamClosedCallback {
+        private final AtomicBoolean called = new AtomicBoolean(false);
+        private final StreamClosedCallback delegate;
+
+        public OnceStreamClosedCallback(StreamClosedCallback delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void handle(Status status, Metadata trailers) {
+            if (this.called.compareAndSet(false, true)) {
+                this.delegate.handle(status, trailers);
+            }
+        }
     }
 
     public enum State {

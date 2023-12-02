@@ -24,13 +24,19 @@ import io.github.airiot.sdk.driver.configuration.properties.DriverMQProperties;
 import io.github.airiot.sdk.driver.data.AbstractDataSender;
 import io.github.airiot.sdk.driver.data.DataHandlerChain;
 import io.github.airiot.sdk.driver.data.LogSenderException;
+import io.github.airiot.sdk.driver.data.warning.Warning;
+import io.github.airiot.sdk.driver.data.warning.WarningRecovery;
+import io.github.airiot.sdk.driver.data.warning.WarningSenderException;
 import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.model.Point;
+import io.github.airiot.sdk.logger.LoggerContext;
+import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
 import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.slf4j.Logger;
+import org.springframework.util.StringUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -49,7 +55,6 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
     private final DriverAppProperties driverAppProperties;
     private final DriverMQProperties.Mqtt mqttProperties;
     private final int qos;
-    private final long publishTimeoutMs;
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private MqttConnectOptions options;
@@ -61,12 +66,11 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
                           DriverMQProperties.Mqtt mqttProperties,
                           GlobalContext globalContext,
                           DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
-        super(properties, driverAppProperties.getProjectId(), globalContext, chain, driverGrpcClient);
+        super(properties, driverAppProperties, globalContext, chain, driverGrpcClient);
         this.driverAppProperties = driverAppProperties;
         this.mqttProperties = mqttProperties;
-        this.publishTimeoutMs = mqttProperties.getPublishTimeout().toMillis();
         this.qos = mqttProperties.getQos();
-        
+
         this.options = new MqttConnectOptions();
         options.setCleanSession(true);
         options.setUserName(this.mqttProperties.getUsername());
@@ -254,6 +258,67 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
             } catch (MqttException e) {
                 log.warn("MQTTDataSender 获取已发送数据异常:", e);
             }
+        }
+    }
+
+    @Override
+    public void sendWarning(Warning warning) throws WarningSenderException {
+        if (warning == null) {
+            throw new WarningSenderException("报警信息不能为空");
+        }
+
+        if (!this.isRunning()) {
+            throw new WarningSenderException("未连接或连接中断");
+        }
+
+        String tableId = warning.getTable().getId();
+        String deviceId = warning.getTableData().getId();
+
+        byte[] warningData = warningGson.toJson(warning).getBytes(StandardCharsets.UTF_8);
+
+        LoggerContext context = LoggerContexts.push();
+        context.setKey(tableId);
+        warningLogger.info("发送报警信息, table = {}, device = {}, {}", tableId, deviceId, warning);
+        
+        try {
+            this.mqttClient.publish(String.format("warningStorage/%s/%s/%s", this.projectId, warning.getTable().getId(), warning.getTableData().getId()), warningData, this.qos, false);
+            warningLogger.info("发送报警信息完成, table = {}, device = {}, {}", tableId, deviceId, warning);
+        } catch (MqttException e) {
+            warningLogger.warn("报警信息发送失败, table = {}, device = {}, {}", tableId, deviceId, warning, e);
+            throw new WarningSenderException("报警信息发送失败", e);
+        } finally {
+            LoggerContexts.pop();
+        }
+    }
+
+    @Override
+    public void recoverWarning(String tableId, String deviceId, WarningRecovery recovery) throws WarningSenderException {
+        if (!StringUtils.hasText(tableId) || !StringUtils.hasText(deviceId)) {
+            throw new WarningSenderException("产生报警的设备编号及所属表标识不能为空");
+        }
+
+        if (recovery == null) {
+            throw new WarningSenderException("报警恢复信息不能为空");
+        }
+
+        if (!this.isRunning()) {
+            throw new WarningSenderException("未连接或连接中断");
+        }
+
+        byte[] warningData = warningGson.toJson(recovery).getBytes(StandardCharsets.UTF_8);
+
+        LoggerContext context = LoggerContexts.push();
+        context.setKey(tableId);
+        warningLogger.info("发送报警恢复信息, table = {}, device = {}, {}", tableId, deviceId, recovery);
+
+        try {
+            this.mqttClient.publish(String.format("warningUpdate/%s/%s/%s", this.projectId, tableId, deviceId), warningData, this.qos, false);
+            warningLogger.info("发送报警恢复信息完成, table = {}, device = {}, {}", tableId, deviceId, recovery);
+        } catch (MqttException e) {
+            warningLogger.warn("发送报警恢复信息失败, table = {}, device = {}, {}", tableId, deviceId, recovery, e);
+            throw new WarningSenderException("报警恢复信息发送失败", e);
+        } finally {
+            LoggerContexts.pop();
         }
     }
 }

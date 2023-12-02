@@ -15,40 +15,36 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.exception;
+package io.github.airiot.sdk.driver.data.warning;
 
+import io.github.airiot.sdk.driver.model.Tag;
+import org.springframework.util.Assert;
 
 /**
- * 请求失败异常
+ * 报警关联的数据点信息
  */
-public class RequestFailedException extends PlatformException {
+public class WarningField extends Tag {
 
     /**
-     * 错误码
+     * 产生报警时数据点的值或者报警恢复时数据点的值
      */
-    private final int code;
-    /**
-     * 详细说明
-     */
-    private final String details;
+    private final Object value;
 
-    public int getCode() {
-        return code;
+    public Object getValue() {
+        return value;
     }
 
-    public String getDetails() {
-        return details;
+    protected WarningField(String id, String name, Object value) {
+        super(id, name);
+        this.value = value;
     }
 
-    public RequestFailedException(int code, String message, String details) {
-        super(String.format("%s, %s", message, details));
-        this.code = code;
-        this.details = details;
+    public static WarningField create(String id, String name, Object value) {
+        Assert.hasText(id, "数据点ID不能为空");
+        return new WarningField(id, name, value);
     }
 
-    public RequestFailedException(int code, String message, String details, Throwable cause) {
-        super(String.format("%s, %s", message, details), cause);
-        this.code = code;
-        this.details = details;
+    public static WarningField create(String id, Object value) {
+        return create(id, null, value);
     }
 }

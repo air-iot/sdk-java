@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.flow.plugin;
+package io.github.airiot.sdk.flow.plugin.execute;
+
+import io.github.airiot.sdk.flow.plugin.FlowPluginException;
 
 import java.util.Map;
 

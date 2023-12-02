@@ -144,7 +144,7 @@ public final class GlobalContext {
         }
 
         DeviceInfo<? extends Tag> info = this.getDevice(tableId, deviceId)
-                .orElseThrow(() -> new IllegalStateException("设备不存在: " + deviceId));
+                .orElseThrow(() -> new IllegalStateException("未在表 '" + tableId + "' 中找到设备 '" + deviceId + "'"));
         Map<String, ? extends Tag> tags = info.getTags();
         if (CollectionUtils.isEmpty(tags)) {
             throw new IllegalStateException("未找到设备上的数据点信息: " + deviceId);
@@ -163,50 +163,50 @@ public final class GlobalContext {
     }
 
     public Point createPoint(String tableId, String deviceId, Map<String, Object> tagValues) {
-        return this.createPoint(tableId, deviceId, null, null, 0, tagValues, Collections.emptyMap());
+        return this.createPoint(tableId, deviceId, null, 0, tagValues, Collections.emptyMap());
     }
 
     public Point createPoint(String tableId, String deviceId, long time, Map<String, Object> tagValues) {
-        return this.createPoint(tableId, deviceId, null, null, time, tagValues, Collections.emptyMap());
+        return this.createPoint(tableId, deviceId, null, time, tagValues, Collections.emptyMap());
     }
 
     public Point createPoint(String tableId, String deviceId, long time, Map<String, Object> tagValues, Map<String, FieldType> fieldTypes) {
-        return this.createPoint(tableId, deviceId, null, null, time, tagValues, fieldTypes);
+        return this.createPoint(tableId, deviceId, null, time, tagValues, fieldTypes);
     }
 
     public Point createPoint(String tableId, String deviceId, String childDeviceId, long time, Map<String, Object> tagValues) {
-        return this.createPoint(tableId, deviceId, childDeviceId, null, time, tagValues, Collections.emptyMap());
+        return this.createPoint(tableId, deviceId, childDeviceId, time, tagValues, Collections.emptyMap());
     }
 
     /**
      * 创建 {@link Point} 对象, 根据 tagId 自动填充相关数据
      *
-     * @param tableId       设备所属模型表标识
+     * @param tableId       设备所属表标识
      * @param deviceId      设备ID
      * @param childDeviceId 子设备ID
-     * @param table         设备所属表标识
      * @param time          数据产生的时间
      * @param tagValues     数据点的值. <br> key: 数据点ID(tagId). <br> value: 数据点的值.
      * @param fieldTypes    数据点的数据类型
      * @return Point 对象
      */
-    public Point createPoint(String tableId, String deviceId, String childDeviceId, String table, long time,
+    public Point createPoint(String tableId, String deviceId, String childDeviceId, long time,
                              Map<String, Object> tagValues, Map<String, FieldType> fieldTypes) {
         if (!StringUtils.hasText(deviceId)) {
             throw new IllegalStateException("设备标识不能为空");
         }
-
+        
         List<Field<? extends Tag>> fields = this.createFields(tableId, deviceId, tagValues);
 
         if (fields.isEmpty()) {
             throw new IllegalArgumentException("未定义的数据点: " + tagValues.keySet());
         }
 
-        if (!StringUtils.hasText(table)) {
-            DeviceInfo<? extends Tag> info = this.getDevice(tableId, deviceId).orElseThrow(() -> new IllegalStateException("设备不存在: " + deviceId));
-            table = info.getTableId();
+        if (!StringUtils.hasText(tableId)) {
+            DeviceInfo<? extends Tag> info = this.getDevice(deviceId)
+                    .orElseThrow(() -> new IllegalStateException("未提供 tableId, 未找到设备 '" + deviceId + "'"));
+            tableId = info.getTableId();
         }
 
-        return new Point(deviceId, childDeviceId, table, time, fields, fieldTypes);
+        return new Point(deviceId, childDeviceId, tableId, time, fields, fieldTypes);
     }
 }

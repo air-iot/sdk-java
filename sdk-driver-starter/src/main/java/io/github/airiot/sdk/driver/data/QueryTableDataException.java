@@ -15,40 +15,27 @@
  * limitations under the License.
  */
 
-package io.github.airiot.sdk.client.exception;
-
+package io.github.airiot.sdk.driver.data;
 
 /**
- * 请求失败异常
+ * 查询工作表数据异常
  */
-public class RequestFailedException extends PlatformException {
+public class QueryTableDataException extends RuntimeException {
 
-    /**
-     * 错误码
-     */
     private final int code;
-    /**
-     * 详细说明
-     */
-    private final String details;
+    private final String detail;
 
     public int getCode() {
         return code;
     }
 
-    public String getDetails() {
-        return details;
+    public String getDetail() {
+        return detail;
     }
-
-    public RequestFailedException(int code, String message, String details) {
-        super(String.format("%s, %s", message, details));
+    
+    public QueryTableDataException(int code, String message, String detail) {
+        super(String.format("%s, %s", message, detail));
         this.code = code;
-        this.details = details;
-    }
-
-    public RequestFailedException(int code, String message, String details, Throwable cause) {
-        super(String.format("%s, %s", message, details), cause);
-        this.code = code;
-        this.details = details;
+        this.detail = detail;
     }
 }

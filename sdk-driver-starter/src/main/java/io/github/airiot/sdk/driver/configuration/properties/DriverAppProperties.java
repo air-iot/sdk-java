@@ -21,16 +21,24 @@ package io.github.airiot.sdk.driver.configuration.properties;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.core.env.CommandLinePropertySource;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.PropertySource;
 import org.springframework.validation.annotation.Validated;
 
 import javax.validation.constraints.NotBlank;
+import java.util.Optional;
 
 /**
  * 驱动基础配置
  */
 @Validated
 @ConfigurationProperties(prefix = "airiot.driver")
-public class DriverAppProperties implements InitializingBean {
+public class DriverAppProperties implements InitializingBean, EnvironmentAware {
+
+    private Environment environment;
 
     /**
      * 启用驱动相关功能配置项
@@ -119,6 +127,27 @@ public class DriverAppProperties implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
+        if (this.environment instanceof ConfigurableEnvironment) {
+            ConfigurableEnvironment env = (ConfigurableEnvironment) this.environment;
+            Optional<PropertySource<?>> propertySource = env.getPropertySources().stream()
+                    .filter(ps -> ps instanceof CommandLinePropertySource)
+                    .findAny();
+            if (propertySource.isPresent()) {
+                PropertySource<?> ps = propertySource.get();
+                Object serviceId = ps.getProperty("serviceId");
+                Object projectId = ps.getProperty("project");
+                if (serviceId != null) {
+                    this.instanceId = String.valueOf(serviceId);
+                }
+                if (projectId != null) {
+                    this.projectId = String.valueOf(projectId);
+                }
+            }
+        }
+    }
 
+    @Override
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
     }
 }
