@@ -63,6 +63,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -74,7 +75,7 @@ import java.util.function.Consumer;
  * @see DriverApp 具体的驱动实现类
  */
 public class GrpcDriverEventListener implements DriverEventListener, ApplicationContextAware {
-
+    
     private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(GrpcDriverEventListener.class);
 
     private final Logger healthCheckLogger = LoggerFactory.withContext().module(DriverModules.HEARTBEAT).getStaticLogger(GrpcDriverEventListener.class);
@@ -412,6 +413,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             log.info("连接 Driver 服务: 第 {} 次连接", retryTimes);
 
+            StreamClosedCallback callback = new OnceStreamClosedCallback(this::handleStreamClosed);
+
             try {
                 // schema
                 this.schemaCall = channel.newCall(
@@ -420,7 +423,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata schemaMetadata = new Metadata();
                 schemaMetadata.merge(this.metadata);
-                SchemaHandler schemaHandler = new SchemaHandler(this.schemaCall, this.driverApp, this::handleStreamClosed);
+                SchemaHandler schemaHandler = new SchemaHandler(this.schemaCall, this.driverApp, callback);
                 this.schemaCall.start(schemaHandler, schemaMetadata);
                 this.schemaCall.request(Integer.MAX_VALUE);
 
@@ -433,7 +436,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata runMetadata = new Metadata();
                 runMetadata.merge(this.metadata);
-                RunHandler runHandler = new RunHandler(this.runExecutor, this.runCall, this.driverApp, commandType, this::handleStreamClosed);
+                RunHandler runHandler = new RunHandler(this.runExecutor, this.runCall, this.driverApp, commandType, callback);
                 this.runCall.start(runHandler, runMetadata);
                 this.runCall.request(Integer.MAX_VALUE);
 
@@ -444,7 +447,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata writeTagMetadata = new Metadata();
                 writeTagMetadata.merge(this.metadata);
-                WriteTagHandler writeTagHandler = new WriteTagHandler(this.runExecutor, this.writeTagCall, this.driverApp, commandType, this::handleStreamClosed);
+                WriteTagHandler writeTagHandler = new WriteTagHandler(this.runExecutor, this.writeTagCall, this.driverApp, commandType, callback);
                 this.writeTagCall.start(writeTagHandler, writeTagMetadata);
                 this.writeTagCall.request(Integer.MAX_VALUE);
 
@@ -455,7 +458,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata batchRunMetadata = new Metadata();
                 batchRunMetadata.merge(this.metadata);
-                BatchRunHandler batchRunHandler = new BatchRunHandler(this.runExecutor, this.batchRunCall, this.driverApp, commandType, this::handleStreamClosed);
+                BatchRunHandler batchRunHandler = new BatchRunHandler(this.runExecutor, this.batchRunCall, this.driverApp, commandType, callback);
                 this.batchRunCall.start(batchRunHandler, batchRunMetadata);
                 this.batchRunCall.request(Integer.MAX_VALUE);
 
@@ -466,7 +469,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata debugRunMetadata = new Metadata();
                 debugRunMetadata.merge(this.metadata);
-                DebugHandler debugHandler = new DebugHandler(this.debugCall, this.driverApp, this::handleStreamClosed);
+                DebugHandler debugHandler = new DebugHandler(this.debugCall, this.driverApp, callback);
                 this.debugCall.start(debugHandler, debugRunMetadata);
                 this.debugCall.request(Integer.MAX_VALUE);
 
@@ -479,7 +482,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 startMetadata.merge(this.metadata);
                 StartHandler startHandler = new StartHandler(this.startCall, this.driverApp, this.globalContext,
                         this.getDriverConfigType(), this.getTagType(),
-                        this::handleStreamClosed, this.loggerRoots, this::clearTagValueCache);
+                        callback, this.loggerRoots, this::clearTagValueCache);
                 this.startCall.start(startHandler, startMetadata);
                 this.startCall.request(Integer.MAX_VALUE);
 
@@ -491,7 +494,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     );
                     Metadata httpProxyMetadata = new Metadata();
                     httpProxyMetadata.merge(this.metadata);
-                    HttpProxyHandler httpProxyHandler = new HttpProxyHandler(this.httpProxyCall, this.driverApp, this::handleStreamClosed);
+                    HttpProxyHandler httpProxyHandler = new HttpProxyHandler(this.httpProxyCall, this.driverApp, callback);
                     this.httpProxyCall.start(httpProxyHandler, httpProxyMetadata);
                     this.httpProxyCall.request(Integer.MAX_VALUE);
                 }
@@ -1159,6 +1162,22 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     @FunctionalInterface
     interface StreamClosedCallback {
         void handle(Status status, Metadata trailers);
+    }
+
+    static class OnceStreamClosedCallback implements StreamClosedCallback {
+        private final AtomicBoolean called = new AtomicBoolean(false);
+        private final StreamClosedCallback delegate;
+
+        public OnceStreamClosedCallback(StreamClosedCallback delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void handle(Status status, Metadata trailers) {
+            if (this.called.compareAndSet(false, true)) {
+                this.delegate.handle(status, trailers);
+            }
+        }
     }
 
     public enum State {
