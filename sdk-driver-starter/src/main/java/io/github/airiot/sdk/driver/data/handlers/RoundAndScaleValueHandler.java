@@ -80,7 +80,7 @@ public class RoundAndScaleValueHandler implements DataHandler {
     @Override
     public Map<String, Object> handle(String tableId, String deviceId, Tag tag, Object value) {
         double dValue = ((Number) value).doubleValue();
-        if (!Double.isFinite(dValue)) {
+        if (Double.isNaN(dValue) || !Double.isFinite(dValue)) {
             logger.warn("数据点数据处理器: 小数位数和缩放比例, 值为 {}, 丢弃. device = {}, tag = {}",
                     value, deviceId, tag.getId());
             return Collections.emptyMap();

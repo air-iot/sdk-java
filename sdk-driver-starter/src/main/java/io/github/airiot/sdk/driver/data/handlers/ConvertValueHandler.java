@@ -100,7 +100,7 @@ public class ConvertValueHandler implements DataHandler {
     @Override
     public Map<String, Object> handle(String tableId, String deviceId, Tag tag, Object value) {
         double dValue = ((Number) value).doubleValue();
-        if (!Double.isFinite(dValue)) {
+        if (Double.isNaN(dValue) || !Double.isFinite(dValue)) {
             logger.warn("数据点数据处理器: 数值转换, 值为 {}, 丢弃. device = {}, tag = {}",
                     value, deviceId, tag.getId());
             return Collections.emptyMap();

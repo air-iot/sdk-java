@@ -87,7 +87,7 @@ public class InvalidRangeValueHandler implements DataHandler {
     @Override
     public Map<String, Object> handle(String tableId, String deviceId, Tag tag, Object value) {
         double dValue = ((Number) value).doubleValue();
-        if (!Double.isFinite(dValue)) {
+        if (Double.isNaN(dValue) || !Double.isFinite(dValue)) {
             logger.warn("数据点数据处理器: 无效范围处理, 值为 {}, 丢弃. table = {}, device = {}, tag = {}",
                     value, tableId, deviceId, tag.getId());
             return Collections.emptyMap();
