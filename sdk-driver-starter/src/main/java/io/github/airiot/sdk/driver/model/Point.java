@@ -55,7 +55,7 @@ public class Point {
      * <br>
      * 本次上报的数据. 可借助工具类方法构建.
      *
-     * @see GlobalContext#createPoint(String, String, String, String, long, Map, Map)
+     * @see GlobalContext#createPoint(String, String, String, long, Map, Map)
      */
     private List<Field<? extends Tag>> fields;
     /**
