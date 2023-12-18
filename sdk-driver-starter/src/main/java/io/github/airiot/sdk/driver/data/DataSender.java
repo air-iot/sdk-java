@@ -55,8 +55,8 @@ public interface DataSender extends SmartLifecycle {
      *
      * @param tableId   设备所属工作表标识
      * @param deviceId  设备编号
-     * @param time      数据产生的时间. unix时间戳(ms)
-     * @param tagValues 数据点的值. value 为 {@code null}的数据点不会上报
+     * @param time      数据产生或采集的时间. unix时间戳(ms)
+     * @param tagValues 数据点的值. key 为 数据点的标识, value 为 {@code null}的数据点不会上报
      * @throws IllegalStateException    如果连接未建立或已断开
      * @throws IllegalArgumentException 如果设备不存在或者数据点信息不正确
      * @throws DataSenderException      如果上报数据时发生异常
@@ -68,7 +68,7 @@ public interface DataSender extends SmartLifecycle {
      *
      * @param tableId   设备所属工作表标识
      * @param deviceId  设备编号
-     * @param tagValues 数据点的值. value 为 {@code null}的数据点不会上报
+     * @param tagValues 数据点的值. key 为 数据点的标识, value 为 {@code null}的数据点不会上报
      * @throws IllegalStateException    如果连接未建立或已断开
      * @throws IllegalArgumentException 如果设备不存在或者数据点信息不正确
      * @throws DataSenderException      如果上报数据时发生异常
