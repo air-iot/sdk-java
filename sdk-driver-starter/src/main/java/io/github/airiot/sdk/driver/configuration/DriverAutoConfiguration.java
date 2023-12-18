@@ -84,12 +84,11 @@ public class DriverAutoConfiguration {
         @Bean
         public Channel channel(DriverListenerProperties properties) {
             return ManagedChannelBuilder.forAddress(properties.getHost(), properties.getPort())
-                    // .keepAliveTime(properties.getKeepalive().toMillis(), TimeUnit.MILLISECONDS)
-                    // .enableRetry()
                     .usePlaintext()
+                    .maxInboundMessageSize(properties.getMaxInboundMessageSize())
                     .build();
         }
-
+        
         @Bean
         public DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient(Channel channel) {
             return DriverServiceGrpc.newBlockingStub(channel);
