@@ -31,6 +31,12 @@ public class DriverListenerProperties {
 
     private String host = "driver";
     private int port = 9224;
+    /**
+     * 最大接收消息大小
+     * <br>
+     * 单位: 字节, 默认: 4 * 1024 * 1024
+     */
+    private int maxInboundMessageSize = 1024 * 1024 * 4;
     private Duration keepalive = Duration.ofSeconds(30);
     private Duration reconnectInterval = Duration.ofSeconds(15);
     /**
@@ -58,6 +64,14 @@ public class DriverListenerProperties {
 
     public void setPort(int port) {
         this.port = port;
+    }
+
+    public int getMaxInboundMessageSize() {
+        return maxInboundMessageSize;
+    }
+
+    public void setMaxInboundMessageSize(int maxInboundMessageSize) {
+        this.maxInboundMessageSize = maxInboundMessageSize;
     }
 
     public Duration getKeepalive() {

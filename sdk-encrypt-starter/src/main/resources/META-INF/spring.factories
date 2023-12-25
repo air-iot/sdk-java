@@ -1,0 +1,4 @@
+org.springframework.cloud.bootstrap.BootstrapConfiguration=\
+  io.github.airiot.sdk.encrypt.bootstrap.BootstrapDecryptPropertySourceConfiguration
+org.springframework.boot.env.EnvironmentPostProcessor=\
+  io.github.airiot.sdk.encrypt.DecryptPropertySourcesEnvironmentProcessor

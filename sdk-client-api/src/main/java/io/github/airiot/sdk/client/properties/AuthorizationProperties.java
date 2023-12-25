@@ -56,6 +56,8 @@ public class AuthorizationProperties implements InitializingBean, EnvironmentAwa
      * 如果 {@link #type} 为 {@link Type#PROJECT} 时不能为空.
      * <br>
      * 除了配置文件之外, 也可以通过启动参数 {@code --project} 动态设置
+     * <br>
+     * <b>注: 当未设置时, 如果当前程序为驱动程序, 则自动使用驱动配置的项目ID</b>
      */
     @Value("${project:default}")
     private String projectId = "";
@@ -96,20 +98,27 @@ public class AuthorizationProperties implements InitializingBean, EnvironmentAwa
     public void afterPropertiesSet() throws Exception {
         if (this.environment instanceof ConfigurableEnvironment) {
             ConfigurableEnvironment env = (ConfigurableEnvironment) this.environment;
-            Optional<PropertySource<?>> propertySource = env.getPropertySources().stream()
+            Optional<PropertySource<?>> commandLinePropertySource = env.getPropertySources().stream()
                     .filter(ps -> ps instanceof CommandLinePropertySource)
                     .findAny();
-            if (propertySource.isPresent()) {
-                PropertySource<?> ps = propertySource.get();
+            if (commandLinePropertySource.isPresent()) {
+                PropertySource<?> ps = commandLinePropertySource.get();
                 Object projectId = ps.getProperty("project");
                 if (projectId != null) {
                     this.projectId = String.valueOf(projectId);
                 }
+            } else {
+                // 如果 client 未设置 projectId, 则使用 driver 的 projectId
+                String clientProjectId = this.environment.getProperty("airiot.client.authorization.project-id");
+                String driverProjectId = this.environment.getProperty("airiot.driver.project-id");
+                if (!StringUtils.hasText(clientProjectId) && StringUtils.hasText(driverProjectId)) {
+                    this.projectId = driverProjectId;
+                }
             }
         }
-        
+
         if (Type.PROJECT.equals(this.type) && !StringUtils.hasText(this.projectId)) {
-            throw new IllegalArgumentException("设置 airiot.client.authorization.type=PROJECT 时, 必须设置 airiot.client.authorization.project-id");
+            throw new IllegalArgumentException("当 airiot.client.authorization.type=PROJECT 时, 必须设置 airiot.client.authorization.project-id");
         }
         if (StringUtils.hasText(this.projectId)) {
             RequestContext.setDefaultProjectId(this.projectId);
