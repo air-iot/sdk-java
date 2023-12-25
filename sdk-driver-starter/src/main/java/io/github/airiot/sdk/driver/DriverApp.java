@@ -23,6 +23,9 @@ import io.github.airiot.sdk.driver.listener.BatchCmd;
 import io.github.airiot.sdk.driver.listener.Cmd;
 import io.github.airiot.sdk.driver.model.RunLog;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -174,4 +177,20 @@ public interface DriverApp<DriverConfig, Command, Tag> {
      * @return 表单 schema
      */
     String schema();
+    
+    /**
+     * 从 {@link InputStream} 中读取 schema 定义
+     *
+     * @param inputStream 输入流
+     * @return schema 定义
+     * @throws IOException 如果读取流过程中发生异常
+     */
+    default String readSchema(InputStream inputStream) throws IOException {
+        byte[] data = new byte[inputStream.available()];
+        int n = 0;
+        while (n < data.length) {
+            n += inputStream.read(data, n, data.length - n);
+        }
+        return new String(data, StandardCharsets.UTF_8);
+    }
 }
