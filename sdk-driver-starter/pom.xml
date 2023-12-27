@@ -26,18 +26,18 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.github.air-iot</groupId>
+            <artifactId>sdk-logger-starter</artifactId>
+            <version>${project.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.github.air-iot</groupId>
-            <artifactId>sdk-logger-starter</artifactId>
-            <version>${project.version}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

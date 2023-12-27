@@ -22,15 +22,10 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.ConsoleAppender;
 import ch.qos.logback.core.encoder.LayoutWrappingEncoder;
 import org.slf4j.impl.StaticLoggerBinder;
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.SpringApplicationRunListener;
 import org.springframework.context.ConfigurableApplicationContext;
 
 public class JsonLoggerApplicationRunListener implements SpringApplicationRunListener {
-
-    public JsonLoggerApplicationRunListener(SpringApplication application, String[] args) {
-
-    }
 
     @Override
     public void contextLoaded(ConfigurableApplicationContext context) {
@@ -39,7 +34,7 @@ public class JsonLoggerApplicationRunListener implements SpringApplicationRunLis
 
         LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<>();
         encoder.setLayout(layout);
-        
+
         ch.qos.logback.classic.LoggerContext lc = (ch.qos.logback.classic.LoggerContext) StaticLoggerBinder.getSingleton().getLoggerFactory();
         ConsoleAppender<ILoggingEvent> appender = new ConsoleAppender<>();
 

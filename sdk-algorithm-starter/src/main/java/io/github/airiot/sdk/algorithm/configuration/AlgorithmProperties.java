@@ -18,11 +18,11 @@
 package io.github.airiot.sdk.algorithm.configuration;
 
 
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-import javax.validation.constraints.NotBlank;
 import java.time.Duration;
 import java.util.UUID;
 
@@ -74,7 +74,7 @@ public class AlgorithmProperties {
     public void setName(String name) {
         this.name = name;
     }
-    
+
     public String getServiceId() {
         if (serviceId == null || serviceId.isEmpty()) {
             this.serviceId = UUID.randomUUID().toString().replaceAll("-", "");

@@ -18,6 +18,7 @@
 package io.github.airiot.sdk.driver.configuration.properties;
 
 
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -28,7 +29,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertySource;
 import org.springframework.validation.annotation.Validated;
 
-import javax.validation.constraints.NotBlank;
 import java.util.Optional;
 
 /**

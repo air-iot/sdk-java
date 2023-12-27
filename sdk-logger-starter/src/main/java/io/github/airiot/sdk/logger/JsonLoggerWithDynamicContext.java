@@ -36,6 +36,7 @@ public class JsonLoggerWithDynamicContext implements org.slf4j.Logger {
 
             JsonConsoleAppenderWithDynamicContext appender = new JsonConsoleAppenderWithDynamicContext(context, rootAppender);
             appender.setName("JSON_CONSOLE");
+            appender.setContext(delegate.getLoggerContext());
 
             delegate.setAdditive(false);
             delegate.addAppender(appender);

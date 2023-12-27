@@ -1,1 +1,0 @@
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=io.github.airiot.sdk.driver.configuration.DriverAutoConfiguration
