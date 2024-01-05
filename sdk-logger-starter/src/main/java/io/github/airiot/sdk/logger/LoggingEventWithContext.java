@@ -24,12 +24,25 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.classic.spi.LoggerContextVO;
 import ch.qos.logback.classic.spi.LoggingEvent;
 import org.slf4j.Marker;
+import org.slf4j.event.KeyValuePair;
 
+import java.util.List;
 import java.util.Map;
 
 public class LoggingEventWithContext implements ILoggingEvent {
 
     private final LoggerContext context;
+
+    private final ILoggingEvent loggingEvent;
+
+    public LoggerContext getContext() {
+        return context;
+    }
+
+    public LoggingEventWithContext(LoggerContext context, ILoggingEvent loggingEvent) {
+        this.context = context;
+        this.loggingEvent = loggingEvent;
+    }
 
     @Override
     public String getThreadName() {
@@ -87,6 +100,11 @@ public class LoggingEventWithContext implements ILoggingEvent {
     }
 
     @Override
+    public List<Marker> getMarkerList() {
+        return loggingEvent.getMarkerList();
+    }
+
+    @Override
     public Map<String, String> getMDCPropertyMap() {
         return loggingEvent.getMDCPropertyMap();
     }
@@ -102,18 +120,22 @@ public class LoggingEventWithContext implements ILoggingEvent {
     }
 
     @Override
+    public int getNanoseconds() {
+        return loggingEvent.getNanoseconds();
+    }
+
+    @Override
+    public long getSequenceNumber() {
+        return loggingEvent.getSequenceNumber();
+    }
+
+    @Override
+    public List<KeyValuePair> getKeyValuePairs() {
+        return loggingEvent.getKeyValuePairs();
+    }
+
+    @Override
     public void prepareForDeferredProcessing() {
         loggingEvent.prepareForDeferredProcessing();
-    }
-
-    private final ILoggingEvent loggingEvent;
-
-    public LoggerContext getContext() {
-        return context;
-    }
-
-    public LoggingEventWithContext(LoggerContext context, ILoggingEvent loggingEvent) {
-        this.context = context;
-        this.loggingEvent = loggingEvent;
     }
 }

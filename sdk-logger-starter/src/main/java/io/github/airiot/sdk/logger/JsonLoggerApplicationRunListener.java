@@ -21,7 +21,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.ConsoleAppender;
 import ch.qos.logback.core.encoder.LayoutWrappingEncoder;
-import org.slf4j.impl.StaticLoggerBinder;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplicationRunListener;
 import org.springframework.context.ConfigurableApplicationContext;
 
@@ -35,7 +35,7 @@ public class JsonLoggerApplicationRunListener implements SpringApplicationRunLis
         LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<>();
         encoder.setLayout(layout);
 
-        ch.qos.logback.classic.LoggerContext lc = (ch.qos.logback.classic.LoggerContext) StaticLoggerBinder.getSingleton().getLoggerFactory();
+        ch.qos.logback.classic.LoggerContext lc = (ch.qos.logback.classic.LoggerContext) LoggerFactory.getILoggerFactory();
         ConsoleAppender<ILoggingEvent> appender = new ConsoleAppender<>();
 
         appender.setEncoder(encoder);
