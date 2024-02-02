@@ -176,7 +176,7 @@ public class KafkaDataSender extends AbstractDataSender {
         byte[] warningData = warningGson.toJson(warning).getBytes(StandardCharsets.UTF_8);
 
         LoggerContext context = LoggerContexts.push();
-        context.setKey(tableId);
+        context.withTable(tableId);
         warningLogger.info("发送报警信息, table = {}, device = {}, {}", tableId, deviceId, warning);
 
         String key = String.format("%s/%s/%s", this.projectId, tableId, deviceId);
@@ -210,7 +210,7 @@ public class KafkaDataSender extends AbstractDataSender {
         byte[] warningData = warningGson.toJson(recovery).getBytes(StandardCharsets.UTF_8);
 
         LoggerContext context = LoggerContexts.push();
-        context.setKey(tableId);
+        context.withTable(tableId);
         warningLogger.info("发送报警恢复信息, table = {}, device = {}, {}", tableId, deviceId, recovery);
 
         String key = String.format("%s/%s/%s", this.projectId, tableId, deviceId);
