@@ -578,7 +578,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             CompletableFuture.supplyAsync(() -> {
                 LoggerContext context = LoggerContexts.push();
-                context.setKey(request.getTableId());
+                context.withTable(request.getTableId()).withDevice(request.getId());
 
                 logger.info("开始执行指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
@@ -664,7 +664,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             CompletableFuture.supplyAsync(() -> {
                 LoggerContext context = LoggerContexts.push();
-                context.setKey(request.getTableId());
+                context.withTable(request.getTableId()).withDevice(request.getId());
 
                 logger.info("执行写数据点指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
@@ -749,7 +749,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             CompletableFuture.supplyAsync(() -> {
                 LoggerContext context = LoggerContexts.push();
-                context.setKey(request.getTableId());
+                context.withTable(request.getTableId());
 
                 logger.info("开始批量执行指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
@@ -969,7 +969,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             if (driverConfig != null) {
                 // 设置驱动组ID
-                LoggerContexts.getRootContext().setDriverGroup(driverConfig.getGroupId());
+                LoggerContexts.getRootContext().withDriverGroup(driverConfig.getGroupId());
 
                 // 根据驱动实例中的 debug 配置设置 logger 的日志等级
                 ch.qos.logback.classic.LoggerContext loggerContext = (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();

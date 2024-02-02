@@ -106,7 +106,7 @@ public class LoggerFactory {
          * @param value 关联数据
          */
         public WithContext key(String value) {
-            this.context.setKey(value);
+            this.context.withTable(value);
             return this;
         }
 
@@ -116,7 +116,7 @@ public class LoggerFactory {
          * @param driverGroupId 驱动实例组ID
          */
         public WithContext group(String driverGroupId) {
-            this.context.setDriverGroup(driverGroupId);
+            this.context.withDriverGroup(driverGroupId);
             return this;
         }
 
