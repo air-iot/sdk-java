@@ -595,11 +595,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 } catch (JsonSyntaxException e) {
                     logger.error("指令执行失败, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setResult(e.getMessage());
+                    result.setError(e.getMessage());
                 } catch (Exception e) {
                     logger.error("指令执行失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setResult(e.getMessage());
+                    result.setError(e.getMessage());
                 }
                 return result;
             }, this.executor).handle((r, e) -> {
@@ -681,11 +681,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 } catch (JsonSyntaxException e) {
                     logger.error("写数据点失败, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setResult(e.getMessage());
+                    result.setError(e.getMessage());
                 } catch (Exception e) {
                     logger.error("写数据点失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setResult(e.getMessage());
+                    result.setError(e.getMessage());
                 }
                 return result;
             }, this.executor).handle((r, e) -> {
@@ -766,11 +766,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 } catch (JsonSyntaxException e) {
                     logger.error("批量下发指令, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setResult(e.getMessage());
+                    result.setError(e.getMessage());
                 } catch (Exception e) {
                     logger.error("批量下发指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setResult(e.getMessage());
+                    result.setError(e.getMessage());
                 }
                 return result;
             }, this.executor).handle((r, e) -> {
