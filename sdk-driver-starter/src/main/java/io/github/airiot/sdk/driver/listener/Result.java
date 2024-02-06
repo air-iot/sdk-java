@@ -20,6 +20,7 @@ package io.github.airiot.sdk.driver.listener;
 public class Result {
     private int code;
     private Object result;
+    private String error;
 
     public Result() {
     }
@@ -46,9 +47,21 @@ public class Result {
         this.result = result;
     }
 
+    public String getError() {
+        return error;
+    }
+
+    public void setError(String error) {
+        this.error = error;
+    }
+
     @Override
     public String toString() {
-        return "Result [code=" + code + ", result=" + result + "]";
+        return "Result{" +
+                "code=" + code +
+                ", result=" + result +
+                ", error='" + error + '\'' +
+                '}';
     }
 
 }
