@@ -163,6 +163,14 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
 
             // 将手动设置的 detail 和异常信息拼接到一起
             String exception = throwableProxyConverter.convert(event);
+            while (exception.startsWith("\r\n")) {
+                exception = exception.substring(2);
+            }
+            
+            while (exception.endsWith("\r\n")) {
+                exception = exception.substring(0, exception.length() - 2);
+            }
+
             exception = exception.replaceAll("\r\n", "\\\\r\\\\n");
             exception = exception.replaceAll("\n", "\\\\r\\\\n");
             exception = exception.replaceAll("\t", "");
@@ -187,6 +195,11 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
 
         sb.append("}");
         sb.append("\r\n");
+
+        context.remove(LoggerContext.DETAIL_KEY);
+        context.remove(LoggerContext.FOCUS_KEY);
+        context.remove(LoggerContext.SUGGESTION_KEY);
+
         return sb.toString();
     }
 }
