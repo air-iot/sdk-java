@@ -293,6 +293,10 @@ public class LoggerContext {
             return allKeys;
         }
 
+        if (parent == null || parent.parent == parent) {
+            return allKeys;
+        }
+
         LoggerContext previous = parent;
         for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
             if (previous == null) {
@@ -309,7 +313,10 @@ public class LoggerContext {
                     allKeys.put(entry.getKey(), entry.getValue());
                 }
             }
-
+            
+            if (previous.parent == previous) {
+                break;
+            }
             previous = previous.parent;
         }
 
@@ -369,7 +376,7 @@ public class LoggerContext {
         this.refData.put(FLOW_KEY, flowId);
         return this;
     }
-    
+
     /**
      * 设置关注标识
      *
@@ -404,6 +411,29 @@ public class LoggerContext {
      */
     public LoggerContext withDetail(String detail) {
         this.refData.put(DETAIL_KEY, detail);
+        return this;
+    }
+
+    /**
+     * 移除当前上下文中的关联数据. 如果当前上下文中不存在该 key 的关联数据, 则不会做任何操作.
+     *
+     * @param key 关联数据的 key
+     */
+    public LoggerContext removeCurrent(String key) {
+        this.refData.remove(key);
+        return this;
+    }
+
+    /**
+     * 移除当前上下文及父级上下文中的关联数据.
+     *
+     * @param key 关联数据的 key
+     */
+    public LoggerContext remove(String key) {
+        this.refData.remove(key);
+        if (parent != null) {
+            parent.remove(key);
+        }
         return this;
     }
 

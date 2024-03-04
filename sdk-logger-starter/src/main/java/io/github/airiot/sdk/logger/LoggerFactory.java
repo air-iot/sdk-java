@@ -129,27 +129,7 @@ public class LoggerFactory {
             this.context.withFlow(flowId);
             return this;
         }
-
-        /**
-         * 设置日志关注标识. 设置为关注后, 该日志可以在平台中的指定位置查看
-         */
-        public WithContext force() {
-            this.context.withFocus();
-            return this;
-        }
-
-        /**
-         * 设置日志关注标识. 设置为关注后, 该日志可以在平台中的指定位置查看
-         * <br>
-         * <b>注: 目前只支持 1.</b>
-         *
-         * @param forceValue 关注标识的值
-         */
-        public WithContext force(int forceValue) {
-            this.context.withFocus(forceValue);
-            return this;
-        }
-
+        
         /**
          * 设置驱动实例组ID
          *
