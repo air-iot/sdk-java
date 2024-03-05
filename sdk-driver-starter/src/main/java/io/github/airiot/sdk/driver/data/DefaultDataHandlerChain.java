@@ -29,7 +29,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class DefaultDataHandlerChain implements DataHandlerChain {
-    
+
     private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(AbstractDataSender.class);
 
     private final TagValueCache tagValueCache;
@@ -101,11 +101,12 @@ public class DefaultDataHandlerChain implements DataHandlerChain {
                         handler.getClass().getName(), tableId, deviceId, tag, tagValue);
                 continue;
             }
-
+            
             Map<String, Object> newValue = handler.handle(tableId, deviceId, tag, tagValue);
             if (newValue == null || newValue.isEmpty()) {
                 logger.info("数据处理: 数据处理功能 [{}] 返回结果为 null, 中断数据处理. tableId = {}, deviceId = {}, tag = {}, value = {}",
                         handler.getClass().getName(), tableId, deviceId, tag, value);
+                finalValues.remove(tag.getId());
                 break;
             }
 
