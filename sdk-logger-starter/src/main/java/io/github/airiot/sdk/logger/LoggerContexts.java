@@ -283,6 +283,6 @@ public class LoggerContexts {
      * @param value 关联数据
      */
     public static void key(String value) {
-        getTopContext().setKey(value);
+        getTopContext().withTable(value);
     }
 }

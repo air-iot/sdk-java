@@ -202,16 +202,21 @@ public class InvalidRangeValueHandler implements DataHandler {
                 if (calcValue.compareTo(minValue) >= 0 && calcValue.compareTo(maxValue) <= 0) {
                     return Result.matched(condition, value);
                 }
+                break;
             case "greater":
                 BigDecimal greaterValue = BigDecimal.valueOf(condition.getValue());
                 if (calcValue.compareTo(greaterValue) > 0) {
                     return Result.matched(condition, value);
                 }
+                break;
             case "less":
                 BigDecimal lessValue = BigDecimal.valueOf(condition.getValue());
                 if (calcValue.compareTo(lessValue) < 0) {
                     return Result.matched(condition, value);
                 }
+                break;
+            default:
+                throw new IllegalStateException("无效的条件类型: " + conditionType);
         }
 
         return Result.nonMatched(condition, value);
@@ -221,7 +226,7 @@ public class InvalidRangeValueHandler implements DataHandler {
     public int getOrder() {
         return 301;
     }
-    
+
     static class Result {
         /**
          * 匹配条件信息

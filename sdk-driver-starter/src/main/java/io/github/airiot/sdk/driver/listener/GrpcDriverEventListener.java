@@ -75,7 +75,7 @@ import java.util.function.Consumer;
  * @see DriverApp 具体的驱动实现类
  */
 public class GrpcDriverEventListener implements DriverEventListener, ApplicationContextAware {
-    
+
     private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(GrpcDriverEventListener.class);
 
     private final Logger healthCheckLogger = LoggerFactory.withContext().module(DriverModules.HEARTBEAT).getStaticLogger(GrpcDriverEventListener.class);
@@ -578,7 +578,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             CompletableFuture.supplyAsync(() -> {
                 LoggerContext context = LoggerContexts.push();
-                context.setKey(request.getTableId());
+                context.withTable(request.getTableId()).withDevice(request.getId());
 
                 logger.info("开始执行指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
@@ -594,12 +594,12 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             req, serialNo, request.getCommand().toStringUtf8(), runResult);
                 } catch (JsonSyntaxException e) {
                     logger.error("指令执行失败, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                    result.setResult(500);
-                    result.setResult(e.getMessage());
+                    result.setCode(400);
+                    result.setError(e.getMessage());
                 } catch (Exception e) {
                     logger.error("指令执行失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                    result.setResult(500);
-                    result.setResult(e.getMessage());
+                    result.setCode(400);
+                    result.setError(e.getMessage());
                 }
                 return result;
             }, this.executor).handle((r, e) -> {
@@ -664,7 +664,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             CompletableFuture.supplyAsync(() -> {
                 LoggerContext context = LoggerContexts.push();
-                context.setKey(request.getTableId());
+                context.withTable(request.getTableId()).withDevice(request.getId());
 
                 logger.info("执行写数据点指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
@@ -680,12 +680,12 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             req, serialNo, request.getCommand().toStringUtf8(), runResult);
                 } catch (JsonSyntaxException e) {
                     logger.error("写数据点失败, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                    result.setResult(500);
-                    result.setResult(e.getMessage());
+                    result.setCode(400);
+                    result.setError(e.getMessage());
                 } catch (Exception e) {
                     logger.error("写数据点失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                    result.setResult(500);
-                    result.setResult(e.getMessage());
+                    result.setCode(400);
+                    result.setError(e.getMessage());
                 }
                 return result;
             }, this.executor).handle((r, e) -> {
@@ -749,7 +749,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             CompletableFuture.supplyAsync(() -> {
                 LoggerContext context = LoggerContexts.push();
-                context.setKey(request.getTableId());
+                context.withTable(request.getTableId());
 
                 logger.info("开始批量执行指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8());
 
@@ -765,12 +765,12 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             req, serialNo, request.getCommand().toStringUtf8(), runResult);
                 } catch (JsonSyntaxException e) {
                     logger.error("批量下发指令, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                    result.setResult(500);
-                    result.setResult(e.getMessage());
+                    result.setCode(400);
+                    result.setError(e.getMessage());
                 } catch (Exception e) {
                     logger.error("批量下发指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
-                    result.setResult(500);
-                    result.setResult(e.getMessage());
+                    result.setCode(400);
+                    result.setError(e.getMessage());
                 }
                 return result;
             }, this.executor).handle((r, e) -> {
@@ -963,13 +963,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             } catch (Exception e) {
                 logger.error("启动驱动, 解析启动配置失败, config = {}", config, e);
                 passed = false;
-                result.setResult(400);
+                result.setCode(400);
                 result.setResult("启动配置不正确: " + e.getMessage());
             }
 
             if (driverConfig != null) {
                 // 设置驱动组ID
-                LoggerContexts.getRootContext().setDriverGroup(driverConfig.getGroupId());
+                LoggerContexts.getRootContext().withDriverGroup(driverConfig.getGroupId());
 
                 // 根据驱动实例中的 debug 配置设置 logger 的日志等级
                 ch.qos.logback.classic.LoggerContext loggerContext = (ch.qos.logback.classic.LoggerContext) org.slf4j.LoggerFactory.getILoggerFactory();
@@ -1080,7 +1080,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 result.setResult(schema);
             } catch (Exception e) {
                 logger.error("req = {}, type = schema", request.getRequest(), e);
-                result.setCode(500);
+                result.setCode(400);
                 result.setResult(e.getMessage());
             } finally {
                 LoggerContexts.destroy();

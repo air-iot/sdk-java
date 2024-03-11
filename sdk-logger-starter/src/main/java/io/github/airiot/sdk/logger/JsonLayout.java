@@ -18,8 +18,11 @@
 package io.github.airiot.sdk.logger;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
+import ch.qos.logback.classic.spi.ThrowableProxy;
 import ch.qos.logback.core.LayoutBase;
 import com.google.gson.Gson;
+import io.github.airiot.sdk.logger.suggestion.SuggestionException;
 import org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter;
 
 import java.time.Instant;
@@ -30,6 +33,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.time.temporal.ChronoField.*;
 
@@ -78,7 +82,7 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
             lineInfo = element.getClassName() + ":" + element.getLineNumber();
         }
 
-        Map<String, Object> keys = context.getKeys(true);
+        Map<String, Object> keys = context.getRefData(true);
 
         String time = LocalDateTime.ofInstant(Instant.ofEpochMilli(event.getTimeStamp()), zoneId).format(DATE_TIME_FORMATTER);
         StringBuilder sb = new StringBuilder(initialBufferSize);
@@ -129,20 +133,73 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
         }
 
         sb.append(",");
+        sb.append("\"msg\":").append('"').append(event.getFormattedMessage()).append('"');
+
+        String detail = "";
+        Optional<Object> detailValue = context.getRefData(LoggerContext.DETAIL_KEY);
+        if (detailValue.isPresent()) {
+            detail = String.valueOf(detailValue.get());
+        }
+
+        String suggest = "";
+        Optional<Object> suggestValue = context.getRefData(LoggerContext.SUGGESTION_KEY);
+        if (suggestValue.isPresent()) {
+            suggest = String.valueOf(suggestValue.get());
+        }
 
         if (event.getThrowableProxy() != null) {
+            // 建议信息
+            IThrowableProxy proxy = event.getThrowableProxy();
+            if (proxy instanceof ThrowableProxy) {
+                Throwable cause = ((ThrowableProxy) proxy).getThrowable();
+                if (cause instanceof SuggestionException) {
+                    if (!suggest.isEmpty()) {
+                        suggest += "," + ((SuggestionException) cause).getSuggestion();
+                    } else {
+                        suggest = ((SuggestionException) cause).getSuggestion();
+                    }
+                }
+            }
+
+            // 将手动设置的 detail 和异常信息拼接到一起
             String exception = throwableProxyConverter.convert(event);
+            while (exception.startsWith("\r\n")) {
+                exception = exception.substring(2);
+            }
+            
+            while (exception.endsWith("\r\n")) {
+                exception = exception.substring(0, exception.length() - 2);
+            }
+
             exception = exception.replaceAll("\r\n", "\\\\r\\\\n");
             exception = exception.replaceAll("\n", "\\\\r\\\\n");
-            sb.append("\"msg\":").append('"').append(event.getFormattedMessage()).append("\\\\r\\\\n")
-                    .append(exception).append('"');
-        } else {
-            sb.append("\"msg\":").append('"').append(event.getFormattedMessage()).append('"');
+            exception = exception.replaceAll("\t", "");
+
+            if (detail.isEmpty()) {
+                detail = exception;
+            } else {
+                detail = "\\r\\n" + exception;
+            }
+        }
+
+        if (!detail.isEmpty()) {
+            sb.append(",\"" + LoggerContext.DETAIL_KEY + "\":").append('"').append(detail).append('"');
+        }
+
+        if (!suggest.isEmpty()) {
+            sb.append(",\"" + LoggerContext.SUGGESTION_KEY + "\":")
+                    .append('"')
+                    .append(suggest)
+                    .append('"');
         }
 
         sb.append("}");
-        sb.append("\r");
-        sb.append("\n");
+        sb.append("\r\n");
+
+        context.remove(LoggerContext.DETAIL_KEY);
+        context.remove(LoggerContext.FOCUS_KEY);
+        context.remove(LoggerContext.SUGGESTION_KEY);
+
         return sb.toString();
     }
 }

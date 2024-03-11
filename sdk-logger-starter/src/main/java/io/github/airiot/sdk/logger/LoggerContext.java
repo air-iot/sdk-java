@@ -27,13 +27,36 @@ import java.util.Optional;
 public class LoggerContext {
 
     /**
-     * 该 key 可用来存储任意数据. 通常用来存储数据关联的 <b>工作表标识</b>.
+     * 日志关联的工作表标识的 key.
+     * <br>
+     * 例如: 执行指令时, 可以将工作表标识设置到该字段, 以便在日志中关联工作表.
      */
-    public static final String KEY_ANY = "key1";
+    public static final String TABLE_KEY = "table";
     /**
-     * 关联的流程实例ID
+     * 日志关联的设备ID
      */
-    public static final String KEY_GROUP = "group";
+    public static final String DEVICE_KEY = "tableData";
+    /**
+     * 关联的驱动例ID
+     */
+    public static final String DRIVER_GROUP_KEY = "group";
+    /**
+     * 关联的流程ID
+     */
+    public static final String FLOW_KEY = "flow";
+    /**
+     * 错误日志关注标识. 该 key 的值为 1 时, 表示该日志重要, 会在特定的窗口中显示.
+     * <br>
+     */
+    public static final String FOCUS_KEY = "focus";
+    /**
+     * 建议信息标识. 提供针对本条日志中的错误的处理建议信息.
+     */
+    public static final String SUGGESTION_KEY = "suggest";
+    /**
+     * 日志详情. 通常用于存储一些调试信息和给开发人员的提示信息.
+     */
+    public static final String DETAIL_KEY = "detail";
 
     public static final LoggerContext EMPTY = new LoggerContext(null);
 
@@ -73,10 +96,8 @@ public class LoggerContext {
     private Object data;
     /**
      * 自定义关联数据
-     * <br>
-     * 例如: 如果想将日志关联表, 可以将表名赋值给该字段.
      */
-    private final Map<String, Object> keys = new HashMap<>();
+    private final Map<String, Object> refData = new HashMap<>();
 
     public int getLevel() {
         return level;
@@ -252,10 +273,10 @@ public class LoggerContext {
      *
      * @return 关联数据. 如果没找到则返回 {@link Optional#empty()}
      */
-    public Optional<Object> getKey(String key) {
-        Object value = this.keys.get(key);
+    public Optional<Object> getRefData(String key) {
+        Object value = this.refData.get(key);
         if (value == null && parent != null) {
-            return parent.getKey(key);
+            return parent.getRefData(key);
         }
         return Optional.ofNullable(value);
     }
@@ -266,9 +287,13 @@ public class LoggerContext {
      * @param recursive 是否递归获取父级上下文中的关联数据
      * @return 所有的关联数据
      */
-    public Map<String, Object> getKeys(boolean recursive) {
-        Map<String, Object> allKeys = new HashMap<>(this.keys);
+    public Map<String, Object> getRefData(boolean recursive) {
+        Map<String, Object> allKeys = new HashMap<>(this.refData);
         if (!recursive) {
+            return allKeys;
+        }
+
+        if (parent == null || parent.parent == parent) {
             return allKeys;
         }
 
@@ -278,30 +303,24 @@ public class LoggerContext {
                 return allKeys;
             }
 
-            Map<String, Object> parentKeys = previous.getKeys(true);
+            Map<String, Object> parentKeys = previous.getRefData(true);
             if (parentKeys == null || parentKeys.isEmpty()) {
                 continue;
             }
-            
+
             for (Map.Entry<String, Object> entry : parentKeys.entrySet()) {
                 if (!allKeys.containsKey(entry.getKey())) {
                     allKeys.put(entry.getKey(), entry.getValue());
                 }
             }
-
+            
+            if (previous.parent == previous) {
+                break;
+            }
             previous = previous.parent;
         }
 
         return allKeys;
-    }
-
-    /**
-     * 设置自定义关联数据
-     *
-     * @param value 关联数据
-     */
-    public void setKey(String value) {
-        this.keys.put(KEY_ANY, value);
     }
 
     /**
@@ -311,8 +330,111 @@ public class LoggerContext {
      *
      * @param driverGroupId 驱动实例分组ID
      */
-    public void setDriverGroup(String driverGroupId) {
-        this.keys.put(KEY_GROUP, driverGroupId);
+    public LoggerContext withDriverGroup(String driverGroupId) {
+        this.refData.put(DRIVER_GROUP_KEY, driverGroupId);
+        return this;
+    }
+
+    /**
+     * 设置关联的工作表标识
+     *
+     * @param tableId 关联的工作表标识
+     */
+    public LoggerContext withTable(String tableId) {
+        this.refData.put(TABLE_KEY, tableId);
+        return this;
+    }
+
+    /**
+     * 设置关联的设备编号
+     *
+     * @param deviceId 设备编号
+     */
+    public LoggerContext withDevice(String deviceId) {
+        this.refData.put(DEVICE_KEY, deviceId);
+        return this;
+    }
+
+    /**
+     * 设置关联的工作表标识和设备编号
+     *
+     * @param tableId  工作表标识
+     * @param deviceId 设备编号
+     */
+    public LoggerContext withTableDevice(String tableId, String deviceId) {
+        this.refData.put(TABLE_KEY, tableId);
+        this.refData.put(DEVICE_KEY, deviceId);
+        return this;
+    }
+
+    /**
+     * 设置关联的流程ID
+     *
+     * @param flowId 流程ID
+     */
+    public LoggerContext withFlow(String flowId) {
+        this.refData.put(FLOW_KEY, flowId);
+        return this;
+    }
+
+    /**
+     * 设置关注标识
+     *
+     * @param value 标识的值
+     */
+    public LoggerContext withFocus(int value) {
+        this.refData.put(FOCUS_KEY, value);
+        return this;
+    }
+
+    /**
+     * 设置默认关注标识. 关注标识的值为 1
+     */
+    public LoggerContext withFocus() {
+        return this.withFocus(1);
+    }
+
+    /**
+     * 设置建议信息
+     *
+     * @param value 建议信息
+     */
+    public LoggerContext withSuggestion(String value) {
+        this.refData.put(SUGGESTION_KEY, value);
+        return this;
+    }
+
+    /**
+     * 设置日志详情
+     *
+     * @param detail 日志详情
+     */
+    public LoggerContext withDetail(String detail) {
+        this.refData.put(DETAIL_KEY, detail);
+        return this;
+    }
+
+    /**
+     * 移除当前上下文中的关联数据. 如果当前上下文中不存在该 key 的关联数据, 则不会做任何操作.
+     *
+     * @param key 关联数据的 key
+     */
+    public LoggerContext removeCurrent(String key) {
+        this.refData.remove(key);
+        return this;
+    }
+
+    /**
+     * 移除当前上下文及父级上下文中的关联数据.
+     *
+     * @param key 关联数据的 key
+     */
+    public LoggerContext remove(String key) {
+        this.refData.remove(key);
+        if (parent != null) {
+            parent.remove(key);
+        }
+        return this;
     }
 
     LoggerContext(LoggerContext parent) {

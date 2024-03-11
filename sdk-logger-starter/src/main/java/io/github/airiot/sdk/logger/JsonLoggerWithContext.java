@@ -36,11 +36,10 @@ public class JsonLoggerWithContext implements org.slf4j.Logger {
 
             JsonConsoleAppenderWithContext appender = new JsonConsoleAppenderWithContext(context, rootAppender);
             appender.setName("JSON_CONSOLE");
-            appender.setContext(delegate.getLoggerContext());
 
             delegate.setAdditive(false);
             delegate.addAppender(appender);
-
+            
             appender.start();
         }
     }

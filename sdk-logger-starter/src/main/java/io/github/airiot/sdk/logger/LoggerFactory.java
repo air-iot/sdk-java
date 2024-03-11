@@ -101,22 +101,42 @@ public class LoggerFactory {
         }
 
         /**
-         * 设置自定义关联数据. 可以用来关联到工作表标识等.
+         * 设置日志关联的表标识
          *
-         * @param value 关联数据
+         * @param tableId 表标识
          */
-        public WithContext key(String value) {
-            this.context.setKey(value);
+        public WithContext table(String tableId) {
+            this.context.withTable(tableId);
             return this;
         }
 
+        /**
+         * 设置日志关联的设备编号
+         *
+         * @param deviceId 设备编号
+         */
+        public WithContext device(String deviceId) {
+            this.context.withDevice(deviceId);
+            return this;
+        }
+
+        /**
+         * 设置日志关联的流程定义ID
+         *
+         * @param flowId 流程定义ID
+         */
+        public WithContext flow(String flowId) {
+            this.context.withFlow(flowId);
+            return this;
+        }
+        
         /**
          * 设置驱动实例组ID
          *
          * @param driverGroupId 驱动实例组ID
          */
         public WithContext group(String driverGroupId) {
-            this.context.setDriverGroup(driverGroupId);
+            this.context.withDriverGroup(driverGroupId);
             return this;
         }
 

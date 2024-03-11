@@ -334,7 +334,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
     public void writePoint(String tableId, String deviceId, long time, Map<String, Object> tagValues) {
         Point point = this.globalContext.createPoint(tableId, deviceId, time, tagValues);
         LoggerContext context = LoggerContexts.push();
-        context.setKey(tableId);
+        context.withTable(tableId);
         try {
             this.writePoint(point);
         } finally {
@@ -369,7 +369,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
         String deviceId = point.getId();
 
         LoggerContext context = LoggerContexts.push();
-        context.setKey(tableId);
+        context.withTable(tableId);
 
         Point newPoint = null;
 
