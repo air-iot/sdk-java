@@ -269,7 +269,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                 .setProjectId(this.projectId)
                 .setDriverId(this.driverId)
                 .setService(this.serviceId)
-                .setTableDataId(tableId)
+                .setTableId(tableId)
                 .setTableDataId(deviceId)
                 .build();
         Response response = this.driverGrpcClient.findTableData(request);
