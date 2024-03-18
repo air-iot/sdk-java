@@ -19,6 +19,7 @@ package io.github.airiot.sdk.client.service.core;
 
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.PlatformClient;
+import io.github.airiot.sdk.client.service.core.dto.MediaLibrarySaveFileFromUrlParams;
 import io.github.airiot.sdk.client.service.core.dto.MkdirDTO;
 import io.github.airiot.sdk.client.service.core.dto.UploadFileResult;
 
@@ -31,7 +32,7 @@ import java.io.IOException;
  * 媒体库客户端
  */
 public interface MediaLibraryClient extends PlatformClient {
-    
+
     /**
      * 创建目录
      *
@@ -67,6 +68,13 @@ public interface MediaLibraryClient extends PlatformClient {
     ResponseDTO<UploadFileResult> upload(@Nonnull String catalog, @Nonnull String action, @Nonnull String filename, @Nonnull byte[] fileData);
 
     /**
+     * 将远程文件上传到媒体库
+     * @param params 参数列表
+     * @return 如果上传成功, 则返回该文件的 url
+     */
+    ResponseDTO<UploadFileResult> uploadFromUrl(@Nonnull MediaLibrarySaveFileFromUrlParams params);
+
+    /**
      * 上传文件到媒体库
      *
      * @param catalog 上传目录
@@ -81,5 +89,35 @@ public interface MediaLibraryClient extends PlatformClient {
             fis.read(fileData);
             return upload(catalog, action, file.getName(), fileData);
         }
+    }
+
+    /**
+     * 上传文件到媒体库
+     *
+     * @param catalog  上传目录
+     * @param action   重同名文件时执行的动作. 可选值: cover: 覆盖, rename: 文件名自动加1
+     * @param filename 自定义文件名
+     * @param file     文件
+     * @return 如果上传成功, 则返回该文件的 url
+     * @throws IOException 如果文件不存在
+     */
+    default ResponseDTO<UploadFileResult> upload(@Nonnull String catalog, @Nonnull String action, String filename, @Nonnull File file) throws IOException {
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] fileData = new byte[fis.available()];
+            fis.read(fileData);
+            return upload(catalog, action, filename, fileData);
+        }
+    }
+
+    /**
+     * 将远程文件上传到媒体库
+     *
+     * @param catalog   上传目录
+     * @param filename  文件名
+     * @param sourceUrl 远程文件地址
+     * @return 如果上传成功, 则返回该文件的 url
+     */
+    default ResponseDTO<UploadFileResult> uploadFromUrl(@Nonnull String catalog, @Nonnull String filename, @Nonnull String sourceUrl) {
+        return this.uploadFromUrl(new MediaLibrarySaveFileFromUrlParams(sourceUrl, catalog, filename));
     }
 }

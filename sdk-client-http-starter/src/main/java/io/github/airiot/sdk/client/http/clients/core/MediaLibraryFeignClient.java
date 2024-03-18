@@ -23,8 +23,10 @@ import feign.RequestLine;
 import feign.form.FormData;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.core.MediaLibraryClient;
+import io.github.airiot.sdk.client.service.core.dto.MediaLibrarySaveFileFromUrlParams;
 import io.github.airiot.sdk.client.service.core.dto.MkdirDTO;
 import io.github.airiot.sdk.client.service.core.dto.UploadFileResult;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 
@@ -33,7 +35,7 @@ public interface MediaLibraryFeignClient extends MediaLibraryClient {
     @RequestLine("POST /core/mediaLibrary/mkdir")
     @Override
     ResponseDTO<Void> mkdir(@Nonnull MkdirDTO mkdir);
-    
+
     @Override
     default ResponseDTO<UploadFileResult> upload(@Nonnull String catalog, @Nonnull String action, @Nonnull String filename, @Nonnull byte[] fileData) {
         FormData formData = new FormData();
@@ -45,4 +47,8 @@ public interface MediaLibraryFeignClient extends MediaLibraryClient {
     @RequestLine("POST /core/mediaLibrary/upload?catalog={catalog}&action={action}")
     @Headers("Content-Type: multipart/form-data")
     ResponseDTO<UploadFileResult> upload(@Param("catalog") String catalog, @Param("action") String action, @Param("file") FormData file);
+
+    @RequestLine("POST /core/mediaLibrary/saveFileFromUrl")
+    @Override
+    ResponseDTO<UploadFileResult> uploadFromUrl(@NotNull MediaLibrarySaveFileFromUrlParams params);
 }
