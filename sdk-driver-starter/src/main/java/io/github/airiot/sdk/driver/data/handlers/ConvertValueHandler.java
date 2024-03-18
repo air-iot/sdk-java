@@ -63,7 +63,7 @@ import java.util.Map;
 public class ConvertValueHandler implements DataHandler {
 
     private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getDynamicLogger(ConvertValueHandler.class);
-    
+
     /**
      * 计算精度
      */
@@ -80,6 +80,8 @@ public class ConvertValueHandler implements DataHandler {
     @Override
     public boolean supports(String tableId, String deviceId, Tag tag, Object value) {
         if (!DataHandler.super.supports(tableId, deviceId, tag, value)) {
+            logger.debug("数据点[数值转换]处理器: 设备表={},设备={},数据点={}. tag 或 value 为 null, 不支持处理",
+                    tableId, deviceId, tag == null ? null : tag.getId());
             return false;
         }
 
@@ -91,7 +93,7 @@ public class ConvertValueHandler implements DataHandler {
         boolean matched = mapping != null && mapping.getMinValue() != null && mapping.getMaxValue() != null
                 && mapping.getMinRaw() != null && mapping.getMaxRaw() != null;
 
-        logger.debug("数据点数据处理器: 数值转换, table = {}, device = {}, tag = {}, mapping = {}, value = {}, match = {}",
+        logger.debug("数据点[数值转换]处理器: 设备表={},设备={},数据点={}. 映射配置 {}, 数据点的值 {}, 条件是否满足 {}",
                 tableId, deviceId, tag.getId(), mapping, value, matched);
 
         return matched;
@@ -101,8 +103,8 @@ public class ConvertValueHandler implements DataHandler {
     public Map<String, Object> handle(String tableId, String deviceId, Tag tag, Object value) {
         double dValue = ((Number) value).doubleValue();
         if (Double.isNaN(dValue) || !Double.isFinite(dValue)) {
-            logger.warn("数据点数据处理器: 数值转换, 值为 {}, 丢弃. device = {}, tag = {}",
-                    value, deviceId, tag.getId());
+            logger.warn("数据点[数值转换]处理器: 设备表={},设备={},数据点={}. 值为 {}, 丢弃",
+                    tableId, deviceId, tag.getId(), value);
             return Collections.emptyMap();
         }
 
@@ -116,9 +118,8 @@ public class ConvertValueHandler implements DataHandler {
         BigDecimal maxValue = BigDecimal.valueOf(tagValue.getMaxValue());
 
         if (minRawValue.equals(maxRawValue)) {
-            logger.debug("数据点数据处理器: 数值转换, table = {}, device = {}, tag = {}, mapping = {}, value = {}, 最大值等于最小值, 无须处理",
-                    tableId, deviceId, tag.getId(), tagValue, value);
-
+            logger.debug("数据点[数值转换]处理器: 设备表={},设备={},数据点={}. 最大值等于最小值, 无须处理, 最终值为 {}",
+                    tableId, deviceId, tag.getId(), val);
             return Collections.singletonMap(tag.getId(), val);
         }
 
@@ -129,8 +130,8 @@ public class ConvertValueHandler implements DataHandler {
                 .divide(maxRawValue.subtract(minRawValue), this.scale, RoundingMode.HALF_DOWN)
                 .multiply(maxValue.subtract(minValue)).add(minValue);
 
-        logger.debug("数据点数据处理器: 数值转换, table = {}, device = {}, tag = {}, mapping = {}, value = {}, result = {}",
-                tableId, deviceId, tag.getId(), tagValue, value, result);
+        logger.debug("数据点[数值转换]处理器: 设备表={},设备={},数据点={}. 原始值为 {}, 映射结果为 {}",
+                tableId, deviceId, tag.getId(), tagValue, result);
 
         return Collections.singletonMap(tag.getId(), result.doubleValue());
     }

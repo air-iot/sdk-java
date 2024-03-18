@@ -57,8 +57,7 @@ public class RangeValueHandler implements DataHandler {
     @Override
     public boolean supports(String tableId, String deviceId, Tag tag, Object value) {
         if (!DataHandler.super.supports(tableId, deviceId, tag, value)) {
-            logger.debug("数据点数据处理器: tag 或 value 为 null, table = {}, device = {}, tag = {}, value = {}",
-                    tableId, deviceId, tag, value);
+            logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. tag 或 value 为 null, 不支持处理", tableId, deviceId, tag == null ? null : tag.getId());
             return false;
         }
 
@@ -71,8 +70,8 @@ public class RangeValueHandler implements DataHandler {
                 && range.getMinValue() != null && range.getMaxValue() != null;
 
         if (matched && !actions.contains(range.getActive())) {
-            logger.warn("数据点数据处理器: 有效范围处理, 无效的动作 {}, table = {}, device = {}, tag = {}, range = {}, value = {}",
-                    range.getActive(), tableId, deviceId, tagId, range, value);
+            logger.warn("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 无效的动作 {}, 有效动作为: fixed, boundary, discard",
+                    tableId, deviceId, tagId, range.getActive());
             return false;
         }
 
@@ -82,7 +81,7 @@ public class RangeValueHandler implements DataHandler {
 //            return false;
 //        }
 
-        logger.debug("数据点数据处理器: 有效范围处理, table = {}, device = {}, tag = {}, range = {}, value = {}, match = {}",
+        logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 有效范围配置 {}, 数据点的值 {}, 条件是否满足 {}",
                 tableId, deviceId, tagId, range, value, matched);
 
         return matched;
@@ -92,8 +91,8 @@ public class RangeValueHandler implements DataHandler {
     public Map<String, Object> handle(String tableId, String deviceId, Tag tag, Object value) {
         double dValue = ((Number) value).doubleValue();
         if (Double.isNaN(dValue) || !Double.isFinite(dValue)) {
-            logger.warn("数据点数据处理器: 有效范围处理, 值为 {}, 丢弃. device = {}, tag = {}",
-                    value, deviceId, tag.getId());
+            logger.warn("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 数据点的值为 {}, 丢弃",
+                    value, deviceId, tag.getId(), value);
             return Collections.emptyMap();
         }
 
@@ -105,18 +104,18 @@ public class RangeValueHandler implements DataHandler {
 
         String tagId = tag.getId();
 
-        logger.debug("数据点数据处理器: 有效范围处理, table = {}, device = {}, tag = {}, range = {}, value = {}",
+        logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 有效范围配置 {}, 数据点的值 {}",
                 tableId, deviceId, tagId, range, value);
 
         // 值在设定范围之内
         if (val.compareTo(minValue) >= 0 && val.compareTo(maxValue) <= 0) {
-            logger.debug("数据点数据处理器: 有效范围处理, table = {}, device = {}, tag = {}, range = {}, value = {}, 在有效范围内[{} - {}], 无须处理",
-                    tableId, deviceId, tagId, range, value, minValue, maxValue);
+            logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 数据点的值 {} 在有效范围内[{} - {}], 无须处理",
+                    tableId, deviceId, tagId, value, minValue, maxValue);
             return Collections.singletonMap(tag.getId(), val.doubleValue());
         }
 
-        logger.debug("数据点数据处理器: 有效范围处理, table = {}, device = {}, tag = {}, range = {}, value = {}, 超出有效范围内[{} - {}]",
-                tableId, deviceId, tagId, range, value, minValue, maxValue);
+        logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 数据点的值 {} 超出有效范围内[{} - {}]",
+                tableId, deviceId, tagId, value, minValue, maxValue);
 
         Map<String, Object> tagValues = new HashMap<>(3);
         if ("save".equals(tag.getRange().getInvalidAction())) {
@@ -126,29 +125,29 @@ public class RangeValueHandler implements DataHandler {
         switch (range.getActive().toLowerCase()) {
             case "fixed":
                 if (range.getFixedValue() == null) {
-                    logger.warn("数据点数据处理器: 有效范围处理, 有效范围动作为固定值, 但未提供有效的固定值. table = {}, device = {}, tag = {}, range = {}, value = {}",
-                            tableId, deviceId, tagId, range, value);
+                    logger.warn("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 有效范围动作为固定值, 但未提供有效的固定值, 丢弃数据, {}",
+                            tableId, deviceId, tagId, range);
                     return tagValues;
                 }
 
                 double fixedValue = range.getFixedValue();
-                logger.debug("数据点数据处理器: 有效范围处理, 取固定值. table = {}, device = {}, tag = {}, range = {}, value = {}, fixedValue = {}",
-                        tableId, deviceId, tagId, range, value, fixedValue);
+                logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 数据点的值为 {}, 最终取固定值 {}",
+                        tableId, deviceId, tagId, value, fixedValue);
 
                 tagValues.put(tagId, fixedValue);
                 return tagValues;
             case "boundary":
                 double finalValue = (val.compareTo(minValue) < 0 ? minValue : maxValue).doubleValue();
 
-                logger.debug("数据点数据处理器: 有效范围处理, 取边界值. table = {}, device = {}, tag = {}, range = {}, value = {}, boundaryValue = {}",
-                        tableId, deviceId, tagId, range, value, finalValue);
+                logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 数据点的值为 {}, 最终取边界值 {}",
+                        tableId, deviceId, tagId, value, finalValue);
 
                 tagValues.put(tagId, finalValue);
                 return tagValues;
             case "latest":
                 TagValueCache.CacheValue latestValue = this.tagValueCache.get(tableId, deviceId, tagId);
-                logger.debug("数据点数据处理器: 有效范围, tableId = {}, device = {}, tag = {}, range = {}, value = {}, 取最新有效值 {}",
-                        tableId, deviceId, tagId, range, value, latestValue);
+                logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 数据点的值为 {}, 取最新有效值 {}",
+                        tableId, deviceId, tagId, value, latestValue);
                 if (latestValue != null) {
                     tagValues.put(tagId, latestValue.getValue());
                 } else {
@@ -156,8 +155,8 @@ public class RangeValueHandler implements DataHandler {
                 }
                 return tagValues;
             case "discard":
-                logger.debug("数据点数据处理器: 有效范围处理, table = {}, device = {}, tag = {}, range = {}, value = {}, 丢弃数据",
-                        tableId, deviceId, tagId, range, value);
+                logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 丢弃数据 {}",
+                        tableId, deviceId, tagId, value);
                 return tagValues;
             default:
                 throw new IllegalArgumentException("无法识别数据点 '" + tagId + "' 定义的有效范围处理动作: " + range.getActive());
