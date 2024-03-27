@@ -26,7 +26,6 @@ import io.github.airiot.sdk.logger.suggestion.SuggestionException;
 import org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -52,13 +51,11 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
                     .appendValue(HOUR_OF_DAY, 2)
                     .appendLiteral(':')
                     .appendValue(MINUTE_OF_HOUR, 2)
-                    .optionalStart()
                     .appendLiteral(':')
                     .appendValue(SECOND_OF_MINUTE, 2)
                     .optionalStart()
                     .appendFraction(NANO_OF_SECOND, 9, 9, true).toFormatter())
-            .optionalStart()
-            .appendOffset("+HH:MM", "GMT")
+            .appendOffset("+HH:MM", "Z")
             .toFormatter();
 
     @Override
@@ -84,7 +81,7 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
 
         Map<String, Object> keys = context.getRefData(true);
 
-        String time = LocalDateTime.ofInstant(Instant.ofEpochMilli(event.getTimeStamp()), zoneId).format(DATE_TIME_FORMATTER);
+        String time = ZonedDateTime.ofInstant(Instant.ofEpochMilli(event.getTimeStamp()), zoneId).format(DATE_TIME_FORMATTER);
         StringBuilder sb = new StringBuilder(initialBufferSize);
         sb.append("{")
                 .append("\"logType\":").append("\"__syslog__\"").append(",")
@@ -166,7 +163,7 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
             while (exception.startsWith("\r\n")) {
                 exception = exception.substring(2);
             }
-            
+
             while (exception.endsWith("\r\n")) {
                 exception = exception.substring(0, exception.length() - 2);
             }
