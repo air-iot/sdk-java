@@ -104,6 +104,9 @@ public class LoggerContext {
     }
 
     void setParent(LoggerContext parent) {
+        if (this == parent || parent == this.parent) {
+            return;
+        }
         this.parent = parent;
         this.level = parent.getLevel() + 1;
     }
@@ -140,6 +143,10 @@ public class LoggerContext {
         String pId = null;
         if (projectId != null && !projectId.isEmpty()) {
             pId = projectId;
+        } else if (this.parent == this) {
+            System.out.println("============================================================================");
+            System.out.println("BUG: LoggerContext 中 this == parent");
+            System.out.println("============================================================================");
         } else if (parent != null) {
             pId = parent.getProjectId();
         }
@@ -313,7 +320,7 @@ public class LoggerContext {
                     allKeys.put(entry.getKey(), entry.getValue());
                 }
             }
-            
+
             if (previous.parent == previous) {
                 break;
             }
