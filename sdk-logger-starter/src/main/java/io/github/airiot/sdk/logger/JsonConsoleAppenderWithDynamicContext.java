@@ -25,9 +25,11 @@ public class JsonConsoleAppenderWithDynamicContext extends UnsynchronizedAppende
 
     private final Appender<ILoggingEvent> delegate;
     private final LoggerContext context;
+    private final LoggerContext pContext;
 
     public JsonConsoleAppenderWithDynamicContext(LoggerContext context, Appender<ILoggingEvent> delegate) {
         this.context = context;
+        this.pContext = context.getParent();
         this.delegate = delegate;
     }
 
@@ -36,15 +38,23 @@ public class JsonConsoleAppenderWithDynamicContext extends UnsynchronizedAppende
         LoggerContext current = LoggerContexts.getContext();
         LoggerContext parent = current.getParent();
 
+        // 如果当前上下文相同或者已经存在父级关系, 说明当前线程栈中没有添加新的日志上下文
+        if (this.context == current || this.context == parent) {
+            return;
+        }
+        
         current.setParent(this.context);
         if (parent != null) {
             this.context.setParent(parent);
         }
-        
+
         try {
             this.delegate.doAppend(new LoggingEventWithContext(current, eventObject));
         } finally {
-            current.setParent(this.context.getParent());
+            if (parent != null) {
+                current.setParent(parent);
+            }
+            this.context.setParent(this.pContext);
         }
     }
 }
