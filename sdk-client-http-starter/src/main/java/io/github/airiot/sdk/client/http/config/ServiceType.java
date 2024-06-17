@@ -33,7 +33,10 @@ public enum ServiceType {
      * 告警服务
      */
     WARNING("warning"),
-
+    /**
+     * 驱动管理服务
+     */
+    DRIVER("driver"),
     /**
      * 空间管理服务
      */

@@ -26,6 +26,7 @@ import io.github.airiot.sdk.client.http.clients.HttpProjectAuthorizationClientIm
 import io.github.airiot.sdk.client.http.clients.HttpTenantAuthorizationClientImpl;
 import io.github.airiot.sdk.client.http.clients.common.HttpCommonClient;
 import io.github.airiot.sdk.client.http.clients.core.*;
+import io.github.airiot.sdk.client.http.clients.driver.DriverFeignClientImpl;
 import io.github.airiot.sdk.client.http.clients.ds.DataServiceClientImpl;
 import io.github.airiot.sdk.client.http.clients.ds.DataServiceFeignClient;
 import io.github.airiot.sdk.client.http.clients.spm.SpmProjectFeignClient;
@@ -41,6 +42,7 @@ import io.github.airiot.sdk.client.interceptor.EnableClientInterceptors;
 import io.github.airiot.sdk.client.properties.AuthorizationProperties;
 import io.github.airiot.sdk.client.service.AuthorizationClient;
 import io.github.airiot.sdk.client.service.core.*;
+import io.github.airiot.sdk.client.service.driver.DriverClient;
 import io.github.airiot.sdk.client.service.ds.DataServiceClient;
 import io.github.airiot.sdk.client.service.spm.ProjectClient;
 import io.github.airiot.sdk.client.service.spm.SpmUserClient;
@@ -375,6 +377,32 @@ public class HttpClientAutoConfiguration {
                     .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
                     .responseInterceptor(UniResponseInterceptor.INSTANCE)
                     .target(SpmProjectFeignClient.class, properties.getHost());
+        }
+    }
+
+    /**
+     * 驱动管理接口服务
+     */
+    @Configuration
+    public static class HttpDriverClientConfiguration {
+        @Bean
+        public DriverClient driverClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
+                                         HttpClientProperties properties,
+                                         RequestInterceptor authRequestInterceptor) {
+            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.DRIVER);
+            return Feign.builder().client(client)
+                    .encoder(encoder)
+                    .decoder(decoder)
+                    .contract(contract)
+                    .options(new Request.Options(
+                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            false
+                    ))
+                    .requestInterceptor(authRequestInterceptor)
+                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
+                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
+                    .target(DriverFeignClientImpl.class, properties.getHost());
         }
     }
 

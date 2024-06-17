@@ -17,9 +17,7 @@
 
 package io.github.airiot.sdk.logger;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * 日志上下文
@@ -300,34 +298,68 @@ public class LoggerContext {
             return allKeys;
         }
 
-        if (parent == null || parent.parent == parent) {
+        if (parent == null || parent.parent == parent || parent.parent == this) {
             return allKeys;
         }
 
-        LoggerContext previous = parent;
+        Set<Integer> called = new HashSet<>();
+
+        try {
+            LoggerContext previous = parent;
+            for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
+                if (previous == null) {
+                    return allKeys;
+                }
+
+                int ctx = System.identityHashCode(previous);
+                if (called.contains(ctx)) {
+                    this.printCurrentContexts();
+                    return allKeys;
+                }
+                called.add(ctx);
+
+                Map<String, Object> parentKeys = previous.getRefData(true);
+                if (parentKeys == null || parentKeys.isEmpty()) {
+                    continue;
+                }
+
+                for (Map.Entry<String, Object> entry : parentKeys.entrySet()) {
+                    if (!allKeys.containsKey(entry.getKey())) {
+                        allKeys.put(entry.getKey(), entry.getValue());
+                    }
+                }
+
+                if (previous.parent == previous || previous.parent == this) {
+                    break;
+                }
+                previous = previous.parent;
+
+            }
+
+            return allKeys;
+        } catch (StackOverflowError e) {
+            this.printCurrentContexts();
+            return Collections.emptyMap();
+        }
+    }
+
+    void printCurrentContexts() {
+        String key = UUID.randomUUID().toString();
+        LoggerContext previous = this;
+
+        System.err.println(key + ": LoggerContext.getRefData(true) stack overflow");
+
         for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
             if (previous == null) {
-                return allKeys;
-            }
-
-            Map<String, Object> parentKeys = previous.getRefData(true);
-            if (parentKeys == null || parentKeys.isEmpty()) {
-                continue;
-            }
-
-            for (Map.Entry<String, Object> entry : parentKeys.entrySet()) {
-                if (!allKeys.containsKey(entry.getKey())) {
-                    allKeys.put(entry.getKey(), entry.getValue());
-                }
-            }
-
-            if (previous.parent == previous) {
                 break;
             }
+
+            int ctx = System.identityHashCode(previous);
+
+            System.err.println(key + ": #" + i + " -> " + ctx);
+
             previous = previous.parent;
         }
-
-        return allKeys;
     }
 
     /**
