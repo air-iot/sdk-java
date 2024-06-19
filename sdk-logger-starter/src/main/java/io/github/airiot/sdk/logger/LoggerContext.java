@@ -318,7 +318,7 @@ public class LoggerContext {
                 }
                 called.add(ctx);
 
-                Map<String, Object> parentKeys = previous.getRefData(true);
+                Map<String, Object> parentKeys = previous.getRefData(false);
                 if (parentKeys == null || parentKeys.isEmpty()) {
                     continue;
                 }
@@ -328,16 +328,14 @@ public class LoggerContext {
                         allKeys.put(entry.getKey(), entry.getValue());
                     }
                 }
-
-                if (previous.parent == previous || previous.parent == this) {
-                    break;
-                }
+                
                 previous = previous.parent;
 
             }
 
             return allKeys;
         } catch (StackOverflowError e) {
+            e.printStackTrace();
             this.printCurrentContexts();
             return Collections.emptyMap();
         }
@@ -347,7 +345,7 @@ public class LoggerContext {
         String key = UUID.randomUUID().toString();
         LoggerContext previous = this;
 
-        System.err.println(key + ": LoggerContext.getRefData(true) stack overflow");
+        System.err.println(key + ": LoggerContext.getRefData(true) stack overflow, threadId: " + Thread.currentThread().getId() + ", ThreadName: " + Thread.currentThread().getName());
 
         for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
             if (previous == null) {
