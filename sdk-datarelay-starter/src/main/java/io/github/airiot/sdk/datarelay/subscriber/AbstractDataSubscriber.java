@@ -81,9 +81,14 @@ public abstract class AbstractDataSubscriber implements DataSubscriber {
         if (CollectionUtils.isEmpty(data)) {
             return Collections.emptyList();
         }
-
+        
         Map<String, DeviceLatestData> devices = new HashMap<>(subscriptions.size());
         for (LatestData datum : data) {
+            if (!StringUtils.hasText(datum.getId()) || !StringUtils.hasText(datum.getTableId()) ||
+                    datum.getTime() == null || datum.getValue() == null) {
+                continue;
+            }
+
             String key = String.format("#T%s#D%s", datum.getTableId(), datum.getId());
             if (!devices.containsKey(key)) {
                 DeviceLatestData device = new DeviceLatestData();

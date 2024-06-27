@@ -7,8 +7,8 @@ import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.datarelay.DataRelayModules;
 import io.github.airiot.sdk.datarelay.configuration.properties.DataRelayAppProperties;
 import io.github.airiot.sdk.datarelay.configuration.properties.DataRelayGrpcProperties;
-import io.github.airiot.sdk.datarelay.grpc.*;
 import io.github.airiot.sdk.datarelay.grpc.Error;
+import io.github.airiot.sdk.datarelay.grpc.*;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
 import io.grpc.*;
@@ -334,7 +334,8 @@ public class DataRelayAppListener implements SmartLifecycle {
                 builder.setStatus(true).setInfo("启动成功");
             } catch (Exception e) {
                 logger.error("启动服务:", e);
-                builder.setStatus(false).setInfo("启动失败").setDetail(e.getMessage());
+                String msg = e.getMessage();
+                builder.setStatus(false).setInfo("启动失败").setDetail(msg == null ? e.getClass().toString() : msg);
             } finally {
                 LoggerContexts.destroy();
             }
@@ -406,13 +407,14 @@ public class DataRelayAppListener implements SmartLifecycle {
                         .setResult(ByteString.copyFrom(result, StandardCharsets.UTF_8));
             } catch (Exception e) {
                 logger.error("req = {}, type = httpProxy", request.getRequest(), e);
+                String msg = e.getMessage();
                 builder.setStatus(false)
                         .setInfo("请求失败")
-                        .setDetail(e.getMessage());
+                        .setDetail(msg == null ? e.getClass().toString() : msg);
             } finally {
                 LoggerContexts.destroy();
             }
-
+            
             clientCall.sendMessage(builder.build());
         }
     }

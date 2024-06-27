@@ -320,6 +320,7 @@ public class LoggerContext {
 
                 Map<String, Object> parentKeys = previous.getRefData(false);
                 if (parentKeys == null || parentKeys.isEmpty()) {
+                    previous = previous.parent;
                     continue;
                 }
 
@@ -328,7 +329,7 @@ public class LoggerContext {
                         allKeys.put(entry.getKey(), entry.getValue());
                     }
                 }
-                
+
                 previous = previous.parent;
 
             }
