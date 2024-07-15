@@ -595,11 +595,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 } catch (JsonSyntaxException e) {
                     logger.error("指令执行失败, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setError(e.getMessage());
+                    result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
                 } catch (Exception e) {
                     logger.error("指令执行失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setError(e.getMessage());
+                    result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
                 }
                 return result;
             }, this.executor).handle((r, e) -> {
@@ -681,11 +681,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 } catch (JsonSyntaxException e) {
                     logger.error("写数据点失败, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setError(e.getMessage());
+                    result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
                 } catch (Exception e) {
                     logger.error("写数据点失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setError(e.getMessage());
+                    result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
                 }
                 return result;
             }, this.executor).handle((r, e) -> {
@@ -766,11 +766,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 } catch (JsonSyntaxException e) {
                     logger.error("批量下发指令, 解析命令失败, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setError(e.getMessage());
+                    result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
                 } catch (Exception e) {
                     logger.error("批量下发指令, req = {}, serialNo = {}, command = {}", req, serialNo, request.getCommand().toStringUtf8(), e);
                     result.setCode(400);
-                    result.setError(e.getMessage());
+                    result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
                 }
                 return result;
             }, this.executor).handle((r, e) -> {
@@ -965,6 +965,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 passed = false;
                 result.setCode(400);
                 result.setResult("启动配置不正确: " + e.getMessage());
+                result.setError("启动配置不正确:" + (e.getMessage() != null ? e.getMessage() : e.getClass().getName()));
             }
 
             if (driverConfig != null) {
@@ -1015,6 +1016,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     logger.error("启动驱动:", e);
                     result.setCode(400);
                     result.setResult("启动失败: " + e.getMessage());
+                    result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
                 }
             }
 
@@ -1081,7 +1083,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             } catch (Exception e) {
                 logger.error("req = {}, type = schema", request.getRequest(), e);
                 result.setCode(400);
-                result.setResult(e.getMessage());
+                result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
             } finally {
                 LoggerContexts.destroy();
             }
@@ -1146,7 +1148,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             } catch (Exception e) {
                 logger.error("req = {}, type = schema", request.getRequest(), e);
                 result.setCode(400);
-                result.setResult(e.getMessage());
+                result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
             } finally {
                 LoggerContexts.destroy();
             }
