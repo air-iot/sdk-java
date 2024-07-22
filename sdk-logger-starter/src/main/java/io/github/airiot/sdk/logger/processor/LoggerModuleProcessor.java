@@ -33,6 +33,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,10 +66,19 @@ public class LoggerModuleProcessor extends AbstractProcessor {
 
             System.out.println("日志模块输出文件: " + serviceYamls);
 
+            String projectDir = System.getProperty("user.dir");
+            System.out.println("当前项目根目录: " + projectDir);
             for (String yaml : serviceYamls.split(",")) {
-                File file = new File(yaml);
+                File file;
+                Path yamlPath = Paths.get(yaml);
+                if (yamlPath.isAbsolute()) {
+                    file = yamlPath.toFile();
+                } else {
+                    file = Paths.get(projectDir, yaml).toFile();
+                }
                 if (!file.exists()) {
-                    throw new IllegalArgumentException("未找到文件 " + yaml);
+//                    throw new IllegalArgumentException("未找到文件 " + file.getAbsolutePath());
+                    this.messager.printMessage(Diagnostic.Kind.NOTE, String.format("未找到文件: %s", file.getAbsolutePath()));
                 }
                 this.serviceYamlFiles.add(file);
             }
@@ -143,7 +154,7 @@ public class LoggerModuleProcessor extends AbstractProcessor {
         } catch (IOException e) {
             throw new IllegalArgumentException("读取日志模块列表到文件 '" + file.getAbsolutePath() + "' 失败", e);
         }
-        
+
         try (FileOutputStream fos = new FileOutputStream(file)) {
             String content = dumpYaml.dump(keyValues);
             fos.write(content.getBytes(StandardCharsets.UTF_8));
