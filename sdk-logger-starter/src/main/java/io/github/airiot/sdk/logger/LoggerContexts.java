@@ -33,7 +33,7 @@ public class LoggerContexts {
     /**
      * 根日志上下文
      */
-    private static final LoggerContext ROOT_CONTEXT = new LoggerContext(null);
+    protected static final LoggerContext ROOT_CONTEXT = new LoggerContext(null);
 
     protected static final InheritableThreadLocal<LoggerContext> CONTEXT = new InheritableThreadLocal<>();
 
@@ -158,6 +158,17 @@ public class LoggerContexts {
         return newContext;
     }
 
+    public static LoggerContext push(LoggerContext context) {
+        LoggerContext currentContext = CONTEXT.get();
+        if (currentContext == null) {
+            CONTEXT.set(context);
+            return context;
+        }
+
+        context.setParent(currentContext);
+        return currentContext;
+    }
+
     /**
      * 创建一个新的日志上下文. 如果当前线程已经有了日志上下文, 则会将当栈顶的日志上下文作为新创建的日志上下文的父上下文.
      * <br>
@@ -185,6 +196,16 @@ public class LoggerContexts {
         LoggerContext newContext = new LoggerContext(context);
         CONTEXT.set(newContext);
 
+//        StackTraceElement[] stackElements = Thread.currentThread().getStackTrace();
+//        if (stackElements.length > 2) {
+//            for (int i = 2; i < stackElements.length; i++) {
+//                StackTraceElement element = stackElements[i];
+//                System.out.printf("Thread: %d push context '%d' at: %s:%d %s.%s%n",
+//                        Thread.currentThread().getId(), System.identityHashCode(newContext), element.getFileName(),
+//                        element.getLineNumber(), element.getClassName(), element.getMethodName());
+//            }
+//        }
+
         return newContext;
     }
 
@@ -198,6 +219,14 @@ public class LoggerContexts {
         if (context == null || context == ROOT_CONTEXT) {
             return null;
         }
+
+//        StackTraceElement[] stackElements = Thread.currentThread().getStackTrace();
+//        if (stackElements.length > 2) {
+//            StackTraceElement element = stackElements[2];
+//            System.out.printf("Thread: %d pop context %d at: %s:%d $s.%s%n",
+//                    Thread.currentThread().getId(), System.identityHashCode(context),
+//                    element.getFileName(), element.getLineNumber(), element.getClassName(), element.getMethodName());
+//        }
 
         CONTEXT.set(context.getParent());
 

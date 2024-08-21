@@ -17,6 +17,8 @@
 
 package io.github.airiot.sdk.logger;
 
+import org.springframework.util.StringUtils;
+
 import java.util.*;
 
 /**
@@ -95,7 +97,7 @@ public class LoggerContext {
     /**
      * 自定义关联数据
      */
-    private final Map<String, Object> refData = new HashMap<>();
+    private final Map<String, Object> refData;
 
     public int getLevel() {
         return level;
@@ -138,20 +140,42 @@ public class LoggerContext {
     }
 
     public String getProjectId() {
-        String pId = null;
-        if (projectId != null && !projectId.isEmpty()) {
-            pId = projectId;
-        } else if (this.parent == this) {
-            System.out.println("============================================================================");
-            System.out.println("BUG: LoggerContext 中 this == parent");
-            System.out.println("============================================================================");
-        } else if (parent != null) {
-            pId = parent.getProjectId();
+        String pId = this.projectId;
+        if (StringUtils.hasText(pId)) {
+            return pId;
         }
-        if (pId == null) {
-            throw new IllegalArgumentException("未在日志上下文中找到项目ID");
+
+        if (parent == null || parent.parent == parent || parent.parent == this) {
+            return null;
         }
-        return pId;
+
+        Set<Integer> called = new HashSet<>();
+        try {
+            LoggerContext previous = parent;
+            for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
+                if (previous == null) {
+                    return null;
+                }
+
+                int ctx = System.identityHashCode(previous);
+                if (called.contains(ctx)) {
+                    this.printCurrentContexts();
+                    return null;
+                }
+                called.add(ctx);
+
+                if (previous.projectId != null) {
+                    return previous.projectId;
+                }
+                previous = previous.parent;
+            }
+
+            return pId == null ? LoggerContexts.ROOT_CONTEXT.projectId : pId;
+        } catch (StackOverflowError e) {
+            e.printStackTrace();
+            this.printCurrentContexts();
+            return null;
+        }
     }
 
     /**
@@ -477,10 +501,34 @@ public class LoggerContext {
 
     LoggerContext(LoggerContext parent) {
         this.parent = parent;
+        this.refData = new HashMap<String, Object>();
         if (parent == null) {
             this.level = 0;
         } else {
             this.level = parent.level + 1;
         }
+    }
+    
+    LoggerContext(LoggerContext parent, Map<String, Object> refData) {
+        this.parent = parent;
+        this.refData = refData;
+        if (parent == null) {
+            this.level = 0;
+        } else {
+            this.level = parent.level + 1;
+        }
+    }
+
+    protected LoggerContext copy() {
+        LoggerContext newContext = new LoggerContext(this.parent, this.refData);
+        newContext.level = this.level;
+        newContext.traceId = this.traceId;
+        newContext.spanId = this.spanId;
+        newContext.projectId = this.projectId;
+        newContext.service = this.service;
+        newContext.module = this.module;
+        newContext.data = this.data;
+
+        return newContext;
     }
 }
