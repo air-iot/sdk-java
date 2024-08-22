@@ -295,7 +295,6 @@
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
-                            <tokenAuth>true</tokenAuth>
                             <waitForPublishCompletion>true</waitForPublishCompletion>
                             <autoPublish>true</autoPublish>
                             <waitUntil>published</waitUntil>
