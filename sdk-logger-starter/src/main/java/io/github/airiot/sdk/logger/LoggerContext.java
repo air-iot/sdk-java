@@ -252,6 +252,30 @@ public class LoggerContext {
         return data;
     }
 
+
+    public Object getData(boolean recursive) {
+        if (!recursive || !(data instanceof Map)) {
+            return data;
+        }
+
+        Map<String, Object> mergedData = new HashMap<>();
+        mergedData.putAll((Map<String, ?>) data);
+        
+        LoggerContext parent = this.parent;
+        for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
+            if (parent == null) {
+                break;
+            }
+
+            if (parent.data instanceof Map) {
+                mergedData.putAll((Map<String, ?>) parent.data);
+            }
+
+            parent = parent.parent;
+        }
+        return mergedData;
+    }
+
     /**
      * 设置自定义数据, 每次调用都会覆盖之前的数据
      * <br>
@@ -508,7 +532,7 @@ public class LoggerContext {
             this.level = parent.level + 1;
         }
     }
-    
+
     LoggerContext(LoggerContext parent, Map<String, Object> refData) {
         this.parent = parent;
         this.refData = refData;
@@ -519,8 +543,8 @@ public class LoggerContext {
         }
     }
 
-    protected LoggerContext copy() {
-        LoggerContext newContext = new LoggerContext(this.parent, this.refData);
+    protected LoggerContext copy(LoggerContext parent) {
+        LoggerContext newContext = new LoggerContext(parent, this.refData);
         newContext.level = this.level;
         newContext.traceId = this.traceId;
         newContext.spanId = this.spanId;

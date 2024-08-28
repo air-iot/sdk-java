@@ -120,10 +120,11 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
             sb.append("\"spanId\":").append('"').append(context.getSpanId()).append('"').append(",");
         }
 
-        if (context.getData() != null) {
+        Object data = context.getData(true);
+        if (data != null) {
             sb.append("\"data\":{")
                     .append("\"__line__\":\"").append(lineInfo).append("\",")
-                    .append("\"raw\":").append(gson.toJson(context.getData()))
+                    .append("\"raw\":").append(gson.toJson(data))
                     .append("\"}");
         } else {
             sb.append("\"data\":").append("{\"__line__\":\"").append(lineInfo).append("\"}");
