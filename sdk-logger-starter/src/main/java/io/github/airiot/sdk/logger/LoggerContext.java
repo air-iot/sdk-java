@@ -17,9 +17,9 @@
 
 package io.github.airiot.sdk.logger;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import org.springframework.util.StringUtils;
+
+import java.util.*;
 
 /**
  * 日志上下文
@@ -97,7 +97,7 @@ public class LoggerContext {
     /**
      * 自定义关联数据
      */
-    private final Map<String, Object> refData = new HashMap<>();
+    private final Map<String, Object> refData;
 
     public int getLevel() {
         return level;
@@ -140,20 +140,42 @@ public class LoggerContext {
     }
 
     public String getProjectId() {
-        String pId = null;
-        if (projectId != null && !projectId.isEmpty()) {
-            pId = projectId;
-        } else if (this.parent == this) {
-            System.out.println("============================================================================");
-            System.out.println("BUG: LoggerContext 中 this == parent");
-            System.out.println("============================================================================");
-        } else if (parent != null) {
-            pId = parent.getProjectId();
+        String pId = this.projectId;
+        if (StringUtils.hasText(pId)) {
+            return pId;
         }
-        if (pId == null) {
-            throw new IllegalArgumentException("未在日志上下文中找到项目ID");
+
+        if (parent == null || parent.parent == parent || parent.parent == this) {
+            return null;
         }
-        return pId;
+
+        Set<Integer> called = new HashSet<>();
+        try {
+            LoggerContext previous = parent;
+            for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
+                if (previous == null) {
+                    return null;
+                }
+
+                int ctx = System.identityHashCode(previous);
+                if (called.contains(ctx)) {
+                    this.printCurrentContexts();
+                    return null;
+                }
+                called.add(ctx);
+
+                if (previous.projectId != null) {
+                    return previous.projectId;
+                }
+                previous = previous.parent;
+            }
+
+            return pId == null ? LoggerContexts.ROOT_CONTEXT.projectId : pId;
+        } catch (StackOverflowError e) {
+            e.printStackTrace();
+            this.printCurrentContexts();
+            return null;
+        }
     }
 
     /**
@@ -230,6 +252,30 @@ public class LoggerContext {
         return data;
     }
 
+
+    public Object getData(boolean recursive) {
+        if (!recursive || !(data instanceof Map)) {
+            return data;
+        }
+
+        Map<String, Object> mergedData = new HashMap<>();
+        mergedData.putAll((Map<String, ?>) data);
+
+        LoggerContext parent = this.parent;
+        for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
+            if (parent == null) {
+                break;
+            }
+
+            if (parent.data instanceof Map) {
+                mergedData.putAll((Map<String, ?>) parent.data);
+            }
+
+            parent = parent.parent;
+        }
+        return mergedData;
+    }
+
     /**
      * 设置自定义数据, 每次调用都会覆盖之前的数据
      * <br>
@@ -300,36 +346,69 @@ public class LoggerContext {
             return allKeys;
         }
 
-        if (parent == null || parent.parent == parent) {
+        if (parent == null || parent.parent == parent || parent.parent == this) {
             return allKeys;
         }
 
-        LoggerContext previous = parent;
-        for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
-            if (previous == null) {
-                return allKeys;
-            }
+        Set<Integer> called = new HashSet<>();
 
-            Map<String, Object> parentKeys = previous.getRefData(true);
-            if (parentKeys == null || parentKeys.isEmpty()) {
-                continue;
-            }
-
-            for (Map.Entry<String, Object> entry : parentKeys.entrySet()) {
-                if (!allKeys.containsKey(entry.getKey())) {
-                    allKeys.put(entry.getKey(), entry.getValue());
+        try {
+            LoggerContext previous = parent;
+            for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
+                if (previous == null) {
+                    return allKeys;
                 }
+
+                int ctx = System.identityHashCode(previous);
+                if (called.contains(ctx)) {
+                    this.printCurrentContexts();
+                    return allKeys;
+                }
+                called.add(ctx);
+
+                Map<String, Object> parentKeys = previous.getRefData(false);
+                if (parentKeys == null || parentKeys.isEmpty()) {
+                    previous = previous.parent;
+                    continue;
+                }
+
+                for (Map.Entry<String, Object> entry : parentKeys.entrySet()) {
+                    if (!allKeys.containsKey(entry.getKey())) {
+                        allKeys.put(entry.getKey(), entry.getValue());
+                    }
+                }
+
+                previous = previous.parent;
+
             }
 
-            if (previous.parent == previous) {
-                break;
-            }
-            previous = previous.parent;
+            return allKeys;
+        } catch (StackOverflowError e) {
+            e.printStackTrace();
+            this.printCurrentContexts();
+            return Collections.emptyMap();
         }
-
-        return allKeys;
     }
 
+    void printCurrentContexts() {
+        String key = UUID.randomUUID().toString();
+        LoggerContext previous = this;
+
+        System.err.println(key + ": LoggerContext.getRefData(true) stack overflow, threadId: " + Thread.currentThread().getId() + ", ThreadName: " + Thread.currentThread().getName());
+
+        for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
+            if (previous == null) {
+                break;
+            }
+
+            int ctx = System.identityHashCode(previous);
+
+            System.err.println(key + ": #" + i + " -> " + ctx);
+
+            previous = previous.parent;
+        }
+    }
+    
     /**
      * 设置关联的驱动实例分组ID
      * <br>
@@ -446,10 +525,34 @@ public class LoggerContext {
 
     LoggerContext(LoggerContext parent) {
         this.parent = parent;
+        this.refData = new HashMap<String, Object>();
         if (parent == null) {
             this.level = 0;
         } else {
             this.level = parent.level + 1;
         }
+    }
+
+    LoggerContext(LoggerContext parent, Map<String, Object> refData) {
+        this.parent = parent;
+        this.refData = refData;
+        if (parent == null) {
+            this.level = 0;
+        } else {
+            this.level = parent.level + 1;
+        }
+    }
+
+    protected LoggerContext copy(LoggerContext parent) {
+        LoggerContext newContext = new LoggerContext(parent, this.refData);
+        newContext.level = this.level;
+        newContext.traceId = this.traceId;
+        newContext.spanId = this.spanId;
+        newContext.projectId = this.projectId;
+        newContext.service = this.service;
+        newContext.module = this.module;
+        newContext.data = this.data;
+
+        return newContext;
     }
 }

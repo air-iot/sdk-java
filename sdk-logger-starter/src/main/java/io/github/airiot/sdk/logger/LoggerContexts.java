@@ -33,7 +33,7 @@ public class LoggerContexts {
     /**
      * 根日志上下文
      */
-    private static final LoggerContext ROOT_CONTEXT = new LoggerContext(null);
+    protected static final LoggerContext ROOT_CONTEXT = new LoggerContext(null);
 
     protected static final InheritableThreadLocal<LoggerContext> CONTEXT = new InheritableThreadLocal<>();
 
@@ -156,6 +156,17 @@ public class LoggerContexts {
         LoggerContext newContext = new LoggerContext(context.getParent());
         CONTEXT.set(newContext);
         return newContext;
+    }
+
+    public static LoggerContext push(LoggerContext context) {
+        LoggerContext currentContext = CONTEXT.get();
+        if (currentContext == null) {
+            CONTEXT.set(context);
+            return context;
+        }
+
+        context.setParent(currentContext);
+        return currentContext;
     }
 
     /**

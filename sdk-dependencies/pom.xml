@@ -13,12 +13,6 @@
     <artifactId>sdk-dependencies</artifactId>
     <packaging>pom</packaging>
 
-    <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -27,7 +21,7 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.github.airiot</groupId>
+                <groupId>io.github.air-iot</groupId>
                 <artifactId>sdk-client-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -59,6 +53,16 @@
             <dependency>
                 <groupId>io.github.air-iot</groupId>
                 <artifactId>sdk-encrypt-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.air-iot</groupId>
+                <artifactId>sdk-datarelay-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.air-iot</groupId>
+                <artifactId>sdk-boot-config-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

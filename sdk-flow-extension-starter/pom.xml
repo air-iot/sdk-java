@@ -13,15 +13,6 @@
     <artifactId>sdk-flow-extension-starter</artifactId>
     <description>AIRIOT 物联网平台扩展流程节点 SDK</description>
 
-    <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <grpc.version>1.53.0</grpc.version>
-        <protoc.version>3.19.4</protoc.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -50,12 +41,10 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>31.1-jre</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <version>2.10</version>
         </dependency>
         <dependency>
             <groupId>commons-pool</groupId>

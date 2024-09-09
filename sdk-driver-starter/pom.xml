@@ -13,17 +13,6 @@
     <artifactId>sdk-driver-starter</artifactId>
     <description>AIRIOT 物联网平台数据接入驱动开发 SDK</description>
 
-    <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-
-        <maven-resources-plugin.version>3.2.0</maven-resources-plugin.version>
-
-        <grpc.version>1.53.0</grpc.version>
-        <protoc.version>3.19.4</protoc.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>io.github.air-iot</groupId>
@@ -109,7 +98,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>${maven-resources-plugin.version}</version>
                 <executions>
                     <execution>
                         <id>sdkVersion</id>
