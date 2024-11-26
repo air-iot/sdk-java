@@ -57,24 +57,9 @@ public class User {
     private String email;
 
     /**
-     * 用户openid
-     */
-    private String openid;
-
-    /**
      * 用户微信名称
      */
     private String openName;
-
-    /**
-     * 用户微信昵称
-     */
-    private String nickName;
-
-    /**
-     * 钉钉用户ID
-     */
-    private String dduserid;
 
     /**
      * 电话信息
@@ -85,11 +70,6 @@ public class User {
      * 行业配置
      */
     private String industry;
-
-    /**
-     * 用户权限
-     */
-    private String permission;
 
     /**
      * 用户创建时间
@@ -122,11 +102,6 @@ public class User {
     private String dashboard;
 
     /**
-     * 有效期起始时间配置
-     */
-    private String startTime;
-
-    /**
      * 不查看子部门报警数据
      */
     private Boolean noChildDept;
@@ -135,11 +110,6 @@ public class User {
      * 禁用
      */
     private Boolean disabled;
-
-    /**
-     * 绑定钉钉
-     */
-    private Boolean binddingtalk;
 
     /**
      * adminAccess
@@ -170,11 +140,6 @@ public class User {
      * 报警分组配置
      */
     private String warningFilter;
-
-    /**
-     *
-     */
-    private String dataSetting;
 
     /**
      * 类型
@@ -211,11 +176,6 @@ public class User {
      * 管理表记录
      */
     private String tableDataSetting;
-
-    /**
-     *
-     */
-    private Long age;
 
     /**
      * 备注
@@ -256,20 +216,20 @@ public class User {
         this.password = password;
     }
 
-    public Boolean getIsSuper() {
+    public Boolean getSuper() {
         return isSuper;
     }
 
-    public void setIsSuper(Boolean isSuper) {
-        this.isSuper = isSuper;
+    public void setSuper(Boolean aSuper) {
+        isSuper = aSuper;
     }
 
-    public Boolean getIsShare() {
+    public Boolean getShare() {
         return isShare;
     }
 
-    public void setIsShare(Boolean isShare) {
-        this.isShare = isShare;
+    public void setShare(Boolean share) {
+        isShare = share;
     }
 
     public String getEmail() {
@@ -280,36 +240,12 @@ public class User {
         this.email = email;
     }
 
-    public String getOpenid() {
-        return openid;
-    }
-
-    public void setOpenid(String openid) {
-        this.openid = openid;
-    }
-
     public String getOpenName() {
         return openName;
     }
 
     public void setOpenName(String openName) {
         this.openName = openName;
-    }
-
-    public String getNickName() {
-        return nickName;
-    }
-
-    public void setNickName(String nickName) {
-        this.nickName = nickName;
-    }
-
-    public String getDduserid() {
-        return dduserid;
-    }
-
-    public void setDduserid(String dduserid) {
-        this.dduserid = dduserid;
     }
 
     public String getPhone() {
@@ -326,14 +262,6 @@ public class User {
 
     public void setIndustry(String industry) {
         this.industry = industry;
-    }
-
-    public String getPermission() {
-        return permission;
-    }
-
-    public void setPermission(String permission) {
-        this.permission = permission;
     }
 
     public Date getCreateTime() {
@@ -384,14 +312,6 @@ public class User {
         this.dashboard = dashboard;
     }
 
-    public String getStartTime() {
-        return startTime;
-    }
-
-    public void setStartTime(String startTime) {
-        this.startTime = startTime;
-    }
-
     public Boolean getNoChildDept() {
         return noChildDept;
     }
@@ -406,14 +326,6 @@ public class User {
 
     public void setDisabled(Boolean disabled) {
         this.disabled = disabled;
-    }
-
-    public Boolean getBinddingtalk() {
-        return binddingtalk;
-    }
-
-    public void setBinddingtalk(Boolean binddingtalk) {
-        this.binddingtalk = binddingtalk;
     }
 
     public Boolean getAdminAccess() {
@@ -462,14 +374,6 @@ public class User {
 
     public void setWarningFilter(String warningFilter) {
         this.warningFilter = warningFilter;
-    }
-
-    public String getDataSetting() {
-        return dataSetting;
-    }
-
-    public void setDataSetting(String dataSetting) {
-        this.dataSetting = dataSetting;
     }
 
     public String getType() {
@@ -528,14 +432,6 @@ public class User {
         this.tableDataSetting = tableDataSetting;
     }
 
-    public Long getAge() {
-        return age;
-    }
-
-    public void setAge(Long age) {
-        this.age = age;
-    }
-
     public String getRemark() {
         return remark;
     }
@@ -559,40 +455,33 @@ public class User {
     public void setErrorLoginTimeouttimeAdmin(Date errorLoginTimeouttimeAdmin) {
         this.errorLoginTimeouttimeAdmin = errorLoginTimeouttimeAdmin;
     }
-
+    
     @Override
     public String toString() {
         return "User{" +
                 "id='" + id + '\'' +
                 ", name='" + name + '\'' +
-                ", password='***'" +
+                ", password='" + password + '\'' +
                 ", isSuper=" + isSuper +
                 ", isShare=" + isShare +
                 ", email='" + email + '\'' +
-                ", openid='" + openid + '\'' +
                 ", openName='" + openName + '\'' +
-                ", nickName='" + nickName + '\'' +
-                ", dduserid='" + dduserid + '\'' +
                 ", phone='" + phone + '\'' +
                 ", industry='" + industry + '\'' +
-                ", permission='" + permission + '\'' +
                 ", createTime=" + createTime +
                 ", extra='" + extra + '\'' +
                 ", onlyNode=" + onlyNode +
                 ", expireUse=" + expireUse +
                 ", expires=" + expires +
                 ", dashboard='" + dashboard + '\'' +
-                ", startTime='" + startTime + '\'' +
                 ", noChildDept=" + noChildDept +
                 ", disabled=" + disabled +
-                ", binddingtalk=" + binddingtalk +
                 ", adminAccess=" + adminAccess +
                 ", pageSetting='" + pageSetting + '\'' +
                 ", mainmenu='" + mainmenu + '\'' +
                 ", shareUserType='" + shareUserType + '\'' +
                 ", timeoutTimeUse=" + timeoutTimeUse +
                 ", warningFilter='" + warningFilter + '\'' +
-                ", dataSetting='" + dataSetting + '\'' +
                 ", type='" + type + '\'' +
                 ", noOpTimeouttime=" + noOpTimeouttime +
                 ", noOpTimeouttimeAdmin=" + noOpTimeouttimeAdmin +
@@ -600,7 +489,6 @@ public class User {
                 ", pwdExpireConfig='" + pwdExpireConfig + '\'' +
                 ", tableSetting='" + tableSetting + '\'' +
                 ", tableDataSetting='" + tableDataSetting + '\'' +
-                ", age=" + age +
                 ", remark='" + remark + '\'' +
                 ", errorLoginTimeouttime=" + errorLoginTimeouttime +
                 ", errorLoginTimeouttimeAdmin=" + errorLoginTimeouttimeAdmin +

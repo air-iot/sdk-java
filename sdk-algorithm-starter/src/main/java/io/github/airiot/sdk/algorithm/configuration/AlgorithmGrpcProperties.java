@@ -20,11 +20,22 @@ package io.github.airiot.sdk.algorithm.configuration;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.time.Duration;
+
 @ConfigurationProperties(prefix = "algorithm-grpc")
 public class AlgorithmGrpcProperties {
-    
+
     private String host = "algorithm";
     private int port = 9236;
+
+    private int queueSize = 1024;
+    private Duration sendTimeout = Duration.ofSeconds(5);
+    /**
+     * 最大接收消息大小
+     * <br>
+     * 单位: 字节, 默认: 4 * 1024 * 1024
+     */
+    private int maxInboundMessageSize = 1024 * 1024 * 64;
 
     public String getHost() {
         return host;
@@ -40,5 +51,29 @@ public class AlgorithmGrpcProperties {
 
     public void setPort(int port) {
         this.port = port;
+    }
+
+    public int getQueueSize() {
+        return queueSize;
+    }
+
+    public void setQueueSize(int queueSize) {
+        this.queueSize = queueSize;
+    }
+
+    public Duration getSendTimeout() {
+        return sendTimeout;
+    }
+
+    public void setSendTimeout(Duration sendTimeout) {
+        this.sendTimeout = sendTimeout;
+    }
+
+    public int getMaxInboundMessageSize() {
+        return maxInboundMessageSize;
+    }
+
+    public void setMaxInboundMessageSize(int maxInboundMessageSize) {
+        this.maxInboundMessageSize = maxInboundMessageSize;
     }
 }

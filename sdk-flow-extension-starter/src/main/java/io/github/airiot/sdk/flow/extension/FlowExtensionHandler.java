@@ -17,10 +17,6 @@
 
 package io.github.airiot.sdk.flow.extension;
 
-import cn.airiot.sdk.client.dubbo.grpc.engine.ExtensionResult;
-import cn.airiot.sdk.client.dubbo.grpc.engine.ExtensionRunRequest;
-import cn.airiot.sdk.client.dubbo.grpc.engine.ExtensionSchemaRequest;
-import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
 import io.grpc.ClientCall;
 import io.grpc.Metadata;
@@ -29,7 +25,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 class FlowExtensionHandler {
 
@@ -50,11 +50,12 @@ class FlowExtensionHandler {
     public FlowExtensionHandler(FlowExtensionDelegate extension,
                                 ThreadPoolExecutor executor,
                                 ClientCall<ExtensionResult, ExtensionSchemaRequest> schemaCall,
-                                ClientCall<ExtensionResult, ExtensionRunRequest> runCall) {
+                                ClientCall<ExtensionResult, ExtensionRunRequest> runCall,
+                                int queueSize, Duration sendTimeout) {
         this.schemaCall = schemaCall;
         this.runCall = runCall;
         this.schemaHandler = new SchemaHandler(extension, schemaCall);
-        this.runHandler = new RunHandler(extension, executor, runCall);
+        this.runHandler = new RunHandler(extension, executor, runCall, queueSize, sendTimeout);
     }
 
     public void close() {
@@ -64,18 +65,57 @@ class FlowExtensionHandler {
 
     public static class RunHandler extends ClientCall.Listener<ExtensionRunRequest> {
         private final Logger logger;
-        private final Gson gson = new Gson();
         private final ThreadPoolExecutor executor;
         private final FlowExtensionDelegate delegate;
         private final ClientCall<ExtensionResult, ExtensionRunRequest> call;
+        private final BlockingQueue<ExtensionResult> queue;
+        private final Duration sendTimeout;
+        private Thread sendThread;
 
         public RunHandler(FlowExtensionDelegate delegate,
                           ThreadPoolExecutor executor,
-                          ClientCall<ExtensionResult, ExtensionRunRequest> call) {
+                          ClientCall<ExtensionResult, ExtensionRunRequest> call,
+                          int queueSize, Duration sendTimeout) {
             this.logger = LoggerFactory.getLogger(delegate.getId() + "#run");
             this.executor = executor;
             this.delegate = delegate;
             this.call = call;
+            this.queue = new LinkedBlockingQueue<>(queueSize);
+            this.sendTimeout = sendTimeout;
+
+            this.sendThread = new Thread(this::handleResult, "send-result");
+            this.sendThread.setDaemon(true);
+            this.sendThread.start();
+        }
+
+        public void send(ExtensionResult result) {
+            try {
+                if (!this.queue.offer(result, this.sendTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                    logger.warn("发送执行结果失败, 队列已满, {}", result.toString());
+                }
+            } catch (InterruptedException ignore) {
+            }
+        }
+
+        void handleResult() {
+            while (true) {
+                ExtensionResult result;
+                try {
+                    result = this.queue.poll(15, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    break;
+                }
+
+                if (result == null) {
+                    continue;
+                }
+
+                try {
+                    this.call.sendMessage(result);
+                } catch (Exception e) {
+                    logger.error("发送执行结果失败, {}", result, e);
+                }
+            }
         }
 
         @Override
@@ -86,11 +126,15 @@ class FlowExtensionHandler {
         @Override
         public void onClose(Status status, Metadata trailers) {
             logger.error("已关闭, status={}", status);
+            if (this.sendThread != null) {
+                this.sendThread.interrupt();
+                this.sendThread = null;
+            }
         }
 
         @Override
         public void onMessage(ExtensionRunRequest request) {
-            this.executor.execute(new AsyncRunTask(this.delegate, this.call, request));
+            this.executor.execute(new AsyncRunTask(this.delegate, this, request));
         }
     }
 

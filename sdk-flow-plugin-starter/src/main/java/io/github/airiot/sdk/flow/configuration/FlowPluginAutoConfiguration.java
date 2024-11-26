@@ -40,6 +40,7 @@ public class FlowPluginAutoConfiguration {
     public Channel channel(FlowPluginProperties properties) {
         return ManagedChannelBuilder.forAddress(properties.getHost(), properties.getPort())
                 .usePlaintext()
+                .maxInboundMessageSize(properties.getMaxInboundMessageSize())
                 .build();
     }
 

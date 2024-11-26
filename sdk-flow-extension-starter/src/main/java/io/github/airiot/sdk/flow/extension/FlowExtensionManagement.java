@@ -17,7 +17,6 @@
 
 package io.github.airiot.sdk.flow.extension;
 
-import cn.airiot.sdk.client.dubbo.grpc.engine.*;
 import io.github.airiot.sdk.flow.configuration.FlowExtensionProperties;
 import io.grpc.*;
 import org.apache.commons.codec.binary.Hex;
@@ -208,7 +207,9 @@ public class FlowExtensionManagement implements SmartLifecycle {
                             CallOptions.DEFAULT.withWaitForReady()
                     );
 
-                    FlowExtensionHandler handler = new FlowExtensionHandler(extension, this.executor, schemaCall, runCall);
+                    FlowExtensionHandler handler = new FlowExtensionHandler(
+                            extension, this.executor, schemaCall, runCall,
+                            this.properties.getQueueSize(), this.properties.getSendTimeout());
                     schemaCall.start(handler.getSchemaHandler(), this.createMetadata(extension));
                     schemaCall.request(Integer.MAX_VALUE);
 

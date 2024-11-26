@@ -17,9 +17,9 @@
 
 package io.github.airiot.sdk.flow.extension;
 
-import cn.airiot.sdk.client.dubbo.grpc.engine.ExtensionRunRequest;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import io.github.airiot.sdk.flow.extension.ExtensionRunRequest;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;

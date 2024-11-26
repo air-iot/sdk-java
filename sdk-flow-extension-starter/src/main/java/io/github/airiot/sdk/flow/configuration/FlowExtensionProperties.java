@@ -50,10 +50,24 @@ public class FlowExtensionProperties {
      */
     private Duration heartbeatInterval = Duration.ofSeconds(30);
     /**
+     * 最大接收消息大小
+     * <br>
+     * 单位: 字节, 默认: 4 * 1024 * 1024
+     */
+    private int maxInboundMessageSize = 1024 * 1024 * 64;
+    /**
      * 最大线程数量.
      * 如果为 0 则取当前主机的 CPU 核心数量
      */
     private int maxThreads = 0;
+    /**
+     * 任务结果队列长度
+     */
+    private int queueSize = 1024;
+    /**
+     * 发送执行结果超时时间
+     */
+    private Duration sendTimeout = Duration.ofSeconds(5);
 
     public String getHost() {
         return host;
@@ -94,12 +108,36 @@ public class FlowExtensionProperties {
     public void setHeartbeatInterval(Duration heartbeatInterval) {
         this.heartbeatInterval = heartbeatInterval;
     }
-    
+
     public int getMaxThreads() {
         return maxThreads;
     }
 
     public void setMaxThreads(int maxThreads) {
         this.maxThreads = maxThreads;
+    }
+
+    public int getQueueSize() {
+        return queueSize;
+    }
+
+    public void setQueueSize(int queueSize) {
+        this.queueSize = queueSize;
+    }
+
+    public Duration getSendTimeout() {
+        return sendTimeout;
+    }
+
+    public void setSendTimeout(Duration sendTimeout) {
+        this.sendTimeout = sendTimeout;
+    }
+
+    public int getMaxInboundMessageSize() {
+        return maxInboundMessageSize;
+    }
+
+    public void setMaxInboundMessageSize(int maxInboundMessageSize) {
+        this.maxInboundMessageSize = maxInboundMessageSize;
     }
 }

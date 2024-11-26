@@ -36,7 +36,7 @@ public class DriverListenerProperties {
      * <br>
      * 单位: 字节, 默认: 4 * 1024 * 1024
      */
-    private int maxInboundMessageSize = 1024 * 1024 * 4;
+    private int maxInboundMessageSize = 1024 * 1024 * 64;
     private Duration keepalive = Duration.ofSeconds(30);
     private Duration reconnectInterval = Duration.ofSeconds(15);
     /**
@@ -49,7 +49,11 @@ public class DriverListenerProperties {
      * 指令处理线程池队列大小
      */
     private int runQueueSize = 32;
-    
+    /**
+     * 指令结果发送队列大小
+     */
+    private int runResultQueueSize = 1024;
+
     public String getHost() {
         return host;
     }
@@ -104,5 +108,13 @@ public class DriverListenerProperties {
 
     public void setRunQueueSize(int runQueueSize) {
         this.runQueueSize = runQueueSize;
+    }
+
+    public int getRunResultQueueSize() {
+        return runResultQueueSize;
+    }
+
+    public void setRunResultQueueSize(int runResultQueueSize) {
+        this.runResultQueueSize = runResultQueueSize;
     }
 }

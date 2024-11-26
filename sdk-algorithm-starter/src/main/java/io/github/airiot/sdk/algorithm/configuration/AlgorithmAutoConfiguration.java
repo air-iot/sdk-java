@@ -37,6 +37,7 @@ public class AlgorithmAutoConfiguration {
     public Channel channel(AlgorithmGrpcProperties properties) {
         return ManagedChannelBuilder.forAddress(properties.getHost(), properties.getPort())
                 .usePlaintext()
+                .maxInboundMessageSize(properties.getMaxInboundMessageSize())
                 .build();
     }
 
@@ -47,14 +48,15 @@ public class AlgorithmAutoConfiguration {
 
     @Bean
     public AlgorithmManagement algorithmManagement(AlgorithmProperties properties,
+                                                   AlgorithmGrpcProperties grpcProperties,
                                                    Channel channel,
                                                    AlgorithmServiceGrpc.AlgorithmServiceBlockingStub algorithmService,
                                                    ObjectProvider<AlgorithmApp> app) {
-        
+
         AlgorithmApp algorithmApp = app.getIfUnique();
         if (algorithmApp == null) {
             throw new IllegalArgumentException("未找到 AlgorithmApp 实现类, 请检查是否创建了该类的实现并且注入到 Spring 容器中");
         }
-        return new AlgorithmManagement(properties, channel, algorithmService, algorithmApp);
+        return new AlgorithmManagement(properties, grpcProperties, channel, algorithmService, algorithmApp);
     }
 }

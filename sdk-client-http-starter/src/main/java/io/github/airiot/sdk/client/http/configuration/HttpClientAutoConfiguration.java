@@ -412,4 +412,9 @@ public class HttpClientAutoConfiguration {
         return new HttpCommonClient(properties.getHost(), authorizationClient,
                 config.getConnectTimeout(), config.getReadTimeout(), config.getReadTimeout());
     }
+    
+    @Bean
+    public TableDataCommonClient tableDataCommonClient(HttpCommonClient client) {
+        return new TableDataCommonClient(client);
+    }
 }
