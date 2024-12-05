@@ -1614,7 +1614,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             Result result = new Result();
             try {
-                String schema = this.driverApp.schema();
+                String schema = this.driverApp.schema(request.getLocale());
                 if (logger.isDebugEnabled()) {
                     logger.debug("req = {}, type = schema, {}", request.getRequest(), schema);
                 }

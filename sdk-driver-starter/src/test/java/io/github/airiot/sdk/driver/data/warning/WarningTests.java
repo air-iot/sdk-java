@@ -104,7 +104,7 @@ public class WarningTests {
         }
 
         @Override
-        public String schema() {
+        public String schema(String locale) {
             return null;
         }
     }

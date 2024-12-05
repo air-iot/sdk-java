@@ -165,7 +165,7 @@ class FlowExtensionHandler {
         public void onMessage(ExtensionSchemaRequest message) {
             logger.debug("接收到请求: {}", message.getRequest());
             try {
-                String schema = this.delegate.schema();
+                String schema = this.delegate.schema(message.getLocale());
 
                 if (logger.isDebugEnabled()) {
                     logger.debug("request: {}, schema: {}", message.getRequest(), schema);

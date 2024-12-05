@@ -20,6 +20,10 @@ package io.github.airiot.sdk.client.gson;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+
 /**
  * 自定义 Gson 对象.
  * 该对象注册一些适配器, 用于处理一些特殊的数据类型.
@@ -28,5 +32,8 @@ public class CustomGson {
 
     public static final Gson GSON = new GsonBuilder()
             .setFieldNamingStrategy(new CustomFieldNameStrategy())
+            .registerTypeHierarchyAdapter(LocalDateTime.class, new LocalDateTimeTypeAdapterFactory.LocalDateTimeTypeAdapter())
+            .registerTypeHierarchyAdapter(LocalDate.class, new LocalDateTypeAdapterFactory.LocalDateTypeAdapter())
+            .registerTypeHierarchyAdapter(LocalTime.class, new LocalTimeTypeAdapterFactory.LocalDateTypeAdapter())
             .create();
 }

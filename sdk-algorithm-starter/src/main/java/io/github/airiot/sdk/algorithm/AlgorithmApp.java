@@ -81,8 +81,9 @@ public interface AlgorithmApp {
 
     /**
      * 获取算法的 schema 定义信息
+     * @param locale 国际化语言
      */
-    String schema();
+    String schema(String locale);
 
     /**
      * 执行算法. 如果在当前类型中没有找到使用 {@link AlgorithmFunction} 定义方法, 则会调用此方法

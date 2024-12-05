@@ -14,6 +14,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.util.Assert;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,18 +31,22 @@ public class TableDataCommonClientTests {
 
     @Autowired
     private TableDataCommonClient client;
-
+    
     @Test
     void testCreateRow() {
         Map<String, Object> row = new HashMap<>();
         row.put("name", "小明");
         row.put("age", 18);
         row.put("sex", "male");
+        row.put("birthday", LocalDate.now());
+        row.put("classTime", LocalTime.now());
+        row.put("fjDateTime", LocalDateTime.now());
         ResponseDTO<InsertResult> response = this.client.create("647d3f6db395ea47865d4b9e", "student", row);
         Assertions.assertNotNull(response);
         Assertions.assertTrue(response.isSuccess());
         Assertions.assertNotNull(response.getData());
         Assert.hasText(response.getData().getInsertedID(), "新增记录ID为空");
+        System.out.println(response.getData().getInsertedID());
     }
 
     @Test
@@ -83,7 +90,7 @@ public class TableDataCommonClientTests {
         Assertions.assertNotNull(response);
         Assertions.assertTrue(response.isSuccess(), response.getFullMessage());
     }
-    
+
     @Test
     void testDeleteRows() {
         Query query = Query.newBuilder()

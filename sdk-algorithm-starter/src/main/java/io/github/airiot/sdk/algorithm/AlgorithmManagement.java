@@ -316,10 +316,9 @@ public class AlgorithmManagement implements SmartLifecycle {
         @Override
         public void onMessage(SchemaRequest request) {
             String requestId = request.getRequest();
-
             Response response;
             try {
-                String schema = this.app.schema();
+                String schema = this.app.schema(request.getLang());
                 response = new Response(200, null, schema);
             } catch (Exception e) {
                 logger.error("请求 schema 异常", e);

@@ -68,8 +68,8 @@ class FlowExtensionDelegate implements FlowExtension<Object> {
     }
 
     @Override
-    public String schema() throws FlowExtensionException {
-        return this.delegate.schema();
+    public String schema(String locale) throws FlowExtensionException {
+        return this.delegate.schema(locale);
     }
 
     @Override

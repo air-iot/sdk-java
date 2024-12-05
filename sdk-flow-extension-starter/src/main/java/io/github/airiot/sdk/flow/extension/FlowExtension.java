@@ -76,10 +76,11 @@ public interface FlowExtension<Request> {
      * <br>
      * 如果抛出异常则视为请求执行失败. 否则视为请求执行成功.
      *
+     * @param locale 国际化语言
      * @return schema 定义信息
      * @throws FlowExtensionException 如果请求执行失败
      */
-    String schema() throws FlowExtensionException;
+    String schema(String locale) throws FlowExtensionException;
 
     /**
      * 执行请求

@@ -50,6 +50,14 @@ public class RangeValueHandlerV2 implements DataHandler {
             range = tag.getRange();
         }
 
+        if (range != null) {
+            Boolean enabled = range.getEnable();
+            if (enabled != null && !enabled) {
+                logger.debug("数据点[有效范围]处理器: 设备表={},设备={},数据点={}. enable=false, 不处理", tableId, deviceId, tag.getId());
+                return false;
+            }
+        }
+        
         if (!DataHandler.super.supports(tableId, deviceId, tag, value) || tag == null || range == null || !(value instanceof Number)) {
             logger.debug("数据点[有效范围]处理器: 设备表={},设备={},数据点={}. tag 或 value 为 null, 不支持处理", tableId, deviceId, tag == null ? null : tag.getId());
             return false;
