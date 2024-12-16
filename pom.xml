@@ -33,8 +33,8 @@
         <java.version>17</java.version>
         <spring-boot.version>3.3.1</spring-boot.version>
         <spring-cloud.version>2021.0.7</spring-cloud.version>
-        <revision>4.1.26-springboot3</revision>
-
+        <revision>4.2.2-springboot3</revision>
+        
         <maven-compiler-plugin>3.13.0</maven-compiler-plugin>
         <maven-jar-plugin>3.4.2</maven-jar-plugin>
         <maven-flatten-plugin.version>1.6.0</maven-flatten-plugin.version>
