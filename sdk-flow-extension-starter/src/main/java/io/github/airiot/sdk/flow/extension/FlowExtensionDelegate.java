@@ -17,9 +17,9 @@
 
 package io.github.airiot.sdk.flow.extension;
 
-import cn.airiot.sdk.client.dubbo.grpc.engine.ExtensionRunRequest;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
+import io.github.airiot.sdk.flow.extension.ExtensionRunRequest;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -68,8 +68,8 @@ class FlowExtensionDelegate implements FlowExtension<Object> {
     }
 
     @Override
-    public String schema() throws FlowExtensionException {
-        return this.delegate.schema();
+    public String schema(String locale) throws FlowExtensionException {
+        return this.delegate.schema(locale);
     }
 
     @Override

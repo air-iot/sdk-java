@@ -17,11 +17,11 @@
 
 package io.github.airiot.sdk.driver.data.handlers;
 
+import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.data.DataHandler;
 import io.github.airiot.sdk.driver.model.Range;
 import io.github.airiot.sdk.driver.model.Tag;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.driver.DriverModules;
 import org.slf4j.Logger;
 import org.springframework.util.StringUtils;
 
@@ -65,6 +65,14 @@ public class RangeValueHandler implements DataHandler {
         String tagId = tag.getId();
         Range range = tag.getRange();
 
+        if (range != null) {
+            Boolean enabled = range.getEnable();
+            if (enabled != null && !enabled) {
+                logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. enable=false, 不处理", tableId, deviceId, tag.getId());
+                return false;
+            }
+        }
+
         matched = value instanceof Number
                 && range != null && StringUtils.hasText(range.getActive())
                 && range.getMinValue() != null && range.getMaxValue() != null;
@@ -74,12 +82,6 @@ public class RangeValueHandler implements DataHandler {
                     tableId, deviceId, tagId, range.getActive());
             return false;
         }
-
-//        if (matched && "fixed".equals(range.getActive()) && range.getFixedValue() == null) {
-//            logger.warn("数据点数据处理器: 有效范围处理, 未提供有效的固定值, table = {}, device = {}, tag = {}, range = {}",
-//                    tableId, deviceId, tagId, range);
-//            return false;
-//        }
 
         logger.debug("数据点[旧版有效范围]处理器: 设备表={},设备={},数据点={}. 有效范围配置 {}, 数据点的值 {}, 条件是否满足 {}",
                 tableId, deviceId, tagId, range, value, matched);

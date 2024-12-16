@@ -30,9 +30,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.*;
 
 public class AlgorithmHandler extends ClientCall.Listener<RunRequest> {
 
@@ -44,14 +44,61 @@ public class AlgorithmHandler extends ClientCall.Listener<RunRequest> {
     private final Map<String, AlgorithmFunctionDefinition> functions;
     private final ThreadPoolExecutor executor;
 
-    public AlgorithmHandler(ClientCall<RunResult, RunRequest> call, AlgorithmApp app, Map<String, AlgorithmFunctionDefinition> functions, ThreadPoolExecutor executor) {
+    private final BlockingQueue<RunResult> queue;
+    private final Duration sendTimeout;
+
+    private Thread sendResultThread;
+
+    public AlgorithmHandler(ClientCall<RunResult, RunRequest> call, AlgorithmApp app, Map<String, AlgorithmFunctionDefinition> functions, ThreadPoolExecutor executor,
+                            int queueSize, Duration sendTimeout) {
         this.call = call;
         this.app = app;
         this.functions = functions;
         this.executor = executor;
+        this.queue = new LinkedBlockingQueue<>(queueSize);
+        this.sendTimeout = sendTimeout;
+
+        this.sendResultThread = new Thread(this::handleResult, "send-result");
+        this.sendResultThread.setDaemon(true);
+        this.sendResultThread.start();
+    }
+
+    public void send(RunResult result) {
+        try {
+            if (!this.queue.offer(result, this.sendTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                logger.warn("发送执行结果失败, 队列已满, {}", result.toString());
+            }
+        } catch (InterruptedException ignore) {
+        }
+    }
+
+    void handleResult() {
+        while (true) {
+            RunResult result;
+            try {
+                result = this.queue.poll(15, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                break;
+            }
+
+            if (result == null) {
+                continue;
+            }
+
+            try {
+                this.call.sendMessage(result);
+            } catch (Exception e) {
+                logger.error("发送执行结果失败, {}", result, e);
+            }
+        }
     }
 
     public void close() {
+        if (this.sendResultThread != null) {
+            this.sendResultThread.interrupt();
+            this.sendResultThread = null;
+        }
+
         this.call.cancel("主动关闭", null);
     }
 
@@ -136,7 +183,7 @@ public class AlgorithmHandler extends ClientCall.Listener<RunRequest> {
         Response response = this.validateRequest(request);
         if (response != null) {
             logger.warn("接收到请求: requestId={}, 请求内容校验失败, {}", requestId, response.getError());
-            this.call.sendMessage(RunResult.newBuilder()
+            this.send(RunResult.newBuilder()
                     .setRequest(requestId)
                     .setMessage(ByteString.copyFromUtf8(gson.toJson(response)))
                     .build());
@@ -148,10 +195,12 @@ public class AlgorithmHandler extends ClientCall.Listener<RunRequest> {
             req = gson.fromJson(requestData, Request.class);
         } catch (JsonSyntaxException e) {
             logger.warn("接收到请求: requestId={}, 解析请求内容失败", requestId, e);
-            this.call.sendMessage(RunResult.newBuilder()
+
+            this.send(RunResult.newBuilder()
                     .setRequest(requestId)
                     .setMessage(ByteString.copyFromUtf8(gson.toJson(new Response(400, "解析请求内容失败, " + e.getMessage()))))
                     .build());
+
             return;
         }
 

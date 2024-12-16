@@ -44,13 +44,9 @@ message HealthCheckResponse {
 
 message Error {
   enum ErrorCode {
-    Schema = 0;
-    Start = 1;
+    Health = 0;
+    Schema = 1;
     Run = 2;
-    Write = 3;  // Used only by the Watch method.
-    BatchRun = 4;  // Used only by the Watch method.
-    Debug = 5;  // Used only by the Watch method.
-    Health = 6;
   }
   ErrorCode code = 1;
   string message = 2;
@@ -58,6 +54,7 @@ message Error {
 
 message SchemaRequest {
   string request = 1;
+  string lang = 2;
 }
 
 message SchemaResult {

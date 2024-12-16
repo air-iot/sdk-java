@@ -49,6 +49,20 @@ public class FlowPluginProperties {
      * 心跳间隔
      */
     private Duration heartbeatInterval = Duration.ofSeconds(30);
+    /**
+     * 最大接收消息大小
+     * <br>
+     * 单位: 字节, 默认: 4 * 1024 * 1024
+     */
+    private int maxInboundMessageSize = 1024 * 1024 * 64;
+    /**
+     * 任务结果队列长度
+     */
+    private int queueSize = 1024;
+    /**
+     * 发送执行结果超时时间
+     */
+    private Duration sendTimeout = Duration.ofSeconds(5);
 
     public String getHost() {
         return host;
@@ -88,5 +102,29 @@ public class FlowPluginProperties {
 
     public void setHeartbeatInterval(Duration heartbeatInterval) {
         this.heartbeatInterval = heartbeatInterval;
+    }
+
+    public int getMaxInboundMessageSize() {
+        return maxInboundMessageSize;
+    }
+
+    public void setMaxInboundMessageSize(int maxInboundMessageSize) {
+        this.maxInboundMessageSize = maxInboundMessageSize;
+    }
+
+    public int getQueueSize() {
+        return queueSize;
+    }
+
+    public void setQueueSize(int queueSize) {
+        this.queueSize = queueSize;
+    }
+
+    public Duration getSendTimeout() {
+        return sendTimeout;
+    }
+
+    public void setSendTimeout(Duration sendTimeout) {
+        this.sendTimeout = sendTimeout;
     }
 }

@@ -17,11 +17,10 @@
 
 package io.github.airiot.sdk.flow.extension;
 
-import cn.airiot.sdk.client.dubbo.grpc.engine.ExtensionResult;
-import cn.airiot.sdk.client.dubbo.grpc.engine.ExtensionRunRequest;
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
-import io.grpc.ClientCall;
+import io.github.airiot.sdk.flow.extension.ExtensionResult;
+import io.github.airiot.sdk.flow.extension.ExtensionRunRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,15 +32,15 @@ public class AsyncRunTask implements Runnable {
 
     private final Logger logger = LoggerFactory.getLogger(AsyncRunTask.class);
     private final FlowExtensionDelegate delegate;
-    private final ClientCall<ExtensionResult, ExtensionRunRequest> call;
+    private final FlowExtensionHandler.RunHandler call;
     private final ExtensionRunRequest request;
 
-    public AsyncRunTask(FlowExtensionDelegate delegate, ClientCall<ExtensionResult, ExtensionRunRequest> call, ExtensionRunRequest request) {
+    public AsyncRunTask(FlowExtensionDelegate delegate, FlowExtensionHandler.RunHandler call, ExtensionRunRequest request) {
         this.delegate = delegate;
         this.call = call;
         this.request = request;
     }
-    
+
     @Override
     public void run() {
         if (logger.isDebugEnabled()) {
@@ -55,7 +54,7 @@ public class AsyncRunTask implements Runnable {
                 data = ByteString.copyFrom(GSON.toJson(result), StandardCharsets.UTF_8);
             }
 
-            this.call.sendMessage(ExtensionResult.newBuilder()
+            this.call.send(ExtensionResult.newBuilder()
                     .setRequest(request.getRequest())
                     .setStatus(true)
                     .setInfo("OK")
@@ -63,7 +62,7 @@ public class AsyncRunTask implements Runnable {
                     .build());
         } catch (Exception e) {
             logger.error("执行扩展节点失败, request: {}, data: {}", request.getRequest(), request.getData().toStringUtf8(), e);
-            this.call.sendMessage(ExtensionResult.newBuilder()
+            this.call.send(ExtensionResult.newBuilder()
                     .setRequest(request.getRequest())
                     .setStatus(false)
                     .setInfo("执行异常")

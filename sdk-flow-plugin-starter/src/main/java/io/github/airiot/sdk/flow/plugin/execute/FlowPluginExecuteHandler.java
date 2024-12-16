@@ -19,6 +19,7 @@ package io.github.airiot.sdk.flow.plugin.execute;
 
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
+import io.github.airiot.sdk.flow.configuration.FlowPluginProperties;
 import io.github.airiot.sdk.flow.plugin.*;
 import io.grpc.ClientCall;
 import io.grpc.Metadata;
@@ -27,6 +28,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -45,15 +50,60 @@ public class FlowPluginExecuteHandler extends ClientCall.Listener<FlowRequest> {
     private final String name;
     private final String mode;
 
-    public FlowPluginExecuteHandler(ClientCall<FlowResponse, FlowRequest> call, FlowPluginDelegate plugin, FlowPluginClosedListener listener) {
+    private final Duration sendTimeout;
+    private final BlockingQueue<FlowResponse> queue;
+
+    private Thread sendResultThread;
+
+    public FlowPluginExecuteHandler(FlowPluginProperties properties, ClientCall<FlowResponse, FlowRequest> call, FlowPluginDelegate plugin, FlowPluginClosedListener listener) {
         this.call = call;
         this.plugin = plugin;
         this.name = plugin.getName();
         this.mode = plugin.getPluginType().getType();
         this.listener = listener;
+        this.sendTimeout = properties.getSendTimeout();
+        this.queue = new LinkedBlockingQueue<>(properties.getQueueSize());
+        this.sendResultThread = new Thread(this::handleResult, "send-result");
+        this.sendResultThread.setDaemon(true);
+        this.sendResultThread.start();
+    }
+
+    public void send(FlowResponse result) {
+        try {
+            if (!this.queue.offer(result, this.sendTimeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                logger.warn("发送执行结果失败, 队列已满, {}", result.toString());
+            }
+        } catch (InterruptedException ignore) {
+        }
+    }
+
+    void handleResult() {
+        while (true) {
+            FlowResponse result;
+            try {
+                result = this.queue.poll(15, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                break;
+            }
+
+            if (result == null) {
+                continue;
+            }
+
+            try {
+                this.call.sendMessage(result);
+            } catch (Exception e) {
+                logger.error("发送执行结果失败, {}", result, e);
+            }
+        }
     }
 
     public void close() {
+        if (this.sendResultThread != null) {
+            this.sendResultThread.interrupt();
+            this.sendResultThread = null;
+        }
+
         this.call.cancel("主动关闭", null);
     }
 
@@ -114,16 +164,7 @@ public class FlowPluginExecuteHandler extends ClientCall.Listener<FlowRequest> {
                     .setElementJob(request.getElementJob())
                     .build();
         }
-
-        try {
-            this.call.sendMessage(response);
-            logger.info("流程插件[{}-{}]: 处理结果已发送, project={}, flowId={}, job={}, elementId={}, elementJob={}",
-                    name, mode, request.getProjectId(), request.getFlowId(), request.getJob(),
-                    request.getElementId(), request.getElementJob());
-        } catch (Exception e) {
-            logger.error("流程插件[{}-{}]: 发送处理结果异常, project={}, flowId={}, job={}, elementId={}, elementJob={}, config={}, response={}",
-                    name, mode, request.getProjectId(), request.getFlowId(), request.getJob(),
-                    request.getElementId(), request.getElementJob(), config, response, e);
-        }
+        
+        this.send(response);
     }
 }

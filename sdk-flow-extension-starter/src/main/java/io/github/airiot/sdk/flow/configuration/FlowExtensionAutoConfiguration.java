@@ -17,7 +17,7 @@
 
 package io.github.airiot.sdk.flow.configuration;
 
-import cn.airiot.sdk.client.dubbo.grpc.engine.ExtensionServiceGrpc;
+import io.github.airiot.sdk.flow.extension.ExtensionServiceGrpc;
 import io.github.airiot.sdk.flow.extension.FlowExtension;
 import io.github.airiot.sdk.flow.extension.FlowExtensionManagement;
 import io.grpc.Channel;
@@ -40,6 +40,7 @@ public class FlowExtensionAutoConfiguration {
     public Channel channel(FlowExtensionProperties properties) {
         return ManagedChannelBuilder.forAddress(properties.getHost(), properties.getPort())
                 .usePlaintext()
+                .maxInboundMessageSize(properties.getMaxInboundMessageSize())
                 .build();
     }
 

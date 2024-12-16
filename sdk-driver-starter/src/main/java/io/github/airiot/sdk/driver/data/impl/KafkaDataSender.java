@@ -17,7 +17,6 @@
 
 package io.github.airiot.sdk.driver.data.impl;
 
-import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.GlobalContext;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
@@ -34,6 +33,7 @@ import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
+import io.github.airiot.sdk.driver.DriverModules;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;

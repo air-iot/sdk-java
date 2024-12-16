@@ -17,8 +17,8 @@
 
 package io.github.airiot.sdk.client.http.feign;
 
-import com.google.gson.Gson;
 import feign.Param;
+import io.github.airiot.sdk.client.gson.CustomGson;
 
 
 /**
@@ -30,10 +30,8 @@ public class JsonParamExpander implements Param.Expander {
 
     public static final JsonParamExpander INSTANCE = new JsonParamExpander();
     
-    private static final Gson GSON = new Gson();
-
     @Override
     public String expand(Object value) {
-        return GSON.toJson(value);
+        return CustomGson.GSON.toJson(value);
     }
 }

@@ -100,7 +100,7 @@ public class FlowPluginManagement implements SmartLifecycle, FlowPluginClosedLis
         // 执行各个插件的 onStart 方法
         for (FlowPluginDelegate plugin : this.plugins) {
             plugin.onStart();
-            FlowPluginHandler handler = new FlowPluginHandler(this.channel, plugin, this);
+            FlowPluginHandler handler = new FlowPluginHandler(this.properties, this.channel, plugin, this);
             this.handlers.add(handler);
         }
 

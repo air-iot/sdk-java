@@ -17,12 +17,12 @@
 
 package io.github.airiot.sdk.driver.data;
 
+import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.data.handlers.*;
 import io.github.airiot.sdk.driver.model.Field;
 import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.driver.model.Tag;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.driver.DriverModules;
 import org.slf4j.Logger;
 
 import java.util.*;

@@ -39,7 +39,6 @@ import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
 import io.grpc.Channel;
 import io.grpc.ManagedChannelBuilder;
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -50,6 +49,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 
+import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -86,9 +86,10 @@ public class DriverAutoConfiguration {
             return ManagedChannelBuilder.forAddress(properties.getHost(), properties.getPort())
                     .usePlaintext()
                     .maxInboundMessageSize(properties.getMaxInboundMessageSize())
+                    .disableRetry()
                     .build();
         }
-        
+
         @Bean
         public DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient(Channel channel) {
             return DriverServiceGrpc.newBlockingStub(channel);

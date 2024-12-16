@@ -175,8 +175,9 @@ public interface DriverApp<DriverConfig, Command, Tag> {
      * </pre>
      *
      * @return 表单 schema
+     * @param locale 国际化语言
      */
-    String schema();
+    String schema(String locale);
     
     /**
      * 从 {@link InputStream} 中读取 schema 定义

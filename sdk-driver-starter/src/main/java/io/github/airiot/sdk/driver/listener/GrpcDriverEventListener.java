@@ -26,7 +26,6 @@ import com.google.gson.reflect.TypeToken;
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.DriverApp;
-import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.GlobalContext;
 import io.github.airiot.sdk.driver.config.BasicConfig;
 import io.github.airiot.sdk.driver.config.Device;
@@ -41,6 +40,7 @@ import io.github.airiot.sdk.driver.model.Tag;
 import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
+import io.github.airiot.sdk.driver.DriverModules;
 import io.grpc.*;
 import io.grpc.stub.MetadataUtils;
 import org.apache.commons.codec.binary.Hex;
@@ -51,6 +51,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.env.*;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -91,6 +92,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     private final ThreadPoolExecutor runExecutor;
     private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
+    private final AtomicReference<String> sessionId = new AtomicReference<>(null);
+
+    /**
+     * 指令结果缓存队列
+     */
+    private final BlockingQueue<RunResult> runResultQueue;
+    private final BlockingQueue<BatchRunResult> batchRunResultQueue;
+    private final BlockingQueue<RunResult> writeTagResultQueue;
 
     private final Map<String, Level> loggerRoots = new HashMap<>();
     private ApplicationContext applicationContext;
@@ -119,6 +128,12 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     private Thread healthCheckThread;
     private Thread streamHeartbeatThread;
 
+    /**
+     * 发送指令结果线程
+     */
+    private Thread sendRunResultThread;
+    private Thread sendWriteTagResultThread;
+    private Thread sendBatchRunResultThread;
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -172,6 +187,10 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         this.driverId = driverProperties.getId();
         this.driverInstanceId = driverProperties.getInstanceId();
         this.parameterizedTypes = this.parseParameterizedTypes();
+
+        this.runResultQueue = new LinkedBlockingQueue<>(grpcProperties.getRunResultQueueSize());
+        this.batchRunResultQueue = new LinkedBlockingQueue<>(grpcProperties.getRunResultQueueSize());
+        this.writeTagResultQueue = new LinkedBlockingQueue<>(grpcProperties.getRunResultQueueSize());
 
         this.metadata = new Metadata();
         metadata.put(Metadata.Key.of("projectId", Metadata.ASCII_STRING_MARSHALLER),
@@ -275,6 +294,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     private void healthCheck() {
         long keepalive = this.grpcProperties.getKeepalive().toMillis();
+        String sessionId = this.sessionId.get();
         healthCheckLogger.info("心跳检测已启动, 心跳间隔 {}ms", keepalive);
         while (State.RUNNING.equals(this.state.get())) {
             try {
@@ -289,7 +309,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 return;
             }
 
-            healthCheckLogger.info("心跳检测: 发送心跳");
+            healthCheckLogger.info("心跳检测: {}, 发送心跳", sessionId);
 
             try {
                 HealthCheckResponse response = this.driverGrpcClient.healthCheck(HealthCheckRequest.newBuilder()
@@ -303,6 +323,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 if (!CollectionUtils.isEmpty(errors)) {
                     for (Error error : errors) {
                         healthCheckLogger.error("心跳检测: 接收到错误信息, code = {}, message = {}", error.getCode(), error.getMessage());
+                        if (error.getCode() == Error.ErrorCode.Start) {
+                            break;
+                        }
                     }
                 }
 
@@ -318,8 +341,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         if (this.state.get().isRunning()) {
             healthCheckLogger.info("重新连接 Driver 服务");
-            this.state.set(State.RECONNECTING);
-            this.connect();
+            if (this.state.compareAndSet(State.RUNNING, State.RECONNECTING)) {
+                this.connect();
+            }
         }
     }
 
@@ -332,6 +356,12 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             TimeUnit.MILLISECONDS.sleep(Math.min((int) (keepalive * 0.25), 1000));
         } catch (InterruptedException e) {
             healthCheckLogger.info("流心跳检测被中断, 未开始");
+            return;
+        }
+
+        String sessionId = this.sessionId.get();
+        if (!StringUtils.hasText(sessionId)) {
+            healthCheckLogger.warn("流心跳检测: 连接未建立, sessionId 为空");
             return;
         }
 
@@ -348,47 +378,155 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 return;
             }
 
-            healthCheckLogger.info("流心跳检测: 发送心跳");
+            healthCheckLogger.info("流心跳检测: {}, 发送心跳", sessionId);
 
             try {
                 if (this.startHandler != null) {
-                    this.startHandler.heartbeat(keepaliveTimeout);
+                    this.startHandler.heartbeat(sessionId, keepaliveTimeout);
                 }
 
                 if (this.runHandler != null) {
-                    this.runHandler.heartbeat(keepaliveTimeout);
+                    this.runHandler.heartbeat(sessionId, keepaliveTimeout);
                 }
 
                 if (this.batchRunHandler != null) {
-                    this.batchRunHandler.heartbeat(keepaliveTimeout);
+                    this.batchRunHandler.heartbeat(sessionId, keepaliveTimeout);
                 }
 
                 if (this.writeTagHandler != null) {
-                    this.writeTagHandler.heartbeat(keepaliveTimeout);
+                    this.writeTagHandler.heartbeat(sessionId, keepaliveTimeout);
                 }
 
                 if (this.schemaHandler != null) {
-                    this.schemaHandler.heartbeat(keepaliveTimeout);
+                    this.schemaHandler.heartbeat(sessionId, keepaliveTimeout);
                 }
 
                 if (this.debugHandler != null) {
-                    this.debugHandler.heartbeat(keepaliveTimeout);
+                    this.debugHandler.heartbeat(sessionId, keepaliveTimeout);
                 }
 
                 if (this.driverApp.supportHttpProxy() && this.httpProxyHandler != null) {
-                    this.httpProxyHandler.heartbeat(keepaliveTimeout);
+                    this.httpProxyHandler.heartbeat(sessionId, keepaliveTimeout);
                 }
             } catch (Exception e) {
-                healthCheckLogger.error("流心跳检测: 心跳检测异常", e);
+                healthCheckLogger.error("流心跳检测: {}, 心跳检测异常", sessionId, e);
                 break;
             }
         }
 
         if (this.state.get().isRunning()) {
-            healthCheckLogger.info("重新连接 Driver 服务");
-            this.state.set(State.RECONNECTING);
-            this.connect();
+            healthCheckLogger.warn("重新连接 Driver 服务");
+            if (this.state.compareAndSet(State.RUNNING, State.RECONNECTING)) {
+                this.connect();
+            }
         }
+    }
+
+    /**
+     * 发送指令执行结果
+     */
+    private void sendRunResult() {
+        while (this.state.get().isRunning()) {
+            RunResult result = null;
+            try {
+                result = this.runResultQueue.poll(15, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                break;
+            }
+
+            if (result == null) {
+                continue;
+            }
+
+            if (this.runHandler == null) {
+                log.warn("发送指令结果: RunHandler 为 null");
+                break;
+            }
+
+            try {
+                this.runHandler.send(result);
+            } catch (Exception e) {
+                log.warn("发送指令结果: {}", result, e);
+            }
+        }
+    }
+
+    private void sendWriteTagResult() {
+        while (this.state.get().isRunning()) {
+            RunResult result = null;
+            try {
+                result = this.writeTagResultQueue.poll(15, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                break;
+            }
+
+            if (result == null) {
+                continue;
+            }
+
+            if (this.writeTagHandler == null) {
+                log.warn("发送写数据点结果: RunHandler 为 null");
+                break;
+            }
+
+            try {
+                this.writeTagHandler.send(result);
+            } catch (Exception e) {
+                log.warn("发送写数据点结果: {}", result, e);
+            }
+        }
+    }
+
+    private void sendBatchRunResult() {
+        while (this.state.get().isRunning()) {
+            BatchRunResult result = null;
+            try {
+                result = this.batchRunResultQueue.poll(15, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                break;
+            }
+
+            if (result == null) {
+                continue;
+            }
+
+            if (this.batchRunHandler == null) {
+                log.warn("发送批量下发指令结果: RunHandler 为 null");
+                break;
+            }
+
+            try {
+                this.batchRunHandler.send(result);
+            } catch (Exception e) {
+                log.warn("发送批量下发指令结果: {}", result, e);
+            }
+        }
+    }
+
+    private void startSendCommandResultThreads() {
+        if (this.sendRunResultThread != null) {
+            this.sendRunResultThread.interrupt();
+        }
+        if (this.sendWriteTagResultThread != null) {
+            this.sendWriteTagResultThread.interrupt();
+        }
+        if (this.sendBatchRunResultThread != null) {
+            this.sendBatchRunResultThread.interrupt();
+        }
+
+        log.info("创建发送指令结果上报线程");
+
+        this.sendRunResultThread = new Thread(this::sendRunResult, "send-run-result");
+        this.sendRunResultThread.setDaemon(true);
+        this.sendRunResultThread.start();
+
+        this.sendBatchRunResultThread = new Thread(this::sendBatchRunResult, "send-batch-run-result");
+        this.sendBatchRunResultThread.setDaemon(true);
+        this.sendBatchRunResultThread.start();
+
+        this.sendWriteTagResultThread = new Thread(this::sendWriteTagResult, "send-write-tag-result");
+        this.sendWriteTagResultThread.setDaemon(true);
+        this.sendWriteTagResultThread.start();
     }
 
     @Override
@@ -411,21 +549,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         state.set(State.CLOSING);
 
-
-        if (this.healthCheckThread != null) {
-            this.healthCheckThread.interrupt();
-            this.healthCheckThread = null;
-        }
-
-        if (this.streamHeartbeatThread != null) {
-            this.streamHeartbeatThread.interrupt();
-            this.streamHeartbeatThread = null;
-        }
-
-        if (this.connectThread != null) {
-            this.connectThread.interrupt();
-            this.connectThread = null;
-        }
+        this.clean();
 
         try {
             // close driver
@@ -438,14 +562,53 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         log.info("驱动已停止");
     }
 
-    /**
-     * 连接 Driver 服务
-     */
-    private void connect() {
+    void clean() {
+        if (this.healthCheckThread != null) {
+            this.healthCheckThread.interrupt();
+            this.healthCheckThread = null;
+        }
+
+//        if (this.streamHeartbeatThread != null) {
+//            this.streamHeartbeatThread.interrupt();
+//            this.streamHeartbeatThread = null;
+//        }
+
         if (this.connectThread != null) {
             this.connectThread.interrupt();
             this.connectThread = null;
         }
+
+        if (this.sendRunResultThread != null) {
+            this.sendRunResultThread.interrupt();
+            this.sendRunResultThread = null;
+        }
+
+        if (this.sendBatchRunResultThread != null) {
+            this.sendBatchRunResultThread.interrupt();
+            this.sendBatchRunResultThread = null;
+        }
+
+        if (this.sendWriteTagResultThread != null) {
+            this.sendWriteTagResultThread.interrupt();
+            this.sendWriteTagResultThread = null;
+        }
+    }
+
+    void startTasks() {
+        // 全局心跳
+        this.startHealthCheck();
+        // 流心跳
+//        this.startStreamHealthCheck();
+        // 发送指令结果
+        this.startSendCommandResultThreads();
+    }
+
+    /**
+     * 连接 Driver 服务
+     */
+    private void connect() {
+
+        this.clean();
 
         if (this.schemaCall != null) {
             this.schemaCall.cancel("重新连接", null);
@@ -506,7 +669,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             StreamClosedCallback callback = new OnceStreamClosedCallback(this::handleStreamClosed);
 
-            String sessionId = UUID.randomUUID().toString();
+            String sessionId = this.sessionId.updateAndGet(old -> UUID.randomUUID().toString());
             metadata.put(Metadata.Key.of("sessionId", Metadata.ASCII_STRING_MARSHALLER),
                     Hex.encodeHexString(sessionId.getBytes(StandardCharsets.UTF_8)));
 
@@ -519,11 +682,12 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 Metadata schemaMetadata = new Metadata();
                 schemaMetadata.merge(this.metadata);
 
-                this.schemaHandler = new SchemaHandler(this.schemaCall, this.driverApp, callback);
+                this.schemaHandler = new SchemaHandler(sessionId, this.schemaCall, this.driverApp, callback);
                 this.schemaCall.start(schemaHandler, schemaMetadata);
                 this.schemaCall.request(Integer.MAX_VALUE);
 
                 Type commandType = this.getCommandType();
+                Type tagType = this.getTagType();
 
                 // run
                 this.runCall = channel.newCall(
@@ -532,7 +696,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata runMetadata = new Metadata();
                 runMetadata.merge(this.metadata);
-                this.runHandler = new RunHandler(this.runExecutor, this.runCall, this.driverApp, commandType, callback);
+                this.runHandler = new RunHandler(sessionId, this.runExecutor, this.runCall, this.driverApp, commandType, callback, this.runResultQueue);
                 this.runCall.start(runHandler, runMetadata);
                 this.runCall.request(Integer.MAX_VALUE);
 
@@ -543,7 +707,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata writeTagMetadata = new Metadata();
                 writeTagMetadata.merge(this.metadata);
-                this.writeTagHandler = new WriteTagHandler(this.runExecutor, this.writeTagCall, this.driverApp, commandType, callback);
+                this.writeTagHandler = new WriteTagHandler(sessionId, this.runExecutor, this.writeTagCall, this.driverApp, tagType, callback, this.writeTagResultQueue);
                 this.writeTagCall.start(writeTagHandler, writeTagMetadata);
                 this.writeTagCall.request(Integer.MAX_VALUE);
 
@@ -554,7 +718,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata batchRunMetadata = new Metadata();
                 batchRunMetadata.merge(this.metadata);
-                this.batchRunHandler = new BatchRunHandler(this.runExecutor, this.batchRunCall, this.driverApp, commandType, callback);
+                this.batchRunHandler = new BatchRunHandler(sessionId, this.runExecutor, this.batchRunCall, this.driverApp, commandType, callback, this.batchRunResultQueue);
                 this.batchRunCall.start(batchRunHandler, batchRunMetadata);
                 this.batchRunCall.request(Integer.MAX_VALUE);
 
@@ -565,7 +729,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata debugRunMetadata = new Metadata();
                 debugRunMetadata.merge(this.metadata);
-                this.debugHandler = new DebugHandler(this.debugCall, this.driverApp, callback);
+                this.debugHandler = new DebugHandler(sessionId, this.debugCall, this.driverApp, callback);
                 this.debugCall.start(debugHandler, debugRunMetadata);
                 this.debugCall.request(Integer.MAX_VALUE);
 
@@ -576,7 +740,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata startMetadata = new Metadata();
                 startMetadata.merge(this.metadata);
-                this.startHandler = new StartHandler(this.startCall, this.driverApp, this.globalContext,
+                this.startHandler = new StartHandler(sessionId, this.startCall, this.driverApp, this.globalContext,
                         this.getDriverConfigType(), this.getTagType(),
                         callback, this.loggerRoots, this::clearTagValueCache);
                 this.startCall.start(startHandler, startMetadata);
@@ -590,12 +754,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     );
                     Metadata httpProxyMetadata = new Metadata();
                     httpProxyMetadata.merge(this.metadata);
-                    this.httpProxyHandler = new HttpProxyHandler(this.httpProxyCall, this.driverApp, callback);
+                    this.httpProxyHandler = new HttpProxyHandler(sessionId, this.httpProxyCall, this.driverApp, callback);
                     this.httpProxyCall.start(httpProxyHandler, httpProxyMetadata);
                     this.httpProxyCall.request(Integer.MAX_VALUE);
                 }
 
                 this.state.set(State.RUNNING);
+                this.lastConnectTime = 0;
 
                 log.info("连接 Driver 服务: 第 {} 次连接成功", retryTimes);
 
@@ -613,10 +778,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         }
 
         if (State.RUNNING.equals(this.state.get())) {
-            // 全局心跳
-            this.startHealthCheck();
-            // 流心跳
-            this.startStreamHealthCheck();
+            this.startTasks();
         }
     }
 
@@ -625,8 +787,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         return State.RUNNING.equals(state.get());
     }
 
-    private void handleStreamClosed(Status status, Metadata trailers) {
+    private void handleStreamClosed(String sessionId, Status status, Metadata trailers) {
         log.warn("stream closed, reconnecting, status = {}, metadata = {}", status, trailers);
+
+        if (!sessionId.equals(this.sessionId.get())) {
+            return;
+        }
+
         if (State.RUNNING.equals(this.state.get())) {
             this.state.set(State.RECONNECTING);
             this.connect();
@@ -636,26 +803,34 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     static class RunHandler extends ClientCall.Listener<RunRequest> {
         private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger("run-stream");
 
+        private final String sessionId;
         private final ThreadPoolExecutor executor;
         private final ClientCall<RunResult, RunRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final Type commandType;
         private final StreamClosedCallback closedCallback;
+        private final BlockingQueue<RunResult> queue;
 
         // 心跳
         private CompletableFuture<Long> heartbeatFuture;
 
-        public RunHandler(ThreadPoolExecutor executor, ClientCall<RunResult, RunRequest> clientCall,
+        public RunHandler(String sessionId, ThreadPoolExecutor executor, ClientCall<RunResult, RunRequest> clientCall,
                           DriverApp<Object, Object, Object> driverApp,
-                          Type commandType, StreamClosedCallback closedCallback) {
+                          Type commandType, StreamClosedCallback closedCallback, BlockingQueue<RunResult> queue) {
+            this.sessionId = sessionId;
             this.executor = executor;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.commandType = commandType;
             this.closedCallback = closedCallback;
+            this.queue = queue;
         }
 
-        public void heartbeat(long timeout) {
+        public void send(RunResult runResult) {
+            this.clientCall.sendMessage(runResult);
+        }
+
+        public void heartbeat(String sessionId, long timeout) {
             long sendTime = System.currentTimeMillis();
             RunResult request = RunResult.newBuilder()
                     .setRequest(STREAM_HEARTBEAT)
@@ -665,14 +840,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 this.heartbeatFuture = new CompletableFuture<>();
                 this.clientCall.sendMessage(request);
                 long recvTime = this.heartbeatFuture.get(timeout, TimeUnit.MILLISECONDS);
-                log.info("流心跳检测: 正常, {}ms", recvTime - sendTime);
+                log.info("流心跳检测: {}, 正常, {}ms", sessionId, recvTime - sendTime);
             } catch (InterruptedException e) {
-                log.warn("流心跳: 任务被中断");
+                log.warn("流心跳: {}, 任务被中断", sessionId);
             } catch (TimeoutException e) {
-                log.warn("流心跳: 超时");
+                log.warn("流心跳: {}, 超时", sessionId);
                 this.onClose(Status.UNKNOWN, null);
             } catch (Exception e) {
-                log.warn("流心跳: 发送心跳异常", e);
+                log.warn("流心跳: {}, 发送心跳异常", sessionId, e);
                 this.onClose(Status.UNKNOWN, null);
             } finally {
                 this.heartbeatFuture = null;
@@ -682,8 +857,20 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         @Override
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
+
+            if (status.getCode() == Status.Code.RESOURCE_EXHAUSTED) {
+                return;
+            }
+
+            if (status.getCode() == Status.Code.INTERNAL) {
+                String statusStr = status.toString();
+                if (StringUtils.hasText(statusStr) && statusStr.contains("wire-format")) {
+                    return;
+                }
+            }
+
             if (status.getCode() != Status.Code.CANCELLED) {
-                this.closedCallback.handle(status, trailers);
+                this.closedCallback.handle(this.sessionId, status, trailers);
             }
         }
 
@@ -740,10 +927,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 return result;
             }, this.executor).handle((r, e) -> {
                 try {
-                    clientCall.sendMessage(RunResult.newBuilder()
+                    RunResult result = RunResult.newBuilder()
                             .setRequest(req)
                             .setMessage(GrpcDriverEventListener.encode(r))
-                            .build());
+                            .build();
+
+                    if (!this.queue.offer(result, 1, TimeUnit.SECONDS)) {
+                        log.warn("上报指令下发结果失败: 队列已满. req = {}, serialNo = {}, result = {}", req, serialNo, result);
+                    }
                 } catch (Exception ex) {
                     logger.error("上报指令下发结果失败, req = {}, serialNo = {}, command = {}",
                             req, serialNo, request.getCommand().toStringUtf8(), ex);
@@ -759,26 +950,35 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     static class WriteTagHandler extends ClientCall.Listener<RunRequest> {
         private final Logger log = LoggerFactory.withContext().module(DriverModules.WRITE_TAG).getStaticLogger("write-tag-stream");
 
+        private final String sessionId;
         private final ThreadPoolExecutor executor;
         private final ClientCall<RunResult, RunRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final Type commandType;
         private final StreamClosedCallback closedCallback;
+        private final BlockingQueue<RunResult> queue;
 
         // 心跳
         private CompletableFuture<Long> heartbeatFuture;
 
-        public WriteTagHandler(ThreadPoolExecutor executor, ClientCall<RunResult, RunRequest> clientCall,
+        public WriteTagHandler(String sessionId, ThreadPoolExecutor executor, ClientCall<RunResult, RunRequest> clientCall,
                                DriverApp<Object, Object, Object> driverApp,
-                               Type commandType, StreamClosedCallback closedCallback) {
+                               Type commandType, StreamClosedCallback closedCallback,
+                               BlockingQueue<RunResult> queue) {
+            this.sessionId = sessionId;
             this.executor = executor;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.commandType = commandType;
             this.closedCallback = closedCallback;
+            this.queue = queue;
         }
 
-        public void heartbeat(long timeout) {
+        public void send(RunResult runResult) {
+            this.clientCall.sendMessage(runResult);
+        }
+
+        public void heartbeat(String sessionId, long timeout) {
             long sendTime = System.currentTimeMillis();
             RunResult request = RunResult.newBuilder()
                     .setRequest(STREAM_HEARTBEAT)
@@ -788,14 +988,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 this.heartbeatFuture = new CompletableFuture<>();
                 this.clientCall.sendMessage(request);
                 long recvTime = this.heartbeatFuture.get(timeout, TimeUnit.MILLISECONDS);
-                log.info("流心跳检测: 正常, {}ms", recvTime - sendTime);
+                log.info("流心跳检测: {}, 正常, {}ms", sessionId, recvTime - sendTime);
             } catch (InterruptedException e) {
-                log.warn("流心跳: 任务被中断");
+                log.warn("流心跳: {}, 任务被中断", sessionId);
             } catch (TimeoutException e) {
-                log.warn("流心跳: 超时");
+                log.warn("流心跳: {}, 超时", sessionId);
                 this.onClose(Status.UNKNOWN, null);
             } catch (Exception e) {
-                log.warn("流心跳: 发送心跳异常", e);
+                log.warn("流心跳: {}, 发送心跳异常", sessionId, e);
                 this.onClose(Status.UNKNOWN, null);
             } finally {
                 this.heartbeatFuture = null;
@@ -806,7 +1006,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
             if (status.getCode() != Status.Code.CANCELLED) {
-                this.closedCallback.handle(status, trailers);
+                this.closedCallback.handle(this.sessionId, status, trailers);
             }
         }
 
@@ -863,12 +1063,16 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 return result;
             }, this.executor).handle((r, e) -> {
                 try {
-                    clientCall.sendMessage(RunResult.newBuilder()
+                    RunResult result = RunResult.newBuilder()
                             .setRequest(req)
                             .setMessage(GrpcDriverEventListener.encode(r))
-                            .build());
+                            .build();
+
+                    if (!this.queue.offer(result, 1, TimeUnit.SECONDS)) {
+                        log.warn("上报写数据点指令下发结果失败: 队列已满. req = {}, serialNo = {}, result = {}", req, serialNo, result);
+                    }
                 } catch (Exception ex) {
-                    logger.error("上报写数据点结果失败, req = {}, serialNo = {}, command = {}",
+                    logger.error("上报写数据点指令下发结果失败, req = {}, serialNo = {}, command = {}",
                             req, serialNo, request.getCommand().toStringUtf8(), ex);
                 }
                 return r;
@@ -881,26 +1085,35 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     static class BatchRunHandler extends ClientCall.Listener<BatchRunRequest> {
         private final Logger log = LoggerFactory.withContext().module(DriverModules.BATCH_RUN).getStaticLogger("batch-run-stream");
 
+        private final String sessionId;
         private final ThreadPoolExecutor executor;
         private final ClientCall<BatchRunResult, BatchRunRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final Type commandType;
         private final StreamClosedCallback closedCallback;
+        private final BlockingQueue<BatchRunResult> queue;
 
         // 心跳
         private CompletableFuture<Long> heartbeatFuture;
 
-        public BatchRunHandler(ThreadPoolExecutor executor, ClientCall<BatchRunResult, BatchRunRequest> clientCall,
+        public BatchRunHandler(String sessionId, ThreadPoolExecutor executor, ClientCall<BatchRunResult, BatchRunRequest> clientCall,
                                DriverApp<Object, Object, Object> driverApp,
-                               Type commandType, StreamClosedCallback closedCallback) {
+                               Type commandType, StreamClosedCallback closedCallback,
+                               BlockingQueue<BatchRunResult> queue) {
+            this.sessionId = sessionId;
             this.executor = executor;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.commandType = commandType;
             this.closedCallback = closedCallback;
+            this.queue = queue;
         }
 
-        public void heartbeat(long timeout) {
+        public void send(BatchRunResult runResult) {
+            this.clientCall.sendMessage(runResult);
+        }
+
+        public void heartbeat(String sessionId, long timeout) {
             long sendTime = System.currentTimeMillis();
             BatchRunResult request = BatchRunResult.newBuilder()
                     .setRequest(STREAM_HEARTBEAT)
@@ -910,14 +1123,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 this.heartbeatFuture = new CompletableFuture<>();
                 this.clientCall.sendMessage(request);
                 long recvTime = this.heartbeatFuture.get(timeout, TimeUnit.MILLISECONDS);
-                log.info("流心跳检测: 正常, {}ms", recvTime - sendTime);
+                log.info("流心跳检测: {}, 正常, {}ms", sessionId, recvTime - sendTime);
             } catch (InterruptedException e) {
-                log.warn("流心跳: 任务被中断");
+                log.warn("流心跳: {}, 任务被中断", sessionId);
             } catch (TimeoutException e) {
-                log.warn("流心跳: 超时");
+                log.warn("流心跳: {}, 超时", sessionId);
                 this.onClose(Status.UNKNOWN, null);
             } catch (Exception e) {
-                log.warn("流心跳: 发送心跳异常", e);
+                log.warn("流心跳: {}, 发送心跳异常", sessionId, e);
                 this.onClose(Status.UNKNOWN, null);
             } finally {
                 this.heartbeatFuture = null;
@@ -928,7 +1141,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
             if (status.getCode() != Status.Code.CANCELLED) {
-                this.closedCallback.handle(status, trailers);
+                this.closedCallback.handle(this.sessionId, status, trailers);
             }
         }
 
@@ -985,12 +1198,16 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 return result;
             }, this.executor).handle((r, e) -> {
                 try {
-                    clientCall.sendMessage(BatchRunResult.newBuilder()
+                    BatchRunResult result = BatchRunResult.newBuilder()
                             .setRequest(req)
                             .setMessage(GrpcDriverEventListener.encode(r))
-                            .build());
+                            .build();
+
+                    if (!this.queue.offer(result, 1, TimeUnit.SECONDS)) {
+                        log.warn("上报批量下发指令下发结果失败: 队列已满. req = {}, serialNo = {}, result = {}", req, serialNo, result);
+                    }
                 } catch (Exception ex) {
-                    logger.error("上报批量下发指令结果失败, req = {}, serialNo = {}, command = {}",
+                    logger.error("上报批量下发指令下发结果失败, req = {}, serialNo = {}, command = {}",
                             req, serialNo, request.getCommand().toStringUtf8(), ex);
                 }
 
@@ -1003,6 +1220,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     static class DebugHandler extends ClientCall.Listener<Debug> {
         private final Logger log = LoggerFactory.withContext().module(DriverModules.DEBUG).getStaticLogger("debug-stream");
+
+        private final String sessionId;
         private final ClientCall<Debug, Debug> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final StreamClosedCallback closedCallback;
@@ -1010,15 +1229,16 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         // 心跳
         private CompletableFuture<Long> heartbeatFuture;
 
-        public DebugHandler(ClientCall<Debug, Debug> clientCall,
+        public DebugHandler(String sessionId, ClientCall<Debug, Debug> clientCall,
                             DriverApp<Object, Object, Object> driverApp,
                             StreamClosedCallback closedCallback) {
+            this.sessionId = sessionId;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.closedCallback = closedCallback;
         }
 
-        public void heartbeat(long timeout) {
+        public void heartbeat(String sessionId, long timeout) {
             long sendTime = System.currentTimeMillis();
             Debug request = Debug.newBuilder()
                     .setRequest(STREAM_HEARTBEAT)
@@ -1028,14 +1248,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 this.heartbeatFuture = new CompletableFuture<>();
                 this.clientCall.sendMessage(request);
                 long recvTime = this.heartbeatFuture.get(timeout, TimeUnit.MILLISECONDS);
-                log.info("流心跳检测: 正常, {}ms", recvTime - sendTime);
+                log.info("流心跳检测: {}, 正常, {}ms", sessionId, recvTime - sendTime);
             } catch (InterruptedException e) {
-                log.warn("流心跳: 任务被中断");
+                log.warn("流心跳: {}, 任务被中断", sessionId);
             } catch (TimeoutException e) {
-                log.warn("流心跳: 超时");
+                log.warn("流心跳: {}, 超时", sessionId);
                 this.onClose(Status.UNKNOWN, null);
             } catch (Exception e) {
-                log.warn("流心跳: 发送心跳异常", e);
+                log.warn("流心跳: {}, 发送心跳异常", sessionId, e);
                 this.onClose(Status.UNKNOWN, null);
             } finally {
                 this.heartbeatFuture = null;
@@ -1046,7 +1266,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         public void onClose(Status status, Metadata trailers) {
             log.error("closed, status = {}, metadata = {}", status, trailers);
             if (status.getCode() != Status.Code.CANCELLED) {
-                this.closedCallback.handle(status, trailers);
+                this.closedCallback.handle(this.sessionId, status, trailers);
             }
         }
 
@@ -1101,6 +1321,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     static class StartHandler extends ClientCall.Listener<StartRequest> {
         private final Logger logger = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger("start-stream");
+
+        private final String sessionId;
         private final Map<String, Level> loggerRoots;
         private final ClientCall<StartResult, StartRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
@@ -1113,7 +1335,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         // 心跳
         private CompletableFuture<Long> heartbeatFuture;
 
-        public StartHandler(ClientCall<StartResult, StartRequest> clientCall,
+        public StartHandler(String sessionId, ClientCall<StartResult, StartRequest> clientCall,
                             DriverApp<Object, Object, Object> driverApp,
                             GlobalContext globalContext,
                             Type driverConfigType, Type tagType,
@@ -1121,6 +1343,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             Map<String, Level> loggerRoots,
                             Consumer<DriverSingleConfig<BasicConfig<?>>> clearCacheFn
         ) {
+            this.sessionId = sessionId;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.globalContext = globalContext;
@@ -1131,7 +1354,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             this.clearCacheFn = clearCacheFn;
         }
 
-        public void heartbeat(long timeout) {
+        public void heartbeat(String sessionId, long timeout) {
             long sendTime = System.currentTimeMillis();
             StartResult request = StartResult.newBuilder()
                     .setRequest(STREAM_HEARTBEAT)
@@ -1141,14 +1364,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 this.heartbeatFuture = new CompletableFuture<>();
                 this.clientCall.sendMessage(request);
                 long recvTime = this.heartbeatFuture.get(timeout, TimeUnit.MILLISECONDS);
-                logger.info("流心跳检测: 正常, {}ms", recvTime - sendTime);
+                logger.info("流心跳检测: {}, 正常, {}ms", sessionId, recvTime - sendTime);
             } catch (InterruptedException e) {
-                logger.warn("流心跳: 任务被中断");
+                logger.warn("流心跳: {}, 任务被中断", sessionId);
             } catch (TimeoutException e) {
-                logger.warn("流心跳: 超时");
+                logger.warn("流心跳: {}, 超时", sessionId);
                 this.onClose(Status.UNKNOWN, null);
             } catch (Exception e) {
-                logger.warn("流心跳: 发送心跳异常", e);
+                logger.warn("流心跳: {}, 发送心跳异常", sessionId, e);
                 this.onClose(Status.UNKNOWN, null);
             } finally {
                 this.heartbeatFuture = null;
@@ -1159,7 +1382,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         public void onClose(Status status, Metadata trailers) {
             logger.error("closed, status = {}, metadata = {}", status, trailers);
             if (status.getCode() != Status.Code.CANCELLED) {
-                this.closedCallback.handle(status, trailers);
+                this.closedCallback.handle(this.sessionId, status, trailers);
             }
         }
 
@@ -1319,6 +1542,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         private final Logger logger = LoggerFactory.withContext().module(DriverModules.SCHEMA).getStaticLogger("schema-stream");
 
+        private final String sessionId;
         private final ClientCall<SchemaResult, SchemaRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final StreamClosedCallback closedCallback;
@@ -1326,15 +1550,16 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         // 心跳
         private CompletableFuture<Long> heartbeatFuture;
 
-        public SchemaHandler(ClientCall<SchemaResult, SchemaRequest> clientCall,
+        public SchemaHandler(String sessionId, ClientCall<SchemaResult, SchemaRequest> clientCall,
                              DriverApp<Object, Object, Object> driverApp,
                              StreamClosedCallback closedCallback) {
+            this.sessionId = sessionId;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.closedCallback = closedCallback;
         }
 
-        public void heartbeat(long timeout) {
+        public void heartbeat(String sessionId, long timeout) {
             long sendTime = System.currentTimeMillis();
             SchemaResult request = SchemaResult.newBuilder()
                     .setRequest(STREAM_HEARTBEAT)
@@ -1344,14 +1569,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 this.heartbeatFuture = new CompletableFuture<>();
                 this.clientCall.sendMessage(request);
                 long recvTime = this.heartbeatFuture.get(timeout, TimeUnit.MILLISECONDS);
-                logger.info("流心跳检测: 正常, {}ms", recvTime - sendTime);
+                logger.info("流心跳检测: {}, 正常, {}ms", sessionId, recvTime - sendTime);
             } catch (InterruptedException e) {
-                logger.warn("流心跳: 任务被中断");
+                logger.warn("流心跳: {}, 任务被中断", sessionId);
             } catch (TimeoutException e) {
-                logger.warn("流心跳: 超时");
+                logger.warn("流心跳: {}, 超时", sessionId);
                 this.onClose(Status.UNKNOWN, null);
             } catch (Exception e) {
-                logger.warn("流心跳: 发送心跳异常", e);
+                logger.warn("流心跳: {}, 发送心跳异常", sessionId, e);
                 this.onClose(Status.UNKNOWN, null);
             } finally {
                 this.heartbeatFuture = null;
@@ -1362,7 +1587,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         public void onClose(Status status, Metadata trailers) {
             logger.error("closed, status = {}, metadata = {}", status, trailers);
             if (status.getCode() != Status.Code.CANCELLED) {
-                this.closedCallback.handle(status, trailers);
+                this.closedCallback.handle(this.sessionId, status, trailers);
             }
         }
 
@@ -1389,7 +1614,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             Result result = new Result();
             try {
-                String schema = this.driverApp.schema();
+                String schema = this.driverApp.schema(request.getLocale());
                 if (logger.isDebugEnabled()) {
                     logger.debug("req = {}, type = schema, {}", request.getRequest(), schema);
                 }
@@ -1424,6 +1649,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         private final static Type HEADER_TYPE = new TypeToken<Map<String, List<String>>>() {
         }.getType();
 
+        private final String sessionId;
         private final ClientCall<HttpProxyResult, HttpProxyRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final StreamClosedCallback closedCallback;
@@ -1431,15 +1657,16 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         // 心跳
         private CompletableFuture<Long> heartbeatFuture;
 
-        public HttpProxyHandler(ClientCall<HttpProxyResult, HttpProxyRequest> clientCall,
+        public HttpProxyHandler(String sessionId, ClientCall<HttpProxyResult, HttpProxyRequest> clientCall,
                                 DriverApp<Object, Object, Object> driverApp,
                                 StreamClosedCallback closedCallback) {
+            this.sessionId = sessionId;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.closedCallback = closedCallback;
         }
 
-        public void heartbeat(long timeout) {
+        public void heartbeat(String sessionId, long timeout) {
             long sendTime = System.currentTimeMillis();
             HttpProxyResult request = HttpProxyResult.newBuilder()
                     .setRequest(STREAM_HEARTBEAT)
@@ -1449,14 +1676,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 this.heartbeatFuture = new CompletableFuture<>();
                 this.clientCall.sendMessage(request);
                 long recvTime = this.heartbeatFuture.get(timeout, TimeUnit.MILLISECONDS);
-                logger.info("流心跳检测: 正常, {}ms", recvTime - sendTime);
+                logger.info("流心跳检测: {}, 正常, {}ms", sessionId, recvTime - sendTime);
             } catch (InterruptedException e) {
-                logger.warn("流心跳: 任务被中断");
+                logger.warn("流心跳: {}, 任务被中断", sessionId);
             } catch (TimeoutException e) {
-                logger.warn("流心跳: 超时");
+                logger.warn("流心跳: {}, 超时", sessionId);
                 this.onClose(Status.UNKNOWN, null);
             } catch (Exception e) {
-                logger.warn("流心跳: 发送心跳异常", e);
+                logger.warn("流心跳: {}, 发送心跳异常", sessionId, e);
                 this.onClose(Status.UNKNOWN, null);
             } finally {
                 this.heartbeatFuture = null;
@@ -1467,7 +1694,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         public void onClose(Status status, Metadata trailers) {
             logger.error("closed, status = {}, metadata = {}", status, trailers);
             if (status.getCode() != Status.Code.CANCELLED) {
-                this.closedCallback.handle(status, trailers);
+                this.closedCallback.handle(this.sessionId, status, trailers);
             }
         }
 
@@ -1517,7 +1744,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     @FunctionalInterface
     interface StreamClosedCallback {
-        void handle(Status status, Metadata trailers);
+        void handle(String sessionId, Status status, Metadata trailers);
     }
 
     static class OnceStreamClosedCallback implements StreamClosedCallback {
@@ -1529,9 +1756,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         }
 
         @Override
-        public void handle(Status status, Metadata trailers) {
+        public void handle(String sessionId, Status status, Metadata trailers) {
             if (this.called.compareAndSet(false, true)) {
-                this.delegate.handle(status, trailers);
+                this.delegate.handle(sessionId, status, trailers);
             }
         }
     }

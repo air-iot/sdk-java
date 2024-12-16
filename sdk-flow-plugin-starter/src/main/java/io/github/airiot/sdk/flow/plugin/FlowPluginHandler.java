@@ -17,6 +17,7 @@
 
 package io.github.airiot.sdk.flow.plugin;
 
+import io.github.airiot.sdk.flow.configuration.FlowPluginProperties;
 import io.github.airiot.sdk.flow.plugin.debug.FlowPluginDebugHandler;
 import io.github.airiot.sdk.flow.plugin.execute.FlowPluginExecuteHandler;
 import io.grpc.CallOptions;
@@ -33,13 +34,15 @@ public class FlowPluginHandler {
 
     private final Logger logger = LoggerFactory.getLogger(FlowPluginHandler.class);
 
+    private final FlowPluginProperties properties;
     private final Channel channel;
     private final FlowPluginDelegate plugin;
     private final FlowPluginClosedListener listener;
     private FlowPluginExecuteHandler executeHandler;
     private FlowPluginDebugHandler debugHandler;
 
-    public FlowPluginHandler(Channel channel, FlowPluginDelegate plugin, FlowPluginClosedListener listener) {
+    public FlowPluginHandler(FlowPluginProperties properties, Channel channel, FlowPluginDelegate plugin, FlowPluginClosedListener listener) {
+        this.properties = properties;
         this.channel = channel;
         this.plugin = plugin;
         this.listener = listener;
@@ -73,7 +76,7 @@ public class FlowPluginHandler {
                 CallOptions.DEFAULT.withWaitForReady()
         );
 
-        this.executeHandler = new FlowPluginExecuteHandler(executeCall, plugin, this.listener);
+        this.executeHandler = new FlowPluginExecuteHandler(this.properties, executeCall, plugin, this.listener);
         executeCall.start(executeHandler, this.getMetadata());
         executeCall.request(Integer.MAX_VALUE);
 

@@ -200,6 +200,13 @@ public class Range {
     }
 
     /**
+     * 是否启用数据范围处理功能.
+     * <br>
+     * 如果值为 {@code null} 和 {@code true} 时为启用, 否则不启用
+     */
+    private Boolean enable;
+
+    /**
      * 配置类型
      * <br>
      * "valid": 有效值范围 <br>
@@ -254,6 +261,14 @@ public class Range {
         this.maxValue = maxValue;
         this.active = active;
         this.fixedValue = fixedValue;
+    }
+    
+    public Boolean getEnable() {
+        return enable;
+    }
+
+    public void setEnable(Boolean enable) {
+        this.enable = enable;
     }
 
     public String getMethod() {

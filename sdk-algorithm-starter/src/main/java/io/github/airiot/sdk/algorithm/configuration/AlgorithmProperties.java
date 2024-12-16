@@ -74,7 +74,7 @@ public class AlgorithmProperties {
     public void setName(String name) {
         this.name = name;
     }
-
+    
     public String getServiceId() {
         if (serviceId == null || serviceId.isEmpty()) {
             this.serviceId = UUID.randomUUID().toString().replaceAll("-", "");

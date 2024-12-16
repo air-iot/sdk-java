@@ -20,6 +20,7 @@ package io.github.airiot.sdk.algorithm;
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.algorithm.annotation.AnnotationUtils;
+import io.github.airiot.sdk.algorithm.configuration.AlgorithmGrpcProperties;
 import io.github.airiot.sdk.algorithm.configuration.AlgorithmProperties;
 import io.github.airiot.sdk.algorithm.grpc.algorithm.Error;
 import io.github.airiot.sdk.algorithm.grpc.algorithm.*;
@@ -45,6 +46,7 @@ public class AlgorithmManagement implements SmartLifecycle {
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private final AlgorithmProperties properties;
+    private final AlgorithmGrpcProperties grpcProperties;
     private final AlgorithmServiceGrpc.AlgorithmServiceBlockingStub algorithmService;
     private final AlgorithmApp app;
 
@@ -68,10 +70,12 @@ public class AlgorithmManagement implements SmartLifecycle {
     private Thread heartbeatThread;
 
     public AlgorithmManagement(AlgorithmProperties properties,
+                               AlgorithmGrpcProperties grpcProperties,
                                Channel channel,
                                AlgorithmServiceGrpc.AlgorithmServiceBlockingStub algorithmService,
                                AlgorithmApp algorithmApp) {
         this.properties = properties;
+        this.grpcProperties = grpcProperties;
         this.algorithmService = algorithmService;
         this.app = algorithmApp;
         this.serviceId = String.format("%s_%s", properties.getId(), properties.getServiceId());
@@ -109,7 +113,7 @@ public class AlgorithmManagement implements SmartLifecycle {
             this.connectThread.interrupt();
             this.connectThread = null;
         }
-
+        
         if (this.heartbeatThread != null) {
             this.heartbeatThread.interrupt();
             this.heartbeatThread = null;
@@ -134,6 +138,10 @@ public class AlgorithmManagement implements SmartLifecycle {
     }
 
     private void startConnect() {
+        if (this.handler != null) {
+            this.handler.close();
+        }
+
         if (this.connectThread != null) {
             this.connectThread.interrupt();
         }
@@ -193,7 +201,8 @@ public class AlgorithmManagement implements SmartLifecycle {
                         CallOptions.DEFAULT.withWaitForReady()
                 );
 
-                this.handler = new AlgorithmHandler(call, this.app, this.functions, this.executor);
+                this.handler = new AlgorithmHandler(call, this.app, this.functions, this.executor,
+                        this.grpcProperties.getQueueSize(), this.grpcProperties.getSendTimeout());
                 call.start(handler, this.createMetadata());
                 call.request(Integer.MAX_VALUE);
 
@@ -307,10 +316,9 @@ public class AlgorithmManagement implements SmartLifecycle {
         @Override
         public void onMessage(SchemaRequest request) {
             String requestId = request.getRequest();
-
             Response response;
             try {
-                String schema = this.app.schema();
+                String schema = this.app.schema(request.getLang());
                 response = new Response(200, null, schema);
             } catch (Exception e) {
                 logger.error("请求 schema 异常", e);
