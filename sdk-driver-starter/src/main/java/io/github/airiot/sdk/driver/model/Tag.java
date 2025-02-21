@@ -22,6 +22,11 @@ package io.github.airiot.sdk.driver.model;
  * 数据点. 该类中的字段为公共属性, 如果在 {@code schema.js} 中扩展了 tag 信息, 需要自己实现编写子类并添加扩展的字段信息
  */
 public class Tag {
+
+    public static final String FORMAT_ROUND = "round";
+    public static final String FORMAT_CARRY_UP = "carryUp";
+    public static final String FORMAT_SLICE = "slice";
+
     /**
      * 数据点标识
      */
@@ -46,6 +51,16 @@ public class Tag {
      * 数据点-缩放比例配置
      */
     private Double mod;
+    /**
+     * 数据点-数据值处理格式
+     * <br>
+     * round: 四舍五入
+     * <br>
+     * carryUp: 向上进位
+     * <br>
+     * slice: 按位展示
+     */
+    private String baseValFormat;
 
     /**
      * 无效值的标识
@@ -126,6 +141,14 @@ public class Tag {
         this.mod = mod;
     }
 
+    public String getBaseValFormat() {
+        return baseValFormat;
+    }
+
+    public void setBaseValFormat(String baseValFormat) {
+        this.baseValFormat = baseValFormat;
+    }
+
     @Override
     public String toString() {
         return "Tag{" +
@@ -135,6 +158,7 @@ public class Tag {
                 ", range=" + range +
                 ", fixed=" + fixed +
                 ", mod=" + mod +
+                ", baseValFormat='" + baseValFormat + '\'' +
                 '}';
     }
 }

@@ -23,11 +23,14 @@ import io.github.airiot.sdk.driver.model.Tag;
 import io.github.airiot.sdk.logger.LoggerFactory;
 import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.slf4j.Logger;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collections;
 import java.util.Map;
+
+import static io.github.airiot.sdk.driver.model.Tag.*;
 
 
 /**
@@ -92,8 +95,36 @@ public class RoundAndScaleValueHandler implements DataHandler {
             val = val.multiply(BigDecimal.valueOf(tag.getMod()));
         }
 
-        if (tag.getFixed() != null && tag.getFixed() >= 0) {
-            val = val.setScale(tag.getFixed(), RoundingMode.HALF_UP);
+        if(StringUtils.hasText(tag.getBaseValFormat())) {
+            int fixed = 3;
+            if(tag.getFixed() != null) {
+                fixed = tag.getFixed();
+            }
+
+            switch (tag.getBaseValFormat()) {
+                case FORMAT_ROUND:
+                    val = val.setScale(fixed, RoundingMode.HALF_UP);
+                    break;
+                case FORMAT_CARRY_UP:
+                    val = val.setScale(fixed, RoundingMode.CEILING);
+                    break;
+                case FORMAT_SLICE:
+                    String strValue = val.toString();
+                    int dotIndex = strValue.indexOf('.');
+                    if(dotIndex >= 0) {
+                        strValue = strValue.substring(0, Math.min(strValue.length(), dotIndex + fixed + 1));
+                        val = new BigDecimal(strValue);
+                    }
+                    break;
+                default:
+                    if(tag.getFixed() != null) {
+                        val = val.setScale(fixed, RoundingMode.HALF_UP);
+                    }
+            }
+        } else {
+            if (tag.getFixed() != null && tag.getFixed() >= 0) {
+                val = val.setScale(tag.getFixed(), RoundingMode.HALF_UP);
+            }
         }
 
         logger.debug("数数据点[小数位数和缩放比例]处理器: 设备表={},设备={},数据点={}. 数据点的值为 {}, 最终值为 {}",
