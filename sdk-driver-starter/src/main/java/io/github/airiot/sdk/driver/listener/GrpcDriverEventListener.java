@@ -1729,7 +1729,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 result.setCode(200);
                 result.setResult(proxyResult);
             } catch (Exception e) {
-                logger.error("req = {}, type = schema", request.getRequest(), e);
+                logger.error("req = {}, type = httpProxy", request.getRequest(), e);
                 result.setCode(400);
                 result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
             }
@@ -1739,6 +1739,92 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     .setRequest(request.getRequest())
                     .setData(ByteString.copyFrom(message, StandardCharsets.UTF_8))
                     .build());
+        }
+    }
+
+    static class ConfigUpdateHandler extends ClientCall.Listener<ConfigUpdateRequest> {
+        private final Logger logger = LoggerFactory.withContext().module(DriverModules.CONFIG_UPDATE).getStaticLogger("config-update-stream");
+
+        private final static Gson GSON = new Gson();
+
+        private final String sessionId;
+        private final ClientCall<ConfigUpdateResponse, ConfigUpdateRequest> clientCall;
+        private final DriverApp<Object, Object, Object> driverApp;
+        private final StreamClosedCallback closedCallback;
+
+        public ConfigUpdateHandler(String sessionId, ClientCall<ConfigUpdateResponse, ConfigUpdateRequest> clientCall,
+                                DriverApp<Object, Object, Object> driverApp,
+                                StreamClosedCallback closedCallback) {
+            this.sessionId = sessionId;
+            this.clientCall = clientCall;
+            this.driverApp = driverApp;
+            this.closedCallback = closedCallback;
+        }
+
+        @Override
+        public void onClose(Status status, Metadata trailers) {
+            logger.error("closed, status = {}, metadata = {}", status, trailers);
+            if (status.getCode() != Status.Code.CANCELLED) {
+                this.closedCallback.handle(this.sessionId, status, trailers);
+            }
+        }
+
+        @Override
+        public void onReady() {
+            logger.info("ready");
+        }
+
+        @Override
+        public void onMessage(ConfigUpdateRequest request) {
+            String req = request.getRequest();
+
+            logger.info("req = {}, type = configUpdate", req);
+
+            ConfigUpdateResponse.Builder response = ConfigUpdateResponse.newBuilder();
+            try {
+                switch (request.getOpsType()) {
+                    case ADD_DEVICE:
+                        ConfigUpdateRequest.AddDeviceData addDevice = request.getAddDeviceData();
+
+                        if(logger.isDebugEnabled()) {
+                            logger.debug("req = {}, type = configUpdate, 新增设备, table={},device={}", req, addDevice.getTableId(), addDevice.getTableData().toStringUtf8());
+                        }
+
+                        driverApp.onAddDevice(addDevice.getTableId(), addDevice.getTableData().toByteArray());
+
+                        logger.info("req = {}, type = configUpdate, 新增设备成功", req);
+
+                        response.setStatus(true);
+                        response.setInfo("success");
+                        break;
+                    case DEL_DEVICE:
+                        ConfigUpdateRequest.DelDeviceData delDevice = request.getDelDeviceData();
+
+                        if(logger.isDebugEnabled()) {
+                            logger.debug("req = {}, type = configUpdate, 删除设备, table={},device={}", req, delDevice.getTableId(), delDevice.getTableDataId());
+                        }
+
+                        driverApp.onDeleteDevice(delDevice.getTableId(), delDevice.getTableDataId());
+
+                        logger.info("req = {}, type = configUpdate, 删除设备成功, table={},device={}", req, delDevice.getTableId(), delDevice.getTableDataId());
+
+                        response.setStatus(true);
+                        response.setInfo("success");
+                        break;
+                    default:
+                        logger.warn("req = {}, type = configUpdate, 不支持的操作类型: {}", req, request.getOpsType());
+                        response.setStatus(false);
+                        response.setInfo("不支持的操作类型: " + request.getOpsType());
+                }
+            } catch (Exception e) {
+                logger.error("req = {}, type = configUpdate", request.getRequest(), e);
+                String message = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
+                response.setStatus(true);
+                response.setInfo("配置更新异常");
+                response.setDetail(message);
+            }
+
+            clientCall.sendMessage(response.build());
         }
     }
 

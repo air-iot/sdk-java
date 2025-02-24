@@ -194,4 +194,20 @@ public interface DriverApp<DriverConfig, Command, Tag> {
         }
         return new String(data, StandardCharsets.UTF_8);
     }
+
+    /**
+     * 新增设备处理函数. 当平台中新增设备时, 会调用该方法
+     * @param tableId 新增设备所属表标识
+     * @param device 新增设备信息
+     */
+    default void onAddDevice(String tableId, byte[] device) {}
+
+    /**
+     * 删除设备处理函数. 当平台中删除设备时, 会调用该方法
+     * @param tableId 删除设备所属表标识
+     * @param tableDataId 删除设备的编号
+     */
+    default void onDeleteDevice(String tableId, String tableDataId) {
+
+    }
 }

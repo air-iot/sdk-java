@@ -34,6 +34,7 @@ service DriverService {
   rpc BatchRunStream (stream BatchRunResult) returns (stream BatchRunRequest) {}
   rpc DebugStream (stream Debug) returns (stream Debug) {}
   rpc HttpProxyStream (stream HttpProxyResult) returns (stream HttpProxyRequest) {}
+  rpc ConfigUpdateStream (stream ConfigUpdateResponse) returns (stream ConfigUpdateRequest) {}
   //  rpc UpdateDeviceStream (stream UpdateDeviceResult) returns (stream UpdateDeviceRequest) {}
 
   // 平台用
@@ -42,6 +43,42 @@ service DriverService {
   rpc HttpProxy (ClientHttpProxyRequest) returns (api.Response) {}
   rpc WriteTag (api.CreateRequest) returns (api.Response) {}
   rpc BatchWriteTag (api.CreateRequest) returns (api.Response) {}
+}
+
+service DriverInstanceService {
+  rpc Query (api.QueryRequest) returns (api.Response) {}
+  rpc Get (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Delete (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Update (api.UpdateRequest) returns (api.Response) {}
+  rpc Replace (api.UpdateRequest) returns (api.Response) {}
+  rpc Create (api.CreateRequest) returns (api.Response) {}
+}
+
+service DriverEventCronService {
+  rpc Query (api.QueryRequest) returns (api.Response) {}
+  rpc Get (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Delete (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Update (api.UpdateRequest) returns (api.Response) {}
+  rpc Replace (api.UpdateRequest) returns (api.Response) {}
+  rpc Create (api.CreateRequest) returns (api.Response) {}
+  rpc CreateMany (api.CreateRequest) returns (api.Response) {}
+  rpc DeleteMany (api.QueryRequest) returns (api.Response) {}
+}
+
+service DriverInstructCronService {
+  rpc Query (api.QueryRequest) returns (api.Response) {}
+  rpc Get (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Delete (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Update (api.UpdateRequest) returns (api.Response) {}
+  rpc Replace (api.UpdateRequest) returns (api.Response) {}
+  rpc Create (api.CreateRequest) returns (api.Response) {}
+  rpc CreateMany (api.CreateRequest) returns (api.Response) {}
+  rpc DeleteMany (api.QueryRequest) returns (api.Response) {}
+}
+
+service DriverInstructService {
+  rpc GetCommands (RequestCommand) returns (api.Response) {}
+  rpc Update (api.UpdateRequest) returns (api.Response) {}
 }
 
 message UpdateRequest {
@@ -193,4 +230,36 @@ message ClientHttpProxyRequest {
 message RequestCommand {
   string tableId = 1;
   string tableDataId = 2;
+}
+
+message ConfigUpdateRequest {
+  string request = 1;
+  enum OpsType {
+    ADD_DEVICE = 0;
+    DEL_DEVICE = 1;
+  }
+
+  OpsType opsType = 2;
+
+  oneof data {
+    AddDeviceData add_device_data = 3;
+    DelDeviceData del_device_data = 4;
+  }
+
+  message AddDeviceData {
+    string tableId = 1;
+    bytes tableData = 2; // 字节数组
+  }
+
+  message DelDeviceData {
+    string tableId = 1;
+    string tableDataId = 2;
+  }
+}
+
+message ConfigUpdateResponse {
+  string request = 1;
+  bool status = 2;
+  string info = 3;
+  string detail = 4;
 }

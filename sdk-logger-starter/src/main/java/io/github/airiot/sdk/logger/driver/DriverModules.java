@@ -32,5 +32,5 @@ public interface DriverModules {
     String SCHEMA = "Schema";
     String DEBUG = "调试";
     String HTTP_PROXY = "Http代理";
-
+    String CONFIG_UPDATE = "配置更新";
 }
