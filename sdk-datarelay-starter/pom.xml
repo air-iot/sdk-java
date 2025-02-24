@@ -35,9 +35,9 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>cn.airiot</groupId>
-            <artifactId>sdk-java-config-initializer</artifactId>
-            <version>4.0.3</version>
+            <groupId>io.github.air-iot</groupId>
+            <artifactId>sdk-boot-config-starter</artifactId>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>jakarta.validation</groupId>
@@ -106,11 +106,4 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <repositories>
-        <repository>
-            <id>gitlab-maven</id>
-            <url>https://git.airiot.tech/api/v4/projects/1415/packages/maven</url>
-        </repository>
-    </repositories>
 </project>

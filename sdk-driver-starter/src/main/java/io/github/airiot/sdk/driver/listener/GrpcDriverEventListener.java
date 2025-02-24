@@ -111,6 +111,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     private ClientCall<Debug, Debug> debugCall = null;
     private ClientCall<StartResult, StartRequest> startCall = null;
     private ClientCall<HttpProxyResult, HttpProxyRequest> httpProxyCall = null;
+    private ClientCall<ConfigUpdateResponse, ConfigUpdateRequest> configUpdateCall = null;
 
     private StartHandler startHandler;
     private RunHandler runHandler;
@@ -119,6 +120,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
     private DebugHandler debugHandler;
     private SchemaHandler schemaHandler;
     private HttpProxyHandler httpProxyHandler;
+    private ConfigUpdateHandler configUpdateHandler;
 
     /**
      * 上次连接时间
@@ -405,6 +407,10 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     this.debugHandler.heartbeat(sessionId, keepaliveTimeout);
                 }
 
+                if (this.configUpdateHandler != null) {
+                    this.configUpdateHandler.heartbeat(sessionId, keepaliveTimeout);
+                }
+
                 if (this.driverApp.supportHttpProxy() && this.httpProxyHandler != null) {
                     this.httpProxyHandler.heartbeat(sessionId, keepaliveTimeout);
                 }
@@ -631,6 +637,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         if (this.httpProxyCall != null) {
             this.httpProxyCall.cancel("重新连接", null);
         }
+        if (this.configUpdateCall != null) {
+            this.configUpdateCall.cancel("重新连接", null);
+        }
 
         log.info("创建连接 Driver 服务线程");
         this.connectThread = new Thread(this::connectTask);
@@ -758,6 +767,16 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     this.httpProxyCall.start(httpProxyHandler, httpProxyMetadata);
                     this.httpProxyCall.request(Integer.MAX_VALUE);
                 }
+
+                this.configUpdateCall = channel.newCall(
+                        DriverServiceGrpc.getConfigUpdateStreamMethod(),
+                        CallOptions.DEFAULT.withWaitForReady()
+                );
+                Metadata httpProxyMetadata = new Metadata();
+                httpProxyMetadata.merge(this.metadata);
+                this.configUpdateHandler = new ConfigUpdateHandler(sessionId, this.configUpdateCall, this.driverApp, callback);
+                this.configUpdateCall.start(configUpdateHandler, httpProxyMetadata);
+                this.configUpdateCall.request(Integer.MAX_VALUE);
 
                 this.state.set(State.RUNNING);
                 this.lastConnectTime = 0;
@@ -1752,13 +1771,40 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         private final DriverApp<Object, Object, Object> driverApp;
         private final StreamClosedCallback closedCallback;
 
+        // 心跳
+        private CompletableFuture<Long> heartbeatFuture;
+
         public ConfigUpdateHandler(String sessionId, ClientCall<ConfigUpdateResponse, ConfigUpdateRequest> clientCall,
-                                DriverApp<Object, Object, Object> driverApp,
-                                StreamClosedCallback closedCallback) {
+                                   DriverApp<Object, Object, Object> driverApp,
+                                   StreamClosedCallback closedCallback) {
             this.sessionId = sessionId;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.closedCallback = closedCallback;
+        }
+
+        public void heartbeat(String sessionId, long timeout) {
+            long sendTime = System.currentTimeMillis();
+            ConfigUpdateResponse request = ConfigUpdateResponse.newBuilder()
+                    .setRequest(STREAM_HEARTBEAT)
+                    .build();
+
+            try {
+                this.heartbeatFuture = new CompletableFuture<>();
+                this.clientCall.sendMessage(request);
+                long recvTime = this.heartbeatFuture.get(timeout, TimeUnit.MILLISECONDS);
+                logger.info("流心跳检测: {}, 正常, {}ms", sessionId, recvTime - sendTime);
+            } catch (InterruptedException e) {
+                logger.warn("流心跳: {}, 任务被中断", sessionId);
+            } catch (TimeoutException e) {
+                logger.warn("流心跳: {}, 超时", sessionId);
+                this.onClose(Status.UNKNOWN, null);
+            } catch (Exception e) {
+                logger.warn("流心跳: {}, 发送心跳异常", sessionId, e);
+                this.onClose(Status.UNKNOWN, null);
+            } finally {
+                this.heartbeatFuture = null;
+            }
         }
 
         @Override
@@ -1786,7 +1832,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     case ADD_DEVICE:
                         ConfigUpdateRequest.AddDeviceData addDevice = request.getAddDeviceData();
 
-                        if(logger.isDebugEnabled()) {
+                        if (logger.isDebugEnabled()) {
                             logger.debug("req = {}, type = configUpdate, 新增设备, table={},device={}", req, addDevice.getTableId(), addDevice.getTableData().toStringUtf8());
                         }
 
@@ -1800,7 +1846,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                     case DEL_DEVICE:
                         ConfigUpdateRequest.DelDeviceData delDevice = request.getDelDeviceData();
 
-                        if(logger.isDebugEnabled()) {
+                        if (logger.isDebugEnabled()) {
                             logger.debug("req = {}, type = configUpdate, 删除设备, table={},device={}", req, delDevice.getTableId(), delDevice.getTableDataId());
                         }
 
