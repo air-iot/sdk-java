@@ -32,6 +32,7 @@ import io.github.airiot.sdk.driver.data.handlers.TagValueCache;
 import io.github.airiot.sdk.driver.data.impl.AmqpDataSender;
 import io.github.airiot.sdk.driver.data.impl.KafkaDataSender;
 import io.github.airiot.sdk.driver.data.impl.MQTTDataSender;
+import io.github.airiot.sdk.driver.data.impl.MultiClientMQTTDataSender;
 import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.listener.DriverEventListener;
 import io.github.airiot.sdk.driver.listener.GrpcDriverEventListener;
@@ -125,6 +126,10 @@ public class DriverAutoConfiguration {
                                          DriverMQProperties properties,
                                          DataHandlerChain dataHandlerChain, GlobalContext globalContext,
                                          DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
+            if(properties.getMqtt().getClients() > 1) {
+                return new MultiClientMQTTDataSender(dataHandlerChain, driverDataProperties, driverAppProperties,
+                        properties.getMqtt(), globalContext, driverGrpcClient);
+            }
             return new MQTTDataSender(dataHandlerChain, driverDataProperties, driverAppProperties,
                     properties.getMqtt(), globalContext, driverGrpcClient);
         }

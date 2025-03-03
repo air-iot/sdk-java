@@ -99,6 +99,10 @@ public class DriverMQProperties {
         private int protocolVersion = 0;
         private int qos = 0;
         /**
+         * 客户端数量
+         */
+        private int clients = 1;
+        /**
          * 连接超时时间
          * <br>
          * 最短超时为 5s, 如果设置的超时时间小于 5s 则为 5s
@@ -179,6 +183,14 @@ public class DriverMQProperties {
 
         public void setQos(int qos) {
             this.qos = qos;
+        }
+
+        public int getClients() {
+            return clients;
+        }
+
+        public void setClients(int clients) {
+            this.clients = clients;
         }
 
         public Duration getConnectTimeout() {

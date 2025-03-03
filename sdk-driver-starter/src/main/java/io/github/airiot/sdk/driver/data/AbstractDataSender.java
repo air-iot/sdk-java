@@ -331,6 +331,43 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
     }
 
     @Override
+    public void writePointWithNoHandle(String tableId, String deviceId, long time, Map<String, Object> tagValues) {
+        if(tagValues == null || tagValues.isEmpty()) {
+            throw new IllegalArgumentException("数据点信息不能为空");
+        }
+
+        List<Field<? extends Tag>> fields = tagValues.entrySet().stream()
+                .map(entry -> {
+                    Object value = entry.getValue();
+                    if(value == null) {
+                        return null;
+                    }
+                    Field<Tag> field = new Field<>();
+                    field.setTag(new Tag(entry.getKey(), entry.getKey()));
+                    field.setValue(value);
+                    return field;
+                }).filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        Point point = new Point();
+        point.setTable(tableId);
+        point.setId(deviceId);
+        point.setTime(time);
+        point.setFields(fields);
+
+        LoggerContext context = LoggerContexts.push();
+        context.withTable(tableId);
+        try {
+            this.doWritePoint(point);
+        } catch (Exception e){
+            writePointLogger.error("上报数据异常, point = {}", point, e);
+            throw new DataSenderException(point, "上报数据异常", e);
+        } finally {
+            LoggerContexts.pop();
+        }
+    }
+
+    @Override
     public void writePoint(String tableId, String deviceId, long time, Map<String, Object> tagValues) {
         Point point = this.globalContext.createPoint(tableId, deviceId, time, tagValues);
         LoggerContext context = LoggerContexts.push();

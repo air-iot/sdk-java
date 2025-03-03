@@ -42,6 +42,14 @@ public final class GlobalContext {
      */
     private final AtomicReference<Map<String, Map<String, DeviceInfo<? extends Tag>>>> devices = new AtomicReference<>(Collections.emptyMap());
 
+    /**
+     * 表数据点列表
+     * <br>
+     * key: tableId
+     * value: 数据点列表
+     */
+    private final AtomicReference<Map<String, Map<String, Tag>>> tableTags = new AtomicReference<>(Collections.emptyMap());
+
     private static String VERSION = null;
 
     static {
@@ -63,6 +71,35 @@ public final class GlobalContext {
      */
     public static String getVersion() {
         return VERSION;
+    }
+
+    public void setTableTags(Map<String, Map<String, Tag>> tableTags) {
+        this.tableTags.set(tableTags);
+    }
+
+    public Map<String, Tag> getTableTags(String tableId) {
+        return this.tableTags.get().getOrDefault(tableId, Collections.emptyMap());
+    }
+
+    public void addDevice(DeviceInfo<? extends Tag> device) {
+        if(this.devices.get() == null) {
+            this.devices.set(new HashMap<>());
+        }
+
+        Map<String, DeviceInfo<? extends Tag>> tableDevices =  Maps.newHashMap();
+        tableDevices.put(device.getTableId(), device);
+        this.devices.get().put(device.getId(), tableDevices);
+    }
+
+    public void removeDevice(String tableId, String deviceId) {
+        if(this.devices.get() == null) {
+            return;
+        }
+
+        Map<String, DeviceInfo<? extends Tag>> tableDevices = this.devices.get().get(deviceId);
+        if(tableDevices != null) {
+            tableDevices.remove(tableId);
+        }
     }
 
     public void set(Map<String, List<DeviceInfo<? extends Tag>>> deviceInfos) {

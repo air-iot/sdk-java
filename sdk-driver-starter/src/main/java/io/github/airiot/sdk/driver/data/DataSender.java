@@ -42,6 +42,15 @@ public interface DataSender extends SmartLifecycle {
     };
 
     /**
+     * 上报驱动采集到的数据, 并且不对数据点做任何处理, 也不校验表和设备是否属于当前驱动实例.
+     * @param tableId 表标识
+     * @param deviceId 设备编号
+     * @param time 数据产生或采集的时间. unix时间戳(ms)
+     * @param tagValues 数据点的值
+     */
+    void writePointWithNoHandle(String tableId, String deviceId, long time, Map<String, Object> tagValues);
+
+    /**
      * 上报驱动采集到的数据
      *
      * @param point 数据点

@@ -774,7 +774,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 );
                 Metadata httpProxyMetadata = new Metadata();
                 httpProxyMetadata.merge(this.metadata);
-                this.configUpdateHandler = new ConfigUpdateHandler(sessionId, this.configUpdateCall, this.driverApp, callback);
+                this.configUpdateHandler = new ConfigUpdateHandler(this.driverInstanceId, sessionId, this.configUpdateCall, this.globalContext, this.driverApp, callback);
                 this.configUpdateCall.start(configUpdateHandler, httpProxyMetadata);
                 this.configUpdateCall.request(Integer.MAX_VALUE);
 
@@ -1452,6 +1452,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
                 String instanceId = driverConfig.getId();
                 Map<String, List<DeviceInfo<? extends Tag>>> deviceInfos = new HashMap<>();
+                Map<String, Map<String, Tag>> allTableTags = new HashMap<>();
 
                 Map<String, Tag> driverInstanceTags = new HashMap<>();
                 if (driverConfig.getConfig() != null && !CollectionUtils.isEmpty(driverConfig.getConfig().getTags())) {
@@ -1469,6 +1470,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             tableTags.put(tag.getId(), tag);
                         }
                     }
+
+                    allTableTags.put(tableId, tableTags);
 
                     for (Device<BasicConfig<? extends Tag>> device : table.getDevices()) {
                         device.setDriverInstanceId(instanceId);
@@ -1488,6 +1491,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 }
 
                 this.globalContext.set(deviceInfos);
+                this.globalContext.setTableTags(allTableTags);
             } catch (Exception e) {
                 logger.error("启动驱动, 解析启动配置失败, config = {}", config, e);
                 passed = false;
@@ -1766,7 +1770,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         private final static Gson GSON = new Gson();
 
+        private final String driverInstanceId;
         private final String sessionId;
+        private final GlobalContext globalContext;
         private final ClientCall<ConfigUpdateResponse, ConfigUpdateRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final StreamClosedCallback closedCallback;
@@ -1774,10 +1780,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         // 心跳
         private CompletableFuture<Long> heartbeatFuture;
 
-        public ConfigUpdateHandler(String sessionId, ClientCall<ConfigUpdateResponse, ConfigUpdateRequest> clientCall,
+        public ConfigUpdateHandler(String driverInstanceId, String sessionId,
+                                   ClientCall<ConfigUpdateResponse, ConfigUpdateRequest> clientCall,
+                                   GlobalContext globalContext,
                                    DriverApp<Object, Object, Object> driverApp,
                                    StreamClosedCallback closedCallback) {
+            this.driverInstanceId = driverInstanceId;
             this.sessionId = sessionId;
+            this.globalContext = globalContext;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.closedCallback = closedCallback;
@@ -1793,7 +1803,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 this.heartbeatFuture = new CompletableFuture<>();
                 this.clientCall.sendMessage(request);
                 long recvTime = this.heartbeatFuture.get(timeout, TimeUnit.MILLISECONDS);
-                logger.info("流心跳检测: {}, 正常, {}ms", sessionId, recvTime - sendTime);
+                logger.info("流心跳: {}, 正常, {}ms", sessionId, recvTime - sendTime);
             } catch (InterruptedException e) {
                 logger.warn("流心跳: {}, 任务被中断", sessionId);
             } catch (TimeoutException e) {
@@ -1824,6 +1834,16 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         public void onMessage(ConfigUpdateRequest request) {
             String req = request.getRequest();
 
+            // 如果是心跳响应
+            if (STREAM_HEARTBEAT.equals(req)) {
+                if (this.heartbeatFuture != null) {
+                    this.heartbeatFuture.complete(System.currentTimeMillis());
+                } else {
+                    logger.warn("流心跳: 接收到心跳响应, 但 future 为空");
+                }
+                return;
+            }
+
             logger.info("req = {}, type = configUpdate", req);
 
             ConfigUpdateResponse.Builder response = ConfigUpdateResponse.newBuilder();
@@ -1831,17 +1851,36 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 switch (request.getOpsType()) {
                     case ADD_DEVICE:
                         ConfigUpdateRequest.AddDeviceData addDevice = request.getAddDeviceData();
+                        String tableId = addDevice.getTableId();
 
                         if (logger.isDebugEnabled()) {
-                            logger.debug("req = {}, type = configUpdate, 新增设备, table={},device={}", req, addDevice.getTableId(), addDevice.getTableData().toStringUtf8());
+                            logger.debug("req = {}, type = configUpdate, 新增设备, table={},device={}", req, tableId, addDevice.getTableData().toStringUtf8());
                         }
 
-                        driverApp.onAddDevice(addDevice.getTableId(), addDevice.getTableData().toByteArray());
+                        driverApp.onAddDevice(tableId, addDevice.getTableData().toByteArray());
 
                         logger.info("req = {}, type = configUpdate, 新增设备成功", req);
 
                         response.setStatus(true);
                         response.setInfo("success");
+
+
+                        Device<BasicConfig<? extends Tag>> device = JSON.parseObject(addDevice.getTableData().toStringUtf8(), new TypeReference<Device<BasicConfig<? extends Tag>>>() {
+                        });
+                        device.setDriverInstanceId(this.driverInstanceId);
+                        device.setTable(tableId);
+
+                        Map<String, Tag> tableTags = this.globalContext.getTableTags(tableId);
+                        Map<String, Tag> deviceTags = new HashMap<>(tableTags);
+                        if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
+                            for (Tag tag : device.getConfig().getTags()) {
+                                deviceTags.put(tag.getId(), tag);
+                            }
+                        }
+
+                        String deviceId = device.getId();
+                        DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, this.driverInstanceId, deviceTags);
+                        this.globalContext.addDevice(info);
                         break;
                     case DEL_DEVICE:
                         ConfigUpdateRequest.DelDeviceData delDevice = request.getDelDeviceData();
@@ -1856,6 +1895,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
                         response.setStatus(true);
                         response.setInfo("success");
+
+                        this.globalContext.removeDevice(delDevice.getTableId(), delDevice.getTableDataId());
+
                         break;
                     default:
                         logger.warn("req = {}, type = configUpdate, 不支持的操作类型: {}", req, request.getOpsType());
