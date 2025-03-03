@@ -206,7 +206,7 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
 
     @Override
     public boolean isRunning() {
-        return this.mqttClient != null && this.mqttClient.isConnected();
+        return this.running.get() && this.mqttClient != null && this.mqttClient.isConnected();
     }
 
     @Override

@@ -157,7 +157,7 @@ public class KafkaDataSender extends AbstractDataSender {
 
     @Override
     public boolean isRunning() {
-        return this.kafkaClient != null;
+        return this.running.get() && this.kafkaClient != null;
     }
 
     @Override

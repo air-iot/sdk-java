@@ -219,7 +219,9 @@ public class MultiClientMQTTDataSender extends AbstractDataSender {
 
     @Override
     public boolean isRunning() {
-        return !this.availableClients.isEmpty();
+        boolean isRunning = this.running.get() && !this.availableClients.isEmpty();
+        log.info("MQTTDataSender: 运行状态, {}", isRunning);
+        return isRunning;
     }
 
     void publish(String topic, byte[] payload) throws Exception {
