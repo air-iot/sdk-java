@@ -28,12 +28,16 @@ public class LoggerContexts {
     /**
      * 最大日志上下文层级
      */
-    public static final int MAX_LEVEL = Integer.parseInt(System.getProperty("LOGGING_MAX_LEVELS", "10"));
+    public static final int MAX_LEVEL = Integer.parseInt(System.getProperty("LOGGING_MAX_LEVELS", "5"));
 
     /**
      * 根日志上下文
      */
     protected static final LoggerContext ROOT_CONTEXT = new LoggerContext(null);
+    static {
+        ROOT_CONTEXT.setService("__undefined__");
+        ROOT_CONTEXT.setModule("初始化");
+    }
 
     protected static final InheritableThreadLocal<LoggerContext> CONTEXT = new InheritableThreadLocal<>();
 
@@ -185,11 +189,38 @@ public class LoggerContexts {
 
         // 如果达到最大层级
         if (context.getLevel() >= MAX_LEVEL) {
-            System.err.println("[WARN] 当前线程 "
-                    + Thread.currentThread().getName()
-                    + "[" + Thread.currentThread().getId() + "] 创建的日志上下文层级已达到 " + context.getLevel()
-                    + " 层, 可能存在未释放日志上下文的代码, 需要在使用完日志上下文后调用 pop() 方法释放"
-            );
+            StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+            int size = Math.min(elements.length, 10);
+            for (int i = 0; i < size; i++) {
+                StackTraceElement element = elements[i];
+                System.err.println("[WARN] 当前线程 "
+                        + Thread.currentThread().getName()
+                        + "[" + Thread.currentThread().getId() + "] 创建的日志上下文层级已达到 " + context.getLevel()
+                        + " 层, 可能存在未释放日志上下文的代码, 需要在使用完日志上下文后调用 pop() 方法释放."
+                        + element.getClassName() + ":" + element.getLineNumber()
+                );
+            }
+
+            LoggerContext c = context;
+            for (int i = 0; i < size; i++) {
+                System.err.println("[WARN] 当前线程 "
+                        + Thread.currentThread().getName()
+                        + "[" + Thread.currentThread().getId() + "] 创建的日志上下文层级已达到 " + context.getLevel()
+                        + " 层, 可能存在未释放日志上下文的代码, 需要在使用完日志上下文后调用 pop() 方法释放."
+                        + c.getLevel() + ":" + System.identityHashCode(c)
+                );
+
+                c = c.getParent();
+                if (c == null) {
+                    break;
+                }
+            }
+
+//            System.err.println("[WARN] 当前线程 "
+//                    + Thread.currentThread().getName()
+//                    + "[" + Thread.currentThread().getId() + "] 创建的日志上下文层级已达到 " + context.getLevel()
+//                    + " 层, 可能存在未释放日志上下文的代码, 需要在使用完日志上下文后调用 pop() 方法释放"
+//            );
             return reset();
         }
 

@@ -1,1 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=io.github.airiot.sdk.driver.configuration.DriverAutoConfiguration
+org.springframework.boot.SpringApplicationRunListener=io.github.airiot.sdk.driver.InitialApplicationRunner

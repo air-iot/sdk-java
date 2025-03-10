@@ -29,10 +29,7 @@ import io.github.airiot.sdk.driver.data.DataHandlerChain;
 import io.github.airiot.sdk.driver.data.DataSender;
 import io.github.airiot.sdk.driver.data.DefaultDataHandlerChain;
 import io.github.airiot.sdk.driver.data.handlers.TagValueCache;
-import io.github.airiot.sdk.driver.data.impl.AmqpDataSender;
-import io.github.airiot.sdk.driver.data.impl.KafkaDataSender;
-import io.github.airiot.sdk.driver.data.impl.MQTTDataSender;
-import io.github.airiot.sdk.driver.data.impl.MultiClientMQTTDataSender;
+import io.github.airiot.sdk.driver.data.impl.*;
 import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.listener.DriverEventListener;
 import io.github.airiot.sdk.driver.listener.GrpcDriverEventListener;
@@ -48,9 +45,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 
-import javax.annotation.PostConstruct;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -127,6 +124,10 @@ public class DriverAutoConfiguration {
                                          DataHandlerChain dataHandlerChain, GlobalContext globalContext,
                                          DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
             if(properties.getMqtt().getClients() > 1) {
+                if(properties.getMqtt().isAsync()) {
+                    return new MultiAsyncClientMQTTDataSender(dataHandlerChain, driverDataProperties, driverAppProperties,
+                            properties.getMqtt(), globalContext, driverGrpcClient);
+                }
                 return new MultiClientMQTTDataSender(dataHandlerChain, driverDataProperties, driverAppProperties,
                         properties.getMqtt(), globalContext, driverGrpcClient);
             }
@@ -161,16 +162,10 @@ public class DriverAutoConfiguration {
 
     @Configuration
     @ConditionalOnClass(LoggerFactory.class)
+    @Order(Ordered.HIGHEST_PRECEDENCE)
     static class LoggerConfiguration {
 
-        private final DriverAppProperties properties;
-
         public LoggerConfiguration(DriverAppProperties properties) {
-            this.properties = properties;
-        }
-
-        @PostConstruct
-        public void init() {
             LoggerContexts.setDefaultProjectId(properties.getProjectId());
             LoggerContexts.setDefaultService(properties.getProjectId() + "-" + properties.getInstanceId() + "-" + properties.getId());
         }

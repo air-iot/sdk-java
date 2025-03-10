@@ -88,7 +88,7 @@ public class JsonLayout extends LayoutBase<ILoggingEvent> {
                 .append("\"level\":").append('"').append(event.getLevel().levelStr).append('"').append(",")
                 .append("\"time\":").append('"').append(time).append('"').append(",")
                 .append("\"projectId\":").append('"').append(context.getProjectId()).append('"').append(",")
-                .append("\"service\":").append('"').append(context.getService()).append('"').append(",")
+                .append("\"service\":").append('"').append(context.getServiceOrDefault("__none__")).append('"').append(",")
                 .append("\"module\":").append('"').append(context.getModule()).append('"').append(",");
 
         if (keys != null && !keys.isEmpty()) {

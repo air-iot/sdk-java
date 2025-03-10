@@ -140,42 +140,7 @@ public class LoggerContext {
     }
 
     public String getProjectId() {
-        String pId = this.projectId;
-        if (StringUtils.hasText(pId)) {
-            return pId;
-        }
-
-        if (parent == null || parent.parent == parent || parent.parent == this) {
-            return null;
-        }
-
-        Set<Integer> called = new HashSet<>();
-        try {
-            LoggerContext previous = parent;
-            for (int i = 0; i < LoggerContexts.MAX_LEVEL; i++) {
-                if (previous == null) {
-                    return null;
-                }
-
-                int ctx = System.identityHashCode(previous);
-                if (called.contains(ctx)) {
-                    this.printCurrentContexts();
-                    return null;
-                }
-                called.add(ctx);
-
-                if (previous.projectId != null) {
-                    return previous.projectId;
-                }
-                previous = previous.parent;
-            }
-
-            return pId == null ? LoggerContexts.ROOT_CONTEXT.projectId : pId;
-        } catch (StackOverflowError e) {
-            e.printStackTrace();
-            this.printCurrentContexts();
-            return null;
-        }
+        return this.projectId;
     }
 
     /**
@@ -195,16 +160,17 @@ public class LoggerContext {
      * @return 服务实例ID
      */
     public String getService() {
-        String svc = null;
-        if (service != null && !service.isEmpty()) {
-            svc = service;
-        } else if (parent != null) {
-            svc = parent.getService();
+        if (StringUtils.hasText(this.service)) {
+            return this.service;
         }
-        if (svc == null) {
-            throw new IllegalArgumentException("未在日志上下文中找到服务名");
+        throw new IllegalArgumentException("未在日志上下文中找到服务名");
+    }
+
+    public String getServiceOrDefault(String service) {
+        if (StringUtils.hasText(this.service)) {
+            return this.service;
         }
-        return svc;
+        return service;
     }
 
     /**
@@ -530,6 +496,9 @@ public class LoggerContext {
             this.level = 0;
         } else {
             this.level = parent.level + 1;
+            this.projectId = parent.getProjectId();
+            this.module = parent.getModule();
+            this.service = parent.getService();
         }
     }
 

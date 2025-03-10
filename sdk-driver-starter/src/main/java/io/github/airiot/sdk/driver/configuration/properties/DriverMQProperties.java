@@ -87,6 +87,12 @@ public class DriverMQProperties {
         private int port = 1883;
         private String username = "admin";
         private String password = "public";
+        private boolean async = false;
+        private boolean ssl = false;
+        /**
+         *
+         */
+        private boolean sslVerification = false;
         /**
          * MQTT 协议版本号
          * <br>
@@ -169,12 +175,36 @@ public class DriverMQProperties {
             this.password = password;
         }
 
+        public boolean isAsync() {
+            return async;
+        }
+
+        public void setAsync(boolean async) {
+            this.async = async;
+        }
+
         public int getProtocolVersion() {
             return protocolVersion;
         }
 
         public void setProtocolVersion(int protocolVersion) {
             this.protocolVersion = protocolVersion;
+        }
+
+        public boolean isSsl() {
+            return ssl;
+        }
+
+        public void setSsl(boolean ssl) {
+            this.ssl = ssl;
+        }
+
+        public boolean isSslVerification() {
+            return sslVerification;
+        }
+
+        public void setSslVerification(boolean sslVerification) {
+            this.sslVerification = sslVerification;
         }
 
         public int getQos() {

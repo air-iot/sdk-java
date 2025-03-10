@@ -221,6 +221,27 @@ public class HttpClientAutoConfiguration {
         }
 
         @Bean
+        public TableRecordClient tableRecordClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
+                                                   HttpClientProperties properties,
+                                                   RequestInterceptor authRequestInterceptor) {
+            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
+            return Feign.builder()
+                    .client(client)
+                    .encoder(encoder)
+                    .decoder(decoder)
+                    .contract(contract)
+                    .options(new Request.Options(
+                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
+                            false
+                    ))
+                    .requestInterceptor(authRequestInterceptor)
+                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
+                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
+                    .target(TableRecordFeignClient.class, properties.getHost());
+        }
+
+        @Bean
         public UserClient userClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
                                      HttpClientProperties properties,
                                      RequestInterceptor authRequestInterceptor) {
