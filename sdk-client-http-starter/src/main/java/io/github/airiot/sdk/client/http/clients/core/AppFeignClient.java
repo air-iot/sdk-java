@@ -18,6 +18,7 @@
 package io.github.airiot.sdk.client.http.clients.core;
 
 
+import feign.Headers;
 import feign.Param;
 import feign.RequestLine;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
@@ -25,10 +26,19 @@ import io.github.airiot.sdk.client.dto.Token;
 import io.github.airiot.sdk.client.service.core.AppClient;
 
 import javax.annotation.Nonnull;
+import java.util.Map;
 
 public interface AppFeignClient extends AppClient {
 
     @RequestLine("GET /core/auth/token?appkey={appKey}&appsecret={appSecret}")
     @Override
     ResponseDTO<Token> getToken(@Nonnull @Param("appKey") String appKey, @Nonnull @Param("appSecret") String appSecret);
+
+    @RequestLine("GET /core/auth/user")
+    @Headers({
+            "authorization: {token}",
+            "x-request-project: {projectId}"
+    })
+    @Override
+    ResponseDTO<Map<String, Object>> getUserAuth(@Param("token") String token, @Param("projectId") String projectId);
 }
