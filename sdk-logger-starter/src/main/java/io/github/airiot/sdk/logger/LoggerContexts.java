@@ -28,7 +28,7 @@ public class LoggerContexts {
     /**
      * 最大日志上下文层级
      */
-    public static final int MAX_LEVEL = Integer.parseInt(System.getProperty("LOGGING_MAX_LEVELS", "5"));
+    public static final int MAX_LEVEL = Integer.parseInt(System.getProperty("LOGGING_MAX_LEVELS", "20"));
 
     /**
      * 根日志上下文

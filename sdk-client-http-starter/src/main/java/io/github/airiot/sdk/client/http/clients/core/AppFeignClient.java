@@ -40,5 +40,5 @@ public interface AppFeignClient extends AppClient {
             "x-request-project: {projectId}"
     })
     @Override
-    ResponseDTO<Map<String, Object>> getUserAuth(@Param("token") String token, @Param("projectId") String projectId);
+    ResponseDTO<Map<String, Object>> getUserAuth(@Nonnull @Param("token") String token, @Nonnull @Param("projectId") String projectId);
 }

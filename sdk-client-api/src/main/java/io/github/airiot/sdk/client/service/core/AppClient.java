@@ -18,7 +18,6 @@
 package io.github.airiot.sdk.client.service.core;
 
 
-import com.sun.istack.internal.NotNull;
 import io.github.airiot.sdk.client.annotation.DisableAuth;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dto.Token;
@@ -49,6 +48,6 @@ public interface AppClient extends PlatformClient {
      * @param projectId 项目ID
      * @return 用户权限
      */
-    ResponseDTO<Map<String, Object>> getUserAuth(@NotNull String token, @NotNull String projectId);
+    ResponseDTO<Map<String, Object>> getUserAuth(@Nonnull String token, @Nonnull String projectId);
 
 }
