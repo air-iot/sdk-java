@@ -24,9 +24,11 @@ import io.github.airiot.sdk.client.dto.InsertResult;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.service.warning.WarnClient;
 import io.github.airiot.sdk.client.service.warning.dto.Warning;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 告警信息客户端
@@ -40,4 +42,8 @@ public interface WarnFeignClient extends WarnClient {
     @RequestLine("POST /warning/warning")
     @Override
     ResponseDTO<InsertResult> create(@Nonnull Warning warning);
+
+    @RequestLine("POST /warning/warning")
+    @Override
+    ResponseDTO<InsertResult> create(@NotNull Map<String, Object> warning);
 }

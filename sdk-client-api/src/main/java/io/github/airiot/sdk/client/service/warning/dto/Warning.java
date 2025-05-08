@@ -17,6 +17,9 @@
 
 package io.github.airiot.sdk.client.service.warning.dto;
 
+import io.github.airiot.sdk.client.dto.RelatedTable;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -34,9 +37,9 @@ public class Warning {
      */
     private String uid;
     /**
-     * 报警类型ID
+     * 报警类型ID列表
      */
-    private Object type;
+    private List<String> type;
     /**
      * 报警确认状态
      */
@@ -68,11 +71,11 @@ public class Warning {
     /**
      * 工作表ID
      */
-    private String tableId;
+    private RelatedTable table;
     /**
      * 工作表记录ID
      */
-    private String tableDataId;
+    private RelatedTable tableData;
     /**
      * 报警数据
      */
@@ -80,35 +83,35 @@ public class Warning {
     /**
      * 报警恢复时的数据
      */
-    private String recoveryFields;
+    private List<Map<String, Object>> recoveryFields;
     /**
      * 创建时间
      */
-    private Object time;
+    private LocalDateTime time;
     /**
      * 报警恢复时间
      */
-    private Object recoveryTime;
+    private LocalDateTime recoveryTime;
     /**
      * 报警确认时间
      */
-    private Object confirmTime;
+    private LocalDateTime confirmTime;
     /**
      * 报警处理时间
      */
-    private Object handleTime;
+    private LocalDateTime handleTime;
     /**
      * 其他数据
      */
-    private String other;
+    private Map<String, Object> other;
     /**
      * 报警数据点信息
      */
-    private Object warnTag;
+    private Map<String, Object> warnTag;
     /**
      * 播放次数配置
      */
-    private String timesOfPlay;
+    private Integer timesOfPlay;
     /**
      * 是否需要处理
      */
@@ -118,13 +121,33 @@ public class Warning {
      */
     private Boolean alert;
     /**
+     * 是否需要提醒
+     */
+    private Boolean audioAlert;
+    /**
      * 处理用户ID
      */
-    private String handleUser;
+    private RelatedTable handleUser;
     /**
      * 确认用户ID
      */
-    private String confirmUser;
+    private RelatedTable confirmUser;
+    /**
+     * 报警方式
+     */
+    private String warnMode;
+    /**
+     * 播报内容
+     */
+    private String broadcastContent;
+    /**
+     * 播报语音
+     */
+    private String broadcastVoice;
+    /**
+     * 国际化配置
+     */
+    private Map<String, Object> i18nProp;
 
     public String getId() {
         return id;
@@ -150,11 +173,11 @@ public class Warning {
         this.uid = uid;
     }
 
-    public Object getType() {
+    public List<String> getType() {
         return type;
     }
 
-    public void setType(Object type) {
+    public void setType(List<String> type) {
         this.type = type;
     }
 
@@ -214,20 +237,20 @@ public class Warning {
         this.remark = remark;
     }
 
-    public String getTableId() {
-        return tableId;
+    public RelatedTable getTable() {
+        return table;
     }
 
-    public void setTableId(String tableId) {
-        this.tableId = tableId;
+    public void setTable(RelatedTable table) {
+        this.table = table;
     }
 
-    public String getTableDataId() {
-        return tableDataId;
+    public RelatedTable getTableData() {
+        return tableData;
     }
 
-    public void setTableDataId(String tableDataId) {
-        this.tableDataId = tableDataId;
+    public void setTableData(RelatedTable tableData) {
+        this.tableData = tableData;
     }
 
     public List<Map<String, Object>> getFields() {
@@ -238,67 +261,67 @@ public class Warning {
         this.fields = fields;
     }
 
-    public String getRecoveryFields() {
+    public List<Map<String, Object>> getRecoveryFields() {
         return recoveryFields;
     }
 
-    public void setRecoveryFields(String recoveryFields) {
+    public void setRecoveryFields(List<Map<String, Object>> recoveryFields) {
         this.recoveryFields = recoveryFields;
     }
 
-    public Object getTime() {
+    public LocalDateTime getTime() {
         return time;
     }
 
-    public void setTime(Object time) {
+    public void setTime(LocalDateTime time) {
         this.time = time;
     }
 
-    public Object getRecoveryTime() {
+    public LocalDateTime getRecoveryTime() {
         return recoveryTime;
     }
 
-    public void setRecoveryTime(Object recoveryTime) {
+    public void setRecoveryTime(LocalDateTime recoveryTime) {
         this.recoveryTime = recoveryTime;
     }
 
-    public Object getConfirmTime() {
+    public LocalDateTime getConfirmTime() {
         return confirmTime;
     }
 
-    public void setConfirmTime(Object confirmTime) {
+    public void setConfirmTime(LocalDateTime confirmTime) {
         this.confirmTime = confirmTime;
     }
 
-    public Object getHandleTime() {
+    public LocalDateTime getHandleTime() {
         return handleTime;
     }
 
-    public void setHandleTime(Object handleTime) {
+    public void setHandleTime(LocalDateTime handleTime) {
         this.handleTime = handleTime;
     }
 
-    public String getOther() {
+    public Map<String, Object> getOther() {
         return other;
     }
 
-    public void setOther(String other) {
+    public void setOther(Map<String, Object> other) {
         this.other = other;
     }
 
-    public Object getWarnTag() {
+    public Map<String, Object> getWarnTag() {
         return warnTag;
     }
 
-    public void setWarnTag(Object warnTag) {
+    public void setWarnTag(Map<String, Object> warnTag) {
         this.warnTag = warnTag;
     }
 
-    public String getTimesOfPlay() {
+    public Integer getTimesOfPlay() {
         return timesOfPlay;
     }
 
-    public void setTimesOfPlay(String timesOfPlay) {
+    public void setTimesOfPlay(Integer timesOfPlay) {
         this.timesOfPlay = timesOfPlay;
     }
 
@@ -318,20 +341,60 @@ public class Warning {
         this.alert = alert;
     }
 
-    public String getHandleUser() {
+    public Boolean getAudioAlert() {
+        return audioAlert;
+    }
+
+    public void setAudioAlert(Boolean audioAlert) {
+        this.audioAlert = audioAlert;
+    }
+
+    public RelatedTable getHandleUser() {
         return handleUser;
     }
 
-    public void setHandleUser(String handleUser) {
+    public void setHandleUser(RelatedTable handleUser) {
         this.handleUser = handleUser;
     }
 
-    public String getConfirmUser() {
+    public RelatedTable getConfirmUser() {
         return confirmUser;
     }
 
-    public void setConfirmUser(String confirmUser) {
+    public void setConfirmUser(RelatedTable confirmUser) {
         this.confirmUser = confirmUser;
+    }
+
+    public String getWarnMode() {
+        return warnMode;
+    }
+
+    public void setWarnMode(String warnMode) {
+        this.warnMode = warnMode;
+    }
+
+    public String getBroadcastContent() {
+        return broadcastContent;
+    }
+
+    public void setBroadcastContent(String broadcastContent) {
+        this.broadcastContent = broadcastContent;
+    }
+
+    public String getBroadcastVoice() {
+        return broadcastVoice;
+    }
+
+    public void setBroadcastVoice(String broadcastVoice) {
+        this.broadcastVoice = broadcastVoice;
+    }
+
+    public Map<String, Object> getI18nProp() {
+        return i18nProp;
+    }
+
+    public void setI18nProp(Map<String, Object> i18nProp) {
+        this.i18nProp = i18nProp;
     }
 
     @Override
@@ -340,7 +403,7 @@ public class Warning {
                 "id='" + id + '\'' +
                 ", level='" + level + '\'' +
                 ", uid='" + uid + '\'' +
-                ", type='" + type + '\'' +
+                ", type=" + type +
                 ", status='" + status + '\'' +
                 ", processed='" + processed + '\'' +
                 ", desc='" + desc + '\'' +
@@ -348,21 +411,26 @@ public class Warning {
                 ", interval=" + interval +
                 ", ruleid='" + ruleid + '\'' +
                 ", remark='" + remark + '\'' +
-                ", table='" + tableId + '\'' +
-                ", tableData='" + tableDataId + '\'' +
-                ", fields='" + fields + '\'' +
-                ", recoveryFields='" + recoveryFields + '\'' +
+                ", table=" + table +
+                ", tableData=" + tableData +
+                ", fields=" + fields +
+                ", recoveryFields=" + recoveryFields +
                 ", time=" + time +
                 ", recoveryTime=" + recoveryTime +
                 ", confirmTime=" + confirmTime +
                 ", handleTime=" + handleTime +
-                ", other='" + other + '\'' +
-                ", warnTag='" + warnTag + '\'' +
-                ", timesOfPlay='" + timesOfPlay + '\'' +
+                ", other=" + other +
+                ", warnTag=" + warnTag +
+                ", timesOfPlay=" + timesOfPlay +
                 ", handle=" + handle +
                 ", alert=" + alert +
-                ", handleUser='" + handleUser + '\'' +
-                ", confirmUser='" + confirmUser + '\'' +
+                ", audioAlert=" + audioAlert +
+                ", handleUser=" + handleUser +
+                ", confirmUser=" + confirmUser +
+                ", warnMode='" + warnMode + '\'' +
+                ", broadcastContent='" + broadcastContent + '\'' +
+                ", broadcastVoice='" + broadcastVoice + '\'' +
+                ", i18nProp=" + i18nProp +
                 '}';
     }
 }

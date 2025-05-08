@@ -26,6 +26,7 @@ import io.github.airiot.sdk.client.service.warning.dto.Warning;
 
 import javax.annotation.Nonnull;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 告警信息客户端
@@ -58,6 +59,23 @@ public interface WarnClient extends PlatformClient {
     }
 
     /**
+     * 根据指定设备的所有告警信息
+     *
+     * @param deviceId 设备ID
+     * @param archive  是否在归档数据中查询
+     * @return 告警信息列表
+     */
+    default ResponseDTO<List<Warning>> queryByTableIdAndDeviceId(@Nonnull String tableId, @Nonnull String deviceId, String archive) {
+        return this.query(Query.newBuilder()
+                .select(Warning.class)
+                .filter()
+                .eq("tableId", tableId)
+                .eq("tableDataId", deviceId)
+                .end()
+                .build(), archive);
+    }
+
+    /**
      * 查询全部告警信息
      *
      * @param archive 是否在归档数据中查询
@@ -76,4 +94,11 @@ public interface WarnClient extends PlatformClient {
      * @return 创建结果
      */
     ResponseDTO<InsertResult> create(@Nonnull Warning warning);
+
+    /**
+     * 创建告警
+     * @param warning 告警信息
+     * @return 创建结果
+     */
+    ResponseDTO<InsertResult> create(@Nonnull Map<String, Object> warning);
 }

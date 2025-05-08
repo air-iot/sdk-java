@@ -18,6 +18,7 @@
 package io.github.airiot.sdk.client.http.clients.warn;
 
 
+import io.github.airiot.sdk.client.dto.RelatedTable;
 import io.github.airiot.sdk.client.service.warning.WarnClient;
 import io.github.airiot.sdk.client.service.warning.dto.Warning;
 import org.junit.jupiter.api.MethodOrderer;
@@ -30,7 +31,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @SpringBootTest
 @ExtendWith(MockitoExtension.class)
@@ -52,5 +56,17 @@ public class HttpWarnClientTests {
     void queryAll() {
         List<Warning> projects = this.warnClient.queryAll("").unwrap();
         System.out.println(projects);
+    }
+
+    @Test
+    void createWarning() {
+        Warning warning = new Warning();
+        warning.setTable(RelatedTable.of("通道机巢"));
+        warning.setTableData(RelatedTable.of("JC001"));
+        warning.setType(Collections.singletonList("109d621c-b67e-4017-918b-33c7558f1920"));
+        warning.setLevel("低");
+        warning.setDesc("这是一个测试告警");
+        warning.setTime(LocalDateTime.now().minusHours(1));
+        this.warnClient.create(warning);
     }
 }

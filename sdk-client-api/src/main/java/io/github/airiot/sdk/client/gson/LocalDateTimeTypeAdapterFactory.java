@@ -25,6 +25,10 @@ public class LocalDateTimeTypeAdapterFactory implements TypeAdapterFactory {
 
         @Override
         public void write(JsonWriter out, LocalDateTime value) throws IOException {
+            if(value == null) {
+                out.nullValue();
+                return;
+            }
             out.value(DEFAULT_FORMATTER.format(value));
         }
 
