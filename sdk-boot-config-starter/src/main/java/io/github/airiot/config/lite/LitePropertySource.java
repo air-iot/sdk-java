@@ -20,6 +20,8 @@ public class LitePropertySource extends EnumerablePropertySource<LiteAPIConfig> 
     }
 
     protected void init() {
+        logger.info("获取到 Lite 版本平台配置");
+
         logger.debug("从环境变量读取到配置: {}", this.source);
 
         if(StringUtils.hasText(this.source.getGateway())) {

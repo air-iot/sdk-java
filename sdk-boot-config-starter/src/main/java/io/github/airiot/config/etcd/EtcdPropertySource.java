@@ -31,6 +31,7 @@ public class EtcdPropertySource extends EnumerablePropertySource<Client> {
     }
 
     protected void init() throws Exception {
+        logger.info("从 etc 加载平台配置");
         try (KV kvClient = this.source.getKVClient()) {
             List<KeyValue> kvs = kvClient.get(ByteSequence.from(this.properties.getConfigKey(), StandardCharsets.UTF_8))
                     .get(this.properties.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS)

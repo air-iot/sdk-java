@@ -83,7 +83,9 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
         options.setMqttVersion(this.mqttProperties.getProtocolVersion());
 
         if(this.mqttProperties.isSkipSslVerification()) {
+            log.info("MultiAsyncClientMQTTDataSender: Skip SSL verification");
             options.setHttpsHostnameVerificationEnabled(false);
+            options.setSocketFactory(TrustAllSSLSocketFactory.getTrustAllSocketFactory());
         }
 
         // 连接超时
@@ -110,23 +112,23 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
 
     @Override
     public void start() {
-        log.info("MultiClientMQTTDataSender: 启动");
+        log.info("MultiAsyncClientMQTTDataSender: 启动");
         if (!this.running.compareAndSet(false, true)) {
-            log.info("MultiClientMQTTDataSender: 已启动");
+            log.info("MultiAsyncClientMQTTDataSender: 已启动");
             return;
         }
 
-        log.info("MultiClientMQTTDataSender: 连接中, 共 {} 个客户端", this.mqttClients.size());
+        log.info("MultiAsyncClientMQTTDataSender: 连接中, 共 {} 个客户端", this.mqttClients.size());
 
         for (int i = 0; i < this.mqttClients.size(); i++) {
             MqttAsyncClient mqttClient = this.mqttClients.get(i);
             try {
-                log.info("MultiClientMQTTDataSender: 连接中, {}", mqttClient.getClientId());
+                log.info("MultiAsyncClientMQTTDataSender: 连接中, {}", mqttClient.getClientId());
                 IMqttToken token = mqttClient.connect(options);
                 token.waitForCompletion(this.mqttProperties.getConnectTimeout().toMillis());
-                log.info("MultiClientMQTTDataSender: 连接成功, {}", mqttClient.getClientId());
+                log.info("MultiAsyncClientMQTTDataSender: 连接成功, {}", mqttClient.getClientId());
             } catch (MqttException e) {
-                log.error("MultiClientMQTTDataSender: 连接失败", e);
+                log.error("MultiAsyncClientMQTTDataSender: 连接失败", e);
                 Thread connectTask = new Thread(() -> this.connectTask(mqttClient));
                 connectTask.setDaemon(true);
                 connectTask.setName("MQTTDataSender-ConnectTask");
@@ -140,7 +142,7 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
 
         MemoryPersistence persistence = new MemoryPersistence();
 
-        log.info("MultiClientMQTTDataSender: 客户端配置, {}, {}", broker, options);
+        log.info("MultiAsyncClientMQTTDataSender: 客户端配置, {}, {}", broker, options);
 
         try {
             MqttAsyncClient mqttClient = new MqttAsyncClient(broker, clientId, persistence);
@@ -148,7 +150,7 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
             mqttClient.setCallback(new CustomMqttCallbackExtended(index, mqttClient));
             return mqttClient;
         } catch (MqttException e) {
-            throw new IllegalStateException("MultiClientMQTTDataSender: 初始化失败", e);
+            throw new IllegalStateException("MultiAsyncClientMQTTDataSender: 初始化失败", e);
         }
     }
 
@@ -160,18 +162,18 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
                 return;
             }
 
-            log.info("MultiClientMQTTDataSender: 第 {} 次重试, {}", retryTimes, mqttClient.getClientId());
+            log.info("MultiAsyncClientMQTTDataSender: 第 {} 次重试, {}", retryTimes, mqttClient.getClientId());
 
             try {
                 IMqttToken token = mqttClient.connect(this.options);
                 token.waitForCompletion(this.mqttProperties.getConnectTimeout().toMillis());
-                log.info("MultiClientMQTTDataSender: 第 {} 次重试, 连接成功, {}", retryTimes, mqttClient.getClientId());
+                log.info("MultiAsyncClientMQTTDataSender: 第 {} 次重试, 连接成功, {}", retryTimes, mqttClient.getClientId());
                 return;
             } catch (MqttException e) {
                 // 如果当前已连接
                 int code = e.getReasonCode();
                 if (code == MqttException.REASON_CODE_CLIENT_CONNECTED) {
-                    log.info("MultiClientMQTTDataSender: 已连接({}), {}", code, mqttClient.getClientId());
+                    log.info("MultiAsyncClientMQTTDataSender: 已连接({}), {}", code, mqttClient.getClientId());
                     return;
                 }
 
@@ -179,24 +181,24 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
                     try {
                         mqttClient.close();
                     } catch (MqttException e1) {
-                        log.warn("MultiClientMQTTDataSender: 断开当前连接, {}", mqttClient.getClientId(), e1);
+                        log.warn("MultiAsyncClientMQTTDataSender: 断开当前连接, {}", mqttClient.getClientId(), e1);
                     }
 
                     try {
                         mqttClient.disconnectForcibly(5000);
                     } catch (MqttException e1) {
-                        log.warn("MultiClientMQTTDataSender: 断开当前连接, {}", mqttClient.getClientId(), e1);
+                        log.warn("MultiAsyncClientMQTTDataSender: 断开当前连接, {}", mqttClient.getClientId(), e1);
                     }
                 }
 
-                log.error("MultiClientMQTTDataSender: 第 {} 次重连失败, 下次尝试时间[{}], {}", retryTimes,
+                log.error("MultiAsyncClientMQTTDataSender: 第 {} 次重连失败, 下次尝试时间[{}], {}", retryTimes,
                         LocalDateTime.now().plus(reconnectIntervalMs, ChronoUnit.MILLIS), mqttClient.getClientId(), e);
             }
 
             try {
                 TimeUnit.MILLISECONDS.sleep(reconnectIntervalMs);
             } catch (InterruptedException e) {
-                log.info("MultiClientMQTTDataSender: 重连被终止, {}", mqttClient.getClientId());
+                log.info("MultiAsyncClientMQTTDataSender: 重连被终止, {}", mqttClient.getClientId());
                 return;
             }
 
@@ -206,13 +208,13 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
 
     @Override
     public void stop() {
-        log.info("MultiClientMQTTDataSender: 停止");
+        log.info("MultiAsyncClientMQTTDataSender: 停止");
         if (!this.running.compareAndSet(true, false)) {
-            log.info("MultiClientMQTTDataSender: 未启动");
+            log.info("MultiAsyncClientMQTTDataSender: 未启动");
             return;
         }
 
-        log.info("MultiClientMQTTDataSender: 关闭中");
+        log.info("MultiAsyncClientMQTTDataSender: 关闭中");
 
         for (MqttAsyncClient mqttClient : this.mqttClients) {
             if (mqttClient != null) {
@@ -220,12 +222,12 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
                     mqttClient.disconnect(10000);
                     mqttClient.close();
                 } catch (MqttException e) {
-                    log.warn("MultiClientMQTTDataSender: 关闭发生异常", e);
+                    log.warn("MultiAsyncClientMQTTDataSender: 关闭发生异常", e);
                 }
             }
         }
 
-        log.info("MultiClientMQTTDataSender: 已关闭");
+        log.info("MultiAsyncClientMQTTDataSender: 已关闭");
 
         this.mqttClients.clear();
         this.availableClients.clear();
@@ -239,7 +241,7 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
     @Override
     protected void checkRunState() {
         if (!this.running.get()) {
-            log.warn("MultiClientMQTTDataSender: 未启动, 手动启动");
+            log.warn("MultiAsyncClientMQTTDataSender: 未启动, 手动启动");
             this.start();
             throw new IllegalStateException("当前未启动, 手动启动中");
         }
@@ -354,13 +356,13 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
 
         @Override
         public void connectComplete(boolean reconnect, String serverURI) {
-            log.info("MultiClientMQTTDataSender: 已连接, {}", this.client.getClientId());
+            log.info("MultiAsyncClientMQTTDataSender: 已连接, {}", this.client.getClientId());
             MultiAsyncClientMQTTDataSender.this.availableClients.put(this.index, client);
         }
 
         @Override
         public void connectionLost(Throwable cause) {
-            log.error("MultiClientMQTTDataSender: 连接断开, {}", this.client.getClientId(), cause);
+            log.error("MultiAsyncClientMQTTDataSender: 连接断开, {}", this.client.getClientId(), cause);
             MultiAsyncClientMQTTDataSender.this.availableClients.remove(this.index);
         }
 

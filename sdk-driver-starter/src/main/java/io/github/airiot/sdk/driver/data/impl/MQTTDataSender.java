@@ -78,7 +78,9 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
         options.setMqttVersion(this.mqttProperties.getProtocolVersion());
 
         if(this.mqttProperties.isSkipSslVerification()) {
+            log.info("MQTTDataSender: Skip SSL verification");
             options.setHttpsHostnameVerificationEnabled(false);
+            options.setSocketFactory(TrustAllSSLSocketFactory.getTrustAllSocketFactory());
         }
 
         // 连接超时
@@ -94,6 +96,8 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
         options.setAutomaticReconnect(true);
         options.setMaxReconnectDelay(Math.max(reconnectIntervalMs, 5000));
     }
+
+
 
     @Override
     public void start() {
