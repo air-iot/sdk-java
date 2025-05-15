@@ -21,6 +21,7 @@ package io.github.airiot.sdk.driver.configuration.properties;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -83,6 +84,7 @@ public class DriverMQProperties {
     }
 
     public static class Mqtt {
+        private String schema;
         private String host = "mqtt";
         private int port = 1883;
         private String username = "admin";
@@ -90,9 +92,13 @@ public class DriverMQProperties {
         private boolean async = false;
         private boolean ssl = false;
         /**
-         *
+         * 是否开启 SSL 证书验证, 默认不开启
          */
         private boolean sslVerification = false;
+        /**
+         * SSL 证书配置
+         */
+        private MqttTlsConfig tlsConfig;
         /**
          * MQTT 协议版本号
          * <br>
@@ -142,6 +148,25 @@ public class DriverMQProperties {
          * 如果小于或等于 {@code 0} 则不开启重连
          */
         private Duration reconnectInterval = Duration.ofSeconds(5);
+
+        public boolean isSkipSslVerification() {
+            if(this.tlsConfig != null) {
+                return this.tlsConfig.isInsecureSkipVerify();
+            }
+            return !this.sslVerification;
+        }
+
+        public String getSchema() {
+            if (StringUtils.hasText(schema)) {
+                return schema;
+            } else {
+                return ssl ? "ssl" : "tcp";
+            }
+        }
+
+        public void setSchema(String schema) {
+            this.schema = schema;
+        }
 
         public String getHost() {
             return host;
@@ -207,6 +232,14 @@ public class DriverMQProperties {
             this.sslVerification = sslVerification;
         }
 
+        public MqttTlsConfig getTlsConfig() {
+            return tlsConfig;
+        }
+
+        public void setTlsConfig(MqttTlsConfig tlsConfig) {
+            this.tlsConfig = tlsConfig;
+        }
+
         public int getQos() {
             return qos;
         }
@@ -261,6 +294,19 @@ public class DriverMQProperties {
 
         public void setReconnectInterval(Duration reconnectInterval) {
             this.reconnectInterval = reconnectInterval;
+        }
+    }
+
+    public static class MqttTlsConfig {
+
+        private boolean insecureSkipVerify;
+
+        public boolean isInsecureSkipVerify() {
+            return insecureSkipVerify;
+        }
+
+        public void setInsecureSkipVerify(boolean insecureSkipVerify) {
+            this.insecureSkipVerify = insecureSkipVerify;
         }
     }
 

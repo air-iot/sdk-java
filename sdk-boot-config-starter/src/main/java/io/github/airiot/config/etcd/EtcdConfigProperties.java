@@ -1,16 +1,22 @@
 package io.github.airiot.config.etcd;
 
 
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.core.env.Environment;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 @ConfigurationProperties(EtcdConfigProperties.PREFIX)
-public class EtcdConfigProperties {
+public class EtcdConfigProperties implements InitializingBean, EnvironmentAware {
 
     public static final String PREFIX = "airiot.config.etcd";
+
+    private Environment environment;
 
     /**
      * 是否启用 etcd 配置初始化功能
@@ -131,5 +137,18 @@ public class EtcdConfigProperties {
 
     public void setCheckInterval(Duration checkInterval) {
         this.checkInterval = checkInterval;
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        String etcdPassword = this.environment.getProperty("ETCD.PASSWORD");
+        if(StringUtils.hasText(etcdPassword)) {
+            this.password = etcdPassword;
+        }
+    }
+
+    @Override
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
     }
 }

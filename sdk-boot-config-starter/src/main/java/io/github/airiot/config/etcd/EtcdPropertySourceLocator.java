@@ -20,7 +20,7 @@ public class EtcdPropertySourceLocator implements PropertySourceLocator {
 
     @Override
     public PropertySource<?> locate(Environment environment) {
-        EtcdPropertySource propertySource = new EtcdPropertySource("etcd", this.client, this.properties);
+        EtcdPropertySource propertySource = new EtcdPropertySource("airiot-etcd", this.client, this.properties);
         for (int i = 0; i < this.properties.getRetryTimes(); i++) {
             try {
                 propertySource.init();

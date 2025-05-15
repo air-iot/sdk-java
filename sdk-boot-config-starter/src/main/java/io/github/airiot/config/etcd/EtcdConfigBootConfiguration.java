@@ -3,8 +3,8 @@ package io.github.airiot.config.etcd;
 
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
+import io.github.airiot.config.ModelConditionOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(EtcdConfigProperties.class)
-@ConditionalOnProperty(prefix = "airiot.config.etcd", value = "enabled", havingValue = "true", matchIfMissing = true)
+@ModelConditionOnProperty(value = ModelConditionOnProperty.ETCD, matchIfMissing = true)
 public class EtcdConfigBootConfiguration {
 
     @Bean

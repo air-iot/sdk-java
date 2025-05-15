@@ -76,7 +76,10 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
         options.setUserName(this.mqttProperties.getUsername());
         options.setPassword(this.mqttProperties.getPassword().toCharArray());
         options.setMqttVersion(this.mqttProperties.getProtocolVersion());
-        options.setHttpsHostnameVerificationEnabled(this.mqttProperties.isSslVerification());
+
+        if(this.mqttProperties.isSkipSslVerification()) {
+            options.setHttpsHostnameVerificationEnabled(false);
+        }
 
         // 连接超时
         int connectTimeout = (int) this.mqttProperties.getConnectTimeout().getSeconds();
@@ -102,7 +105,7 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
 
         log.info("MQTTDataSender: 连接中");
 
-        this.mqttClient = this.createClient(this.mqttProperties.isSsl());
+        this.mqttClient = this.createClient(this.mqttProperties.getSchema());
 
         try {
             this.mqttClient.connect(options);
@@ -115,8 +118,8 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
         }
     }
 
-    private MqttClient createClient(boolean ssl) {
-        String broker = (ssl ? "ssl" : "tcp") + "://" + this.mqttProperties.getHost() + ":" + this.mqttProperties.getPort();
+    private MqttClient createClient(String schema) {
+        String broker = schema + "://" + this.mqttProperties.getHost() + ":" + this.mqttProperties.getPort();
         String clientId = "sdk_" + this.driverAppProperties.getId() + "_" + this.driverAppProperties.getInstanceId();
 
         MemoryPersistence persistence = new MemoryPersistence();
@@ -172,7 +175,7 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
                         log.warn("MQTTDataSender: 断开当前连接", e1);
                     }
 
-                    this.mqttClient = this.createClient(this.mqttProperties.isSsl());
+                    this.mqttClient = this.createClient(this.mqttProperties.getSchema());
                 }
 
                 log.error("MQTTDataSender: 第 {} 次重连失败, 下次尝试时间[{}]", retryTimes,

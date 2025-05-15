@@ -66,6 +66,11 @@
                 <artifactId>sdk-datarelay-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>io.github.air-iot</groupId>
+                <artifactId>sdk-boot-config-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>

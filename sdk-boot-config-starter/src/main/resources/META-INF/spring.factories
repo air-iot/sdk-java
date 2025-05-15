@@ -1,2 +1,2 @@
-org.springframework.cloud.bootstrap.BootstrapConfiguration=cn.airiot.sdk.config.etcd.EtcdConfigBootConfiguration
-org.springframework.boot.autoconfigure.EnableAutoConfiguration=cn.airiot.sdk.config.etcd.EtcdConfigAutoConfiguration
+org.springframework.cloud.bootstrap.BootstrapConfiguration=io.github.airiot.config.etcd.EtcdConfigBootConfiguration,io.github.airiot.config.lite.LiteBootstrapConfiguration
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=io.github.airiot.config.etcd.EtcdConfigAutoConfiguration

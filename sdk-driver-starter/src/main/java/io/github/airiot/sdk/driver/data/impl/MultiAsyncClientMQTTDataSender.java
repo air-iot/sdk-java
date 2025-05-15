@@ -81,7 +81,10 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
         options.setUserName(this.mqttProperties.getUsername());
         options.setPassword(this.mqttProperties.getPassword().toCharArray());
         options.setMqttVersion(this.mqttProperties.getProtocolVersion());
-        options.setHttpsHostnameVerificationEnabled(this.mqttProperties.isSslVerification());
+
+        if(this.mqttProperties.isSkipSslVerification()) {
+            options.setHttpsHostnameVerificationEnabled(false);
+        }
 
         // 连接超时
         int connectTimeout = (int) this.mqttProperties.getConnectTimeout().getSeconds();
@@ -99,7 +102,7 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
         this.mqttClients = new ArrayList<>(mqttProperties.getClients());
         for (int i = 0; i < mqttProperties.getClients(); i++) {
             String clientId = "sdk_" + this.driverAppProperties.getId() + "_" + this.driverAppProperties.getInstanceId() + "_" + i;
-            this.mqttClients.add(this.createClient(i, clientId, mqttProperties.isSsl()));
+            this.mqttClients.add(this.createClient(i, clientId, mqttProperties.getSchema()));
         }
 
         this.availableClients = new ConcurrentHashMap<>(this.mqttClients.size());
@@ -132,8 +135,8 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
         }
     }
 
-    private MqttAsyncClient createClient(int index, String clientId, boolean ssl) {
-        String broker = (ssl ? "ssl" : "tcp") + "://" + this.mqttProperties.getHost() + ":" + this.mqttProperties.getPort();
+    private MqttAsyncClient createClient(int index, String clientId, String schema) {
+        String broker = schema + "://" + this.mqttProperties.getHost() + ":" + this.mqttProperties.getPort();
 
         MemoryPersistence persistence = new MemoryPersistence();
 
