@@ -82,7 +82,7 @@ public class MultiClientMQTTDataSender extends AbstractDataSender {
         options.setPassword(this.mqttProperties.getPassword().toCharArray());
         options.setMqttVersion(this.mqttProperties.getProtocolVersion());
 
-        if(this.mqttProperties.isSkipSslVerification()) {
+        if(this.mqttProperties.isSsl() && this.mqttProperties.isSkipSslVerification()) {
             log.info("MultiClientMQTTDataSender: Skip SSL verification");
             options.setHttpsHostnameVerificationEnabled(false);
             options.setSocketFactory(TrustAllSSLSocketFactory.getTrustAllSocketFactory());
