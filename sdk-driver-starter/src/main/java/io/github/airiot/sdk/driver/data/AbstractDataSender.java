@@ -217,13 +217,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
 
     @Override
     public Response writeEvent(Event event) throws EventSenderException {
-        if (!this.isRunning()) {
-            throw new EventSenderException(event, "未连接或连接中断");
-        }
-
-        writeEventLogger.debug("MQTTDataSender: 发送事件, {} ", event);
         if (event.getId().isEmpty() || event.getEventId().isEmpty()) {
-            writeEventLogger.warn("MQTTDataSender: 发送事件, 缺少资产ID或事件ID, {}", event);
             throw new EventSenderException(event, "非法的事件, 缺少资产ID或事件ID");
         }
 
@@ -240,17 +234,12 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                             .build()
             );
         } catch (Exception e) {
-            writeEventLogger.error("MQTTDataSender: 发送事件失败, {}", event, e);
             throw new EventSenderException(event, e);
         }
     }
 
     @Override
     public Response writeRunLog(RunLog runLog) throws RunLogSenderException {
-        if (!this.isRunning()) {
-            throw new RunLogSenderException(runLog, "未连接或连接中断");
-        }
-
         try {
             return this.driverGrpcClient.commandLog(
                     Request.newBuilder()

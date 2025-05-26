@@ -77,7 +77,7 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
         options.setPassword(this.mqttProperties.getPassword().toCharArray());
         options.setMqttVersion(this.mqttProperties.getProtocolVersion());
 
-        if(this.mqttProperties.isSsl() && this.mqttProperties.isSkipSslVerification()) {
+        if(DriverMQProperties.Mqtt.SCHEMA_SSL.equalsIgnoreCase(this.mqttProperties.getSchema())&& this.mqttProperties.isSkipSslVerification()) {
             log.info("MQTTDataSender: Skip SSL verification");
             options.setHttpsHostnameVerificationEnabled(false);
             options.setSocketFactory(TrustAllSSLSocketFactory.getTrustAllSocketFactory());

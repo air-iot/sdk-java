@@ -84,6 +84,10 @@ public class DriverMQProperties {
     }
 
     public static class Mqtt {
+
+        public static final String SCHEMA_SSL = "ssl";
+        public static final String SCHEMA_TCP = "tcp";
+
         private String schema;
         private String host = "mqtt";
         private int port = 1883;
@@ -160,7 +164,7 @@ public class DriverMQProperties {
             if (StringUtils.hasText(schema)) {
                 return schema;
             } else {
-                return ssl ? "ssl" : "tcp";
+                return ssl ? SCHEMA_SSL : SCHEMA_TCP;
             }
         }
 
