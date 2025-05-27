@@ -86,7 +86,9 @@ public class DriverMQProperties {
     public static class Mqtt {
 
         public static final String SCHEMA_SSL = "ssl";
+        public static final String SCHEMA_MQTTS = "mqtts";
         public static final String SCHEMA_TCP = "tcp";
+        public static final String SCHEMA_MQTT = "mqtt";
 
         private String schema;
         private String host = "mqtt";
@@ -153,6 +155,16 @@ public class DriverMQProperties {
          */
         private Duration reconnectInterval = Duration.ofSeconds(5);
 
+        public boolean isSecure() {
+            switch (getSchema()) {
+                case SCHEMA_MQTTS:
+                case SCHEMA_SSL:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         public boolean isSkipSslVerification() {
             if(this.tlsConfig != null) {
                 return this.tlsConfig.isInsecureSkipVerify();
@@ -162,7 +174,16 @@ public class DriverMQProperties {
 
         public String getSchema() {
             if (StringUtils.hasText(schema)) {
-                return schema;
+                switch (schema) {
+                    case SCHEMA_SSL:
+                    case SCHEMA_MQTTS:
+                        return SCHEMA_SSL;
+                    case SCHEMA_TCP:
+                    case SCHEMA_MQTT:
+                        return SCHEMA_TCP;
+                    default:
+                        throw new IllegalArgumentException("Unsupported MQ.MQ.Schema: " + schema);
+                }
             } else {
                 return ssl ? SCHEMA_SSL : SCHEMA_TCP;
             }
