@@ -25,7 +25,8 @@ public enum FieldType {
     STRING("string"),
     INTEGER("integer"),
     FLOAT("float"),
-    BOOLEAN("boolean");
+    BOOLEAN("boolean"),
+    BOOLEAN_RAW("boolean_raw");
 
     // 成员变量
     private final String value;
@@ -56,6 +57,8 @@ public enum FieldType {
                 return Optional.of(FLOAT);
             case "boolean":
                 return Optional.of(BOOLEAN);
+            case "boolean_raw":
+                return Optional.of(BOOLEAN_RAW);
             default:
                 return Optional.empty();
         }
