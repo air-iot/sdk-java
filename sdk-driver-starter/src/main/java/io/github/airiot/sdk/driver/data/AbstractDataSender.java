@@ -321,14 +321,14 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
 
     @Override
     public void writePointWithNoHandle(String tableId, String deviceId, long time, Map<String, Object> tagValues) {
-        if(tagValues == null || tagValues.isEmpty()) {
+        if (tagValues == null || tagValues.isEmpty()) {
             throw new IllegalArgumentException("数据点信息不能为空");
         }
 
         List<Field<? extends Tag>> fields = tagValues.entrySet().stream()
                 .map(entry -> {
                     Object value = entry.getValue();
-                    if(value == null) {
+                    if (value == null) {
                         return null;
                     }
                     Field<Tag> field = new Field<>();
@@ -348,7 +348,7 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
         context.withTable(tableId);
         try {
             this.doWritePoint(point);
-        } catch (Exception e){
+        } catch (Exception e) {
             writePointLogger.error("上报数据异常, point = {}", point, e);
             throw new DataSenderException(point, "上报数据异常", e);
         } finally {
@@ -408,7 +408,13 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
                 return;
             }
 
-            if (point.getFields().size() > newPoint.getFields().size()) {
+            boolean hasFields = newPoint.getFields().stream().anyMatch(field -> field.getTag() != null && field.getValue() != null);
+            if (!hasFields) {
+                writePointLogger.warn("采集数据处理: 处理后数据点所有的 Tag 或 Value 都为 null, {}", newPoint);
+                return;
+            }
+
+            if (point.getFields().size() > newPoint.getFields().size() && writePointLogger.isDebugEnabled()) {
                 writePointLogger.debug("采集数据处理: 数据处理后数据点数量减少, table={}, device={}, 由 {} 减少到 {}. 处理前: {}, 处理后: {}",
                         tableId, deviceId, point.getFields().size(), newPoint.getFields().size(), point, newPoint);
 
@@ -433,7 +439,9 @@ public abstract class AbstractDataSender implements DataSender, InitializingBean
 
                 writePointLogger.warn("采集数据处理: 处理后部分数据点数据被丢弃, table={}, device={}, dropped = {}",
                         tableId, deviceId, droppedFields);
-            } else if (point.getFields().size() < newPoint.getFields().size()) {
+            }
+
+            if (point.getFields().size() < newPoint.getFields().size() && writePointLogger.isDebugEnabled()) {
                 writePointLogger.debug("采集数据处理: 数据处理后数据点数量增加, table={}, device={}, 由 {} 增加到 {}. 处理前: {}, 处理后: {}",
                         tableId, deviceId, point.getFields().size(), newPoint.getFields().size(), point, newPoint);
 
