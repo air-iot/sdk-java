@@ -27,6 +27,7 @@
     </parent>
 
     <artifactId>sdk-client-http-starter</artifactId>
+    <name>sdk-client-http-starter</name>
     <description>AIRIOT 平台接口客户端 HTTP 实现</description>
 
     <properties>

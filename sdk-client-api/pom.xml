@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>sdk-client-api</artifactId>
+    <name>sdk-client-api</name>
     <description>AIRIOT 物联网平台接口客户端</description>
 
     <properties>

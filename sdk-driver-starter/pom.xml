@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>sdk-driver-starter</artifactId>
+    <name>sdk-driver-starter</name>
     <description>AIRIOT 物联网平台数据接入驱动开发 SDK</description>
 
     <properties>

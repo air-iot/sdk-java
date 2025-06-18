@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>sdk-flow-plugin-starter</artifactId>
+    <name>sdk-flow-plugin-starter</name>
     <description>AIRIOT 物联网平台流程插件开发 SDK</description>
 
     <properties>
