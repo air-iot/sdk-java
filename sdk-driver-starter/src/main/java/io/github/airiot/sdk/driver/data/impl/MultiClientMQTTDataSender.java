@@ -44,6 +44,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -108,6 +109,23 @@ public class MultiClientMQTTDataSender extends AbstractDataSender {
         }
 
         this.availableClients = new ConcurrentHashMap<>(this.mqttClients.size());
+    }
+
+    /**
+     * 获取第一个 MQTT 客户端实例
+     * <br>
+     * 获取到的客户端可能是未连接状态, 使用前请先调用 {@link MqttClient#isConnected()} 方法检查连接状态.
+     */
+    public MqttClient getMqttClient() {
+        return this.mqttClients.get(0);
+    }
+
+    /**
+     * 获取可用的 MQTT 客户端实例
+     * @return 如果有可用的客户端, 则返回 {@link Optional#empty()}
+     */
+    public Optional<MqttClient> getAvailableMqttClient() {
+        return this.availableClients.values().stream().findFirst();
     }
 
     @Override

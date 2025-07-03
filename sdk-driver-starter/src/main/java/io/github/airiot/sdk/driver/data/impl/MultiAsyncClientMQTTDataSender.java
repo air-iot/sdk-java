@@ -44,6 +44,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -82,7 +83,7 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
         options.setPassword(this.mqttProperties.getPassword().toCharArray());
         options.setMqttVersion(this.mqttProperties.getProtocolVersion());
 
-        if(this.mqttProperties.isSecure() && this.mqttProperties.isSkipSslVerification()) {
+        if (this.mqttProperties.isSecure() && this.mqttProperties.isSkipSslVerification()) {
             log.info("MultiAsyncClientMQTTDataSender: Skip SSL verification");
             options.setHttpsHostnameVerificationEnabled(false);
             options.setSocketFactory(TrustAllSSLSocketFactory.getTrustAllSocketFactory());
@@ -108,6 +109,24 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
         }
 
         this.availableClients = new ConcurrentHashMap<>(this.mqttClients.size());
+    }
+
+    /**
+     * 获取第一个 MQTT 客户端实例
+     * <br>
+     * 获取到的客户端可能是未连接状态, 使用前请先调用 {@link MqttClient#isConnected()} 方法检查连接状态.
+     */
+    public MqttAsyncClient getMqttClient() {
+        return this.mqttClients.get(0);
+    }
+
+    /**
+     * 获取可用的 MQTT 客户端实例
+     *
+     * @return 如果有可用的客户端, 则返回 {@link Optional#empty()}
+     */
+    public Optional<MqttAsyncClient> getAvailableMqttClient() {
+        return this.availableClients.values().stream().findFirst();
     }
 
     @Override
@@ -255,7 +274,7 @@ public class MultiAsyncClientMQTTDataSender extends AbstractDataSender {
         if (this.availableClients.isEmpty()) {
             throw new IllegalStateException("未连接到 MQTT 服务器");
         }
-        
+
         int size = this.mqttClients.size();
         int index = (int) (System.currentTimeMillis() % size);
         for (int i = 0; i < size; i++) {
