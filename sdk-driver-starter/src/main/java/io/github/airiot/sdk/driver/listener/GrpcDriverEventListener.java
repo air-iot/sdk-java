@@ -1849,6 +1849,52 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             ConfigUpdateResponse.Builder response = ConfigUpdateResponse.newBuilder();
             try {
                 switch (request.getOpsType()) {
+                    case ADD_TABLE:
+                        ConfigUpdateRequest.AddTable addTable = request.getAddTable();
+
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("req = {}, type = configUpdate, 新增表, {}", req, addTable.getTable().toStringUtf8());
+                        }
+
+                        driverApp.onAddTable(addTable.toByteArray());
+
+                        logger.info("req = {}, type = configUpdate, 新增表成功", req);
+
+                        response.setStatus(true);
+                        response.setInfo("success");
+
+//                        this.globalContext.addTable(tableId, addTable.getTableData().toStringUtf8());
+                        break;
+                    case EDIT_TABLE:
+                        ConfigUpdateRequest.EditTable editTable = request.getEditTable();
+
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("req = {}, type = configUpdate, 编辑表, {}", req, editTable.getTable().toStringUtf8());
+                        }
+
+                        driverApp.onEditTable(editTable.toByteArray());
+
+                        logger.info("req = {}, type = configUpdate, 编辑表成功", req);
+
+                        response.setStatus(true);
+                        response.setInfo("success");
+                    case DEL_TABLE:
+                        ConfigUpdateRequest.DelTable delTable = request.getDelTable();
+
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("req = {}, type = configUpdate, 删除表, table={}", req, delTable.getTableId());
+                        }
+
+                        driverApp.onDeleteTable(delTable.getTableId());
+
+                        logger.info("req = {}, type = configUpdate, 删除表成功, table={}", req, delTable.getTableId());
+
+                        response.setStatus(true);
+                        response.setInfo("success");
+
+                        // TODO 删除表时, 需要删除相关数据
+                        // this.globalContext.removeTable(delTable.getTableId());
+                        break;
                     case ADD_DEVICE:
                         ConfigUpdateRequest.AddDeviceData addDevice = request.getAddDeviceData();
                         String tableId = addDevice.getTableId();
@@ -1898,6 +1944,38 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
                         this.globalContext.removeDevice(delDevice.getTableId(), delDevice.getTableDataId());
 
+                        break;
+                    case EDIT_DEVICE:
+                        ConfigUpdateRequest.EditDeviceData editDevice = request.getEditDeviceData();
+
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("req = {}, type = configUpdate, 编辑设备, table={},device={}", req, editDevice.getTableId(), editDevice.getTableData().toStringUtf8());
+                        }
+
+                        driverApp.onEditDevice(editDevice.getTableId(), editDevice.getTableData().toByteArray());
+
+                        logger.info("req = {}, type = configUpdate, 编辑设备成功", req);
+
+                        response.setStatus(true);
+                        response.setInfo("success");
+
+                        // TODO 编辑设备时, 需要更新相关数据
+//                        Device<BasicConfig<? extends Tag>> device1 = JSON.parseObject(editDevice.getTableData().toStringUtf8(), new TypeReference<Device<BasicConfig<? extends Tag>>>() {
+//                        });
+//                        device1.setDriverInstanceId(this.driverInstanceId);
+//                        device1.setTable(editDevice.getTableId());
+//
+//                        Map<String, Tag> tableTags1 = this.globalContext.getTableTags(editDevice.getTableId());
+//                        Map<String, Tag> deviceTags1 = new HashMap<>(tableTags1);
+//                        if (device1.getConfig() != null && !CollectionUtils.isEmpty(device1.getConfig().getTags())) {
+//                            for (Tag tag : device1.getConfig().getTags()) {
+//                                deviceTags1.put(tag.getId(), tag);
+//                            }
+//                        }
+//
+//                        String deviceId1 = device1.getId();
+//                        DeviceInfo<? extends Tag> info1 = new DeviceInfo<>(deviceId1, editDevice.getTableId(), this.driverInstanceId, deviceTags1);
+//                        this.globalContext.addDevice(info1);
                         break;
                     default:
                         logger.warn("req = {}, type = configUpdate, 不支持的操作类型: {}", req, request.getOpsType());

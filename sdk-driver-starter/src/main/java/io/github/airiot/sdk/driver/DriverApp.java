@@ -196,6 +196,24 @@ public interface DriverApp<DriverConfig, Command, Tag> {
     }
 
     /**
+     * 新增表处理函数. 当平台中新增表时, 会调用该方法
+     * @param tableData 新增表的信息
+     */
+    default void onAddTable(byte[] tableData) {}
+
+    /**
+     * 删除表处理函数. 当平台中删除表时, 会调用该方法
+     * @param tableId 删除表的标识
+     */
+    default void onDeleteTable(String tableId) {}
+
+    /**
+     * 编辑表配置处理函数. 当平台中编辑表时, 会调用该方法
+     * @param tableData 编辑后的表配置信息
+     */
+    default void onEditTable(byte[] tableData) {}
+
+    /**
      * 新增设备处理函数. 当平台中新增设备时, 会调用该方法
      * @param tableId 新增设备所属表标识
      * @param device 新增设备信息
@@ -207,7 +225,12 @@ public interface DriverApp<DriverConfig, Command, Tag> {
      * @param tableId 删除设备所属表标识
      * @param tableDataId 删除设备的编号
      */
-    default void onDeleteDevice(String tableId, String tableDataId) {
+    default void onDeleteDevice(String tableId, String tableDataId) {}
 
-    }
+    /**
+     * 编辑设备处理函数. 当平台中编辑设备时, 会调用该方法
+     * @param tableId 设备所属表标识
+     * @param deviceData 编辑后的设备信息
+     */
+    default void onEditDevice(String tableId, byte[] deviceData) {}
 }
