@@ -19,12 +19,12 @@ package io.github.airiot.sdk.datarelay.subscriber.impl;
 
 import com.google.gson.Gson;
 import io.github.airiot.sdk.client.service.core.TimingDataClient;
+import io.github.airiot.sdk.datarelay.DataRelayModules;
 import io.github.airiot.sdk.datarelay.configuration.properties.DataRelayAppProperties;
 import io.github.airiot.sdk.datarelay.configuration.properties.DataRelayMQProperties;
 import io.github.airiot.sdk.datarelay.subscriber.AbstractDataSubscriber;
 import io.github.airiot.sdk.datarelay.subscriber.DeviceData;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.serialization.BytesDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  */
 public class KafkaDataSubscriber extends AbstractDataSubscriber {
 
-    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(MQTTDataSubscriber.class);
+    private final Logger log = LoggerFactory.withContext().module(DataRelayModules.START).getStaticLogger(MQTTDataSubscriber.class);
 
     private final Gson gson = new Gson();
     private final ReentrantReadWriteLock subscriptionLock = new ReentrantReadWriteLock();

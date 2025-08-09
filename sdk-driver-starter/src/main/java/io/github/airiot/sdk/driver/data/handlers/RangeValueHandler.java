@@ -21,7 +21,7 @@ import io.github.airiot.sdk.driver.data.DataHandler;
 import io.github.airiot.sdk.driver.model.Range;
 import io.github.airiot.sdk.driver.model.Tag;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.logger.driver.DriverModules;
+import io.github.airiot.sdk.driver.DriverModules;
 import org.slf4j.Logger;
 import org.springframework.util.StringUtils;
 

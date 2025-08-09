@@ -1,2 +1,4 @@
 io.github.airiot.sdk.encrypt.impl.Base64Decrypter
 io.github.airiot.sdk.encrypt.impl.AESDecrypter
+io.github.airiot.sdk.encrypt.impl.AESCBCDecrypter
+io.github.airiot.sdk.encrypt.impl.SM4CBCDecrypter

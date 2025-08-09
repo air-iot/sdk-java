@@ -29,11 +29,11 @@ import java.util.List;
 
 public interface TableSchemaFeignClient extends TableSchemaClient {
 
-    @RequestLine("GET /core/t/schema?query={query}")
+    @RequestLine("GET /core/t/schema?query={query}&queryRule={queryRule}")
     @Override
-    ResponseDTO<List<TableSchema>> query(@Nonnull @Param(value = "query") Query query);
-    
-    @RequestLine("GET /core/t/schema/{tableId}")
+    ResponseDTO<List<TableSchema>> query(@Nonnull @Param(value = "query") Query query, @Param("queryRule") boolean queryRule);
+
+    @RequestLine("GET /core/t/schema/{tableId}&queryRule={queryRule}")
     @Override
-    ResponseDTO<TableSchema> queryById(@Nonnull @Param("tableId") String tableId);
+    ResponseDTO<TableSchema> queryById(@Nonnull @Param("tableId") String tableId, @Param("queryRule") boolean queryRule);
 }

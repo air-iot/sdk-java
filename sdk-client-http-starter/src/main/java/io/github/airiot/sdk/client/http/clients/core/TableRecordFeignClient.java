@@ -18,12 +18,14 @@ import java.util.Map;
  */
 public interface TableRecordFeignClient extends TableRecordClient {
 
-    @RequestLine("GET /core/t/record?query={query}&archive={archive}")
+    @RequestLine("GET /core/t/record?query={query}&archive={archive}&queryRule={queryRule}")
     @Override
-    ResponseDTO<List<Map<String, Object>>> query(@Nonnull @Param(value = "query", expander = QueryParamExpander.class) Query query, @Param("archive") boolean archive);
+    ResponseDTO<List<Map<String, Object>>> query(@Nonnull @Param(value = "query", expander = QueryParamExpander.class) Query query,
+                                                 @Param("archive") boolean archive,
+                                                 @Param("queryRule") boolean queryRule);
 
-    @RequestLine("GET /core/t/record/{id}")
-    ResponseDTO<Map<String, Object>> get(@Param("id") String id);
+    @RequestLine("GET /core/t/record/{id}?queryRule={queryRule}")
+    ResponseDTO<Map<String, Object>> get(@Param("id") String id, @Param("queryRule") boolean queryRule);
 
     @Override
     default ResponseDTO<InsertResult> create(String tableId, String tableDataId, Map<String, Object> record) {

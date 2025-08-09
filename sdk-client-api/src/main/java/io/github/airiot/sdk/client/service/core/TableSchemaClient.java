@@ -36,24 +36,38 @@ public interface TableSchemaClient extends PlatformClient {
      *
      * @return 工作表定义信息
      */
-    ResponseDTO<List<TableSchema>> query(@Nonnull Query query);
+    ResponseDTO<List<TableSchema>> query(@Nonnull Query query, boolean queryRule);
+
+    default ResponseDTO<List<TableSchema>> query(@Nonnull Query query) {
+        return query(query, true);
+    }
 
     /**
      * 查询全部工作表定义
      *
+     * @param queryRule 是否查询报警规则
      * @return 工作表定义信息
      */
+    default ResponseDTO<List<TableSchema>> queryAll(boolean queryRule) {
+        return query(Query.newBuilder().select(TableSchema.class).build(), queryRule);
+    }
+
     default ResponseDTO<List<TableSchema>> queryAll() {
-        return query(Query.newBuilder().select(TableSchema.class).build());
+        return query(Query.newBuilder().select(TableSchema.class).build(), true);
     }
 
     /**
      * 查询工作表定义
      *
-     * @param tableId 表标识
+     * @param tableId   表标识
+     * @param queryRule 是否查询报警规则
      * @return 工作表定义信息
      */
-    ResponseDTO<TableSchema> queryById(@Nonnull String tableId);
+    ResponseDTO<TableSchema> queryById(@Nonnull String tableId, boolean queryRule);
+
+    default ResponseDTO<TableSchema> queryById(@Nonnull String tableId) {
+        return queryById(tableId, true);
+    }
 
     /**
      * 根据工作表标题查询工作表定义
@@ -61,7 +75,11 @@ public interface TableSchemaClient extends PlatformClient {
      * @param tableTitle 工作表标题
      * @return 工作表定义信息
      */
+    default ResponseDTO<List<TableSchema>> queryByTitle(@Nonnull String tableTitle, boolean queryRule) {
+        return query(Query.newBuilder().select(TableSchema.class).filter().eq(TableSchema::getTitle, tableTitle).end().build(), queryRule);
+    }
+
     default ResponseDTO<List<TableSchema>> queryByTitle(@Nonnull String tableTitle) {
-        return query(Query.newBuilder().select(TableSchema.class).filter().eq(TableSchema::getTitle, tableTitle).end().build());
+        return query(Query.newBuilder().select(TableSchema.class).filter().eq(TableSchema::getTitle, tableTitle).end().build(), true);
     }
 }

@@ -30,27 +30,27 @@ public class Tag {
     /**
      * 数据点标识
      */
-    private String id;
+    protected String id;
     /**
      * 数据点名称
      */
-    private String name;
+    protected String name;
     /**
      * 数据点-数值转换配置信息
      */
-    private TagValue tagValue;
+    protected TagValue tagValue;
     /**
      * 数据点-有效范围值配置信息
      */
-    private Range range;
+    protected Range range;
     /**
      * 数据点-小数位数配置
      */
-    private Integer fixed;
+    protected Integer fixed;
     /**
      * 数据点-缩放比例配置
      */
-    private Double mod;
+    protected Double mod;
     /**
      * 数据点-数据值处理格式
      * <br>
@@ -60,7 +60,7 @@ public class Tag {
      * <br>
      * slice: 按位展示
      */
-    private String baseValFormat;
+    protected String baseValFormat;
 
     /**
      * 无效值的标识

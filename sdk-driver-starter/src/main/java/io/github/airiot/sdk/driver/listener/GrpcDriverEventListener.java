@@ -20,12 +20,14 @@ package io.github.airiot.sdk.driver.listener;
 import ch.qos.logback.classic.Level;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.TypeReference;
+import com.fazecast.jSerialComm.SerialPort;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.DriverApp;
+import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.GlobalContext;
 import io.github.airiot.sdk.driver.config.BasicConfig;
 import io.github.airiot.sdk.driver.config.Device;
@@ -34,13 +36,12 @@ import io.github.airiot.sdk.driver.config.Model;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
 import io.github.airiot.sdk.driver.event.DriverReloadApplicationEvent;
-import io.github.airiot.sdk.driver.grpc.driver.Error;
 import io.github.airiot.sdk.driver.grpc.driver.*;
+import io.github.airiot.sdk.driver.grpc.driver.Error;
 import io.github.airiot.sdk.driver.model.Tag;
 import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.logger.driver.DriverModules;
 import io.grpc.*;
 import io.grpc.stub.MetadataUtils;
 import org.apache.commons.codec.binary.Hex;
@@ -772,10 +773,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                         DriverServiceGrpc.getConfigUpdateStreamMethod(),
                         CallOptions.DEFAULT.withWaitForReady()
                 );
-                Metadata httpProxyMetadata = new Metadata();
-                httpProxyMetadata.merge(this.metadata);
-                this.configUpdateHandler = new ConfigUpdateHandler(this.driverInstanceId, sessionId, this.configUpdateCall, this.globalContext, this.driverApp, callback);
-                this.configUpdateCall.start(configUpdateHandler, httpProxyMetadata);
+                Metadata configUpdateMetadata = new Metadata();
+                configUpdateMetadata.merge(this.metadata);
+                this.configUpdateHandler = new ConfigUpdateHandler(this.driverInstanceId, sessionId,
+                        this.configUpdateCall, this.globalContext,
+                        this.getDriverConfigType(), this.getTagType(),
+                        this.driverApp, callback);
+                this.configUpdateCall.start(configUpdateHandler, configUpdateMetadata);
                 this.configUpdateCall.request(Integer.MAX_VALUE);
 
                 this.state.set(State.RUNNING);
@@ -1449,49 +1453,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 if (logger.isDebugEnabled()) {
                     logger.debug("启动驱动, config = {}", driverConfig);
                 }
-
-                String instanceId = driverConfig.getId();
-                Map<String, List<DeviceInfo<? extends Tag>>> deviceInfos = new HashMap<>();
-                Map<String, Map<String, Tag>> allTableTags = new HashMap<>();
-
-                Map<String, Tag> driverInstanceTags = new HashMap<>();
-                if (driverConfig.getConfig() != null && !CollectionUtils.isEmpty(driverConfig.getConfig().getTags())) {
-                    for (Tag tag : driverConfig.getConfig().getTags()) {
-                        driverInstanceTags.put(tag.getId(), tag);
-                    }
-                }
-
-                for (Model<BasicConfig<? extends Tag>, BasicConfig<? extends Tag>> table : driverConfig.getTables()) {
-                    String tableId = table.getId();
-                    table.setDriverInstanceId(instanceId);
-                    Map<String, Tag> tableTags = new HashMap<>(driverInstanceTags);
-                    if (table.getConfig() != null && !CollectionUtils.isEmpty(table.getConfig().getTags())) {
-                        for (Tag tag : table.getConfig().getTags()) {
-                            tableTags.put(tag.getId(), tag);
-                        }
-                    }
-
-                    allTableTags.put(tableId, tableTags);
-
-                    for (Device<BasicConfig<? extends Tag>> device : table.getDevices()) {
-                        device.setDriverInstanceId(instanceId);
-                        device.setTable(tableId);
-
-                        Map<String, Tag> deviceTags = new HashMap<>(tableTags);
-                        if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
-                            for (Tag tag : device.getConfig().getTags()) {
-                                deviceTags.put(tag.getId(), tag);
-                            }
-                        }
-                        String deviceId = device.getId();
-                        DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, instanceId, deviceTags);
-                        deviceInfos.putIfAbsent(deviceId, new ArrayList<>(1));
-                        deviceInfos.get(deviceId).add(info);
-                    }
-                }
-
-                this.globalContext.set(deviceInfos);
-                this.globalContext.setTableTags(allTableTags);
+                // 重置全局缓存
+                resetGlobalContext(this.globalContext, driverConfig);
             } catch (Exception e) {
                 logger.error("启动驱动, 解析启动配置失败, config = {}", config, e);
                 passed = false;
@@ -1740,6 +1703,49 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 return;
             }
 
+            // 如果是获取串口列表的请求
+            if("listSerial".equalsIgnoreCase(request.getType())) {
+                Result result = new Result();
+                result.setCode(200);
+
+                try {
+                    SerialPort[] ports = SerialPort.getCommPorts();
+                    List<String> serialPorts = new ArrayList<>(ports.length);
+                    // 如果是 Windows 系统, 则需要处理 COM 端口的格式
+                    if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+                        for (SerialPort port : ports) {
+                            String portName = port.getSystemPortName();
+                            if (portName.startsWith("COM")) {
+                                int comIndex = Integer.parseInt(portName.substring(3));
+                                if(comIndex >= 10) {
+                                    serialPorts.add("\\\\.\\" + portName);
+                                } else {
+                                    serialPorts.add(portName);
+                                }
+                            }
+                        }
+                    } else {
+                        Arrays.stream(ports).map(SerialPort::getSystemPortName).forEach(serialPorts::add);
+                    }
+
+                    logger.info("HTTP请求代理: req={}, type=listSerial, serialPorts={}", request.getRequest(), serialPorts);
+
+                    result.setResult(serialPorts);
+                } catch (Exception e) {
+                    logger.error("HTTP请求代理: req={}, type=listSerial", request.getRequest(), e);
+                    result.setCode(400);
+                    result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
+                }
+
+                String message = GSON.toJson(result);
+                clientCall.sendMessage(HttpProxyResult.newBuilder()
+                        .setRequest(request.getRequest())
+                        .setData(ByteString.copyFrom(message, StandardCharsets.UTF_8))
+                        .build());
+
+                return;
+            }
+
             logger.info("req = {}, type = httpProxy", req);
             Result result = new Result();
             try {
@@ -1773,6 +1779,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         private final String driverInstanceId;
         private final String sessionId;
         private final GlobalContext globalContext;
+        private final Type driverConfigType;
+        private final Type tagType;
         private final ClientCall<ConfigUpdateResponse, ConfigUpdateRequest> clientCall;
         private final DriverApp<Object, Object, Object> driverApp;
         private final StreamClosedCallback closedCallback;
@@ -1783,11 +1791,14 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         public ConfigUpdateHandler(String driverInstanceId, String sessionId,
                                    ClientCall<ConfigUpdateResponse, ConfigUpdateRequest> clientCall,
                                    GlobalContext globalContext,
+                                   Type driverConfigType, Type tagType,
                                    DriverApp<Object, Object, Object> driverApp,
                                    StreamClosedCallback closedCallback) {
             this.driverInstanceId = driverInstanceId;
             this.sessionId = sessionId;
             this.globalContext = globalContext;
+            this.driverConfigType = driverConfigType;
+            this.tagType = tagType;
             this.clientCall = clientCall;
             this.driverApp = driverApp;
             this.closedCallback = closedCallback;
@@ -1839,158 +1850,221 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 if (this.heartbeatFuture != null) {
                     this.heartbeatFuture.complete(System.currentTimeMillis());
                 } else {
-                    logger.warn("流心跳: 接收到心跳响应, 但 future 为空");
+                    logger.warn("配置变更新: 接收到心跳响应, 但 future 为空");
                 }
                 return;
             }
 
-            logger.info("req = {}, type = configUpdate", req);
+            logger.info("配置变更新: req={},type={}", req, request.getOpsType());
+
+            LoggerContext loggerContext = LoggerContexts.push();
+            loggerContext.setModule(io.github.airiot.sdk.driver.DriverModules.CONFIG_UPDATE);
 
             ConfigUpdateResponse.Builder response = ConfigUpdateResponse.newBuilder();
+            response.setRequest(request.getRequest());
             try {
                 switch (request.getOpsType()) {
-                    case ADD_TABLE:
-                        ConfigUpdateRequest.AddTable addTable = request.getAddTable();
+                    case EDIT_DRIVER:
+                        ConfigUpdateRequest.EditDriver editDriver = request.getEditDriver();
 
                         if (logger.isDebugEnabled()) {
-                            logger.debug("req = {}, type = configUpdate, 新增表, {}", req, addTable.getTable().toStringUtf8());
+                            logger.debug("配置变更新: req={}. 修改驱动实例, {}", req, editDriver.getDriver().toStringUtf8());
                         }
 
-                        driverApp.onAddTable(addTable.toByteArray());
+                        DriverSingleConfig<BasicConfig<? extends Tag>> driverConfig = null;
+                        try {
+                            Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
+                            Type driverConfigType = TypeReference.parametricType(DriverSingleConfig.class, baseConfigType);
 
-                        logger.info("req = {}, type = configUpdate, 新增表成功", req);
+                            driverConfig = JSON.parseObject(editDriver.getDriver().toByteArray(), driverConfigType);
 
-                        response.setStatus(true);
-                        response.setInfo("success");
+                            if (logger.isDebugEnabled()) {
+                                logger.debug("配置变更新: req={}. config = {}", req, driverConfig);
+                            }
+                            // 重置全局缓存
 
-//                        this.globalContext.addTable(tableId, addTable.getTableData().toStringUtf8());
+                            driverApp.onEditDriver(editDriver.getDriver().toByteArray());
+                            resetGlobalContext(this.globalContext, driverConfig);
+
+                            logger.info("配置变更新: req={}. 修改驱动实例成功", req);
+
+                            response.setStatus(true);
+                            response.setInfo("success");
+                        } catch (Exception e) {
+                            logger.error("配置变更新: req={}. config = {}", req, editDriver.getDriver().toStringUtf8(), e);
+                            response.setStatus(false);
+                            response.setInfo("解析驱动实例配置失败");
+                            response.setDetail(e.getMessage());
+                        }
+
+                        break;
+                    case ADD_TABLE:
+                        ConfigUpdateRequest.AddTable addTable = request.getAddTable();
+                        loggerContext.withTable(addTable.getTableId());
+                        if (logger.isDebugEnabled()) {
+                            logger.debug("配置变更新: req={},表={}. 新增表, {}", req, addTable.getTableId(), addTable.getTable().toStringUtf8());
+                        }
+
+                        try {
+                            Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
+                            Type tableConfigType = TypeReference.parametricType(DriverSingleConfig.Model.class, baseConfigType);
+                            DriverSingleConfig.Model<BasicConfig<? extends Tag>> tableConfig = JSON.parseObject(addTable.getTable().toStringUtf8(), tableConfigType);
+                            tableConfig.setId(addTable.getTableId());
+
+                            driverApp.onAddTable(addTable.getTableId(), addTable.getTable().toByteArray());
+
+                            resetGlobalContextOfTable(this.globalContext, this.driverInstanceId, tableConfig);
+
+                            logger.info("配置变更新: req={},表={}. 新增表成功", req, addTable.getTableId());
+
+                            response.setStatus(true);
+                            response.setInfo("success");
+                        } catch (Exception e) {
+                            logger.debug("配置变更新: req={},表={}. 解析表信息失败, {}, e", req, addTable.getTableId(), addTable.getTable().toStringUtf8());
+                            response.setStatus(false);
+                            response.setInfo("解析表信息失败");
+                            response.setDetail(e.getMessage());
+                        }
+
                         break;
                     case EDIT_TABLE:
                         ConfigUpdateRequest.EditTable editTable = request.getEditTable();
+                        loggerContext.withTable(editTable.getTableId());
 
                         if (logger.isDebugEnabled()) {
-                            logger.debug("req = {}, type = configUpdate, 编辑表, {}", req, editTable.getTable().toStringUtf8());
+                            logger.debug("配置变更新: req={},表={}. 修改表, {}", req, editTable.getTableId(), editTable.getTable().toStringUtf8());
                         }
 
-                        driverApp.onEditTable(editTable.toByteArray());
+                        try {
+                            Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
+                            Type tableConfigType = TypeReference.parametricType(DriverSingleConfig.Model.class, baseConfigType);
+                            DriverSingleConfig.Model<BasicConfig<? extends Tag>> tableConfig = JSON.parseObject(editTable.getTable().toStringUtf8(), tableConfigType);
+                            tableConfig.setId(editTable.getTableId());
 
-                        logger.info("req = {}, type = configUpdate, 编辑表成功", req);
+                            driverApp.onEditTable(editTable.getTableId(), editTable.getTable().toByteArray());
+                            resetGlobalContextOfTable(this.globalContext, this.driverInstanceId, tableConfig);
 
-                        response.setStatus(true);
-                        response.setInfo("success");
+                            logger.info("配置变更新: req={},表={}. 修改表成功", req, editTable.getTableId());
+
+                            response.setStatus(true);
+                            response.setInfo("success");
+                        } catch (Exception e) {
+                            logger.debug("配置变更新: req={},表={}. 解析表信息失败, {}, e", req, editTable.getTableId(), editTable.getTable().toStringUtf8());
+                            response.setStatus(false);
+                            response.setInfo("解析表信息失败");
+                            response.setDetail(e.getMessage());
+                        }
+                        break;
                     case DEL_TABLE:
                         ConfigUpdateRequest.DelTable delTable = request.getDelTable();
+                        loggerContext.withTable(delTable.getTableId());
 
                         if (logger.isDebugEnabled()) {
-                            logger.debug("req = {}, type = configUpdate, 删除表, table={}", req, delTable.getTableId());
+                            logger.debug("配置变更新: req={},表={}. 删除表", req, delTable.getTableId());
                         }
 
                         driverApp.onDeleteTable(delTable.getTableId());
 
-                        logger.info("req = {}, type = configUpdate, 删除表成功, table={}", req, delTable.getTableId());
+                        this.globalContext.removeTable(delTable.getTableId());
+
+                        logger.debug("配置变更新: req={},表={}. 删除表成功", req, delTable.getTableId());
 
                         response.setStatus(true);
                         response.setInfo("success");
 
-                        // TODO 删除表时, 需要删除相关数据
-                        // this.globalContext.removeTable(delTable.getTableId());
                         break;
                     case ADD_DEVICE:
                         ConfigUpdateRequest.AddDeviceData addDevice = request.getAddDeviceData();
-                        String tableId = addDevice.getTableId();
+                        loggerContext.withTableDevice(addDevice.getTableId(), addDevice.getTableDataId());
 
                         if (logger.isDebugEnabled()) {
-                            logger.debug("req = {}, type = configUpdate, 新增设备, table={},device={}", req, tableId, addDevice.getTableData().toStringUtf8());
+                            logger.debug("配置变更新: req={},设备表={},设备={}. 新增设备, {}", req, addDevice.getTableId(), addDevice.getTableDataId(), addDevice.getTableData().toStringUtf8());
                         }
 
-                        driverApp.onAddDevice(tableId, addDevice.getTableData().toByteArray());
+                        try {
+                            Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
+                            Type deviceConfigType = TypeReference.parametricType(Device.class, baseConfigType);
+                            Device<BasicConfig<? extends Tag>> deviceConfig = JSON.parseObject(addDevice.getTableData().toStringUtf8(), deviceConfigType);
+                            deviceConfig.setId(addDevice.getTableDataId());
+                            deviceConfig.setTable(addDevice.getTableId());
+                            driverApp.onAddDevice(addDevice.getTableId(), addDevice.getTableDataId(), addDevice.getTableData().toByteArray());
+                            resetGlobalContextOfDevice(this.globalContext, this.driverInstanceId, deviceConfig);
 
-                        logger.info("req = {}, type = configUpdate, 新增设备成功", req);
+                            logger.info("配置变更新: req={},设备表={},设备={}. 新增设备成功", req, addDevice.getTableId(), addDevice.getTableDataId());
 
-                        response.setStatus(true);
-                        response.setInfo("success");
-
-
-                        Device<BasicConfig<? extends Tag>> device = JSON.parseObject(addDevice.getTableData().toStringUtf8(), new TypeReference<Device<BasicConfig<? extends Tag>>>() {
-                        });
-                        device.setDriverInstanceId(this.driverInstanceId);
-                        device.setTable(tableId);
-
-                        Map<String, Tag> tableTags = this.globalContext.getTableTags(tableId);
-                        Map<String, Tag> deviceTags = new HashMap<>(tableTags);
-                        if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
-                            for (Tag tag : device.getConfig().getTags()) {
-                                deviceTags.put(tag.getId(), tag);
-                            }
+                            response.setStatus(true);
+                            response.setInfo("success");
+                        } catch (Exception e) {
+                            logger.debug("配置变更新: req={},设备表={},设备={}. 解析设备信息失败, {}", req, addDevice.getTableId(), addDevice.getTableDataId(), addDevice.getTableData().toStringUtf8(), e);
+                            response.setStatus(false);
+                            response.setInfo("解析设备信息失败");
+                            response.setDetail(e.getMessage());
                         }
 
-                        String deviceId = device.getId();
-                        DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, this.driverInstanceId, deviceTags);
-                        this.globalContext.addDevice(info);
                         break;
                     case DEL_DEVICE:
                         ConfigUpdateRequest.DelDeviceData delDevice = request.getDelDeviceData();
+                        loggerContext.withTableDevice(delDevice.getTableId(), delDevice.getTableDataId());
 
                         if (logger.isDebugEnabled()) {
-                            logger.debug("req = {}, type = configUpdate, 删除设备, table={},device={}", req, delDevice.getTableId(), delDevice.getTableDataId());
+                            logger.debug("配置变更新: req={},设备表={},设备={}. 删除设备", req, delDevice.getTableId(), delDevice.getTableDataId());
                         }
 
                         driverApp.onDeleteDevice(delDevice.getTableId(), delDevice.getTableDataId());
 
-                        logger.info("req = {}, type = configUpdate, 删除设备成功, table={},device={}", req, delDevice.getTableId(), delDevice.getTableDataId());
+                        this.globalContext.removeDevice(delDevice.getTableId(), delDevice.getTableDataId());
+
+                        logger.info("配置变更新: req={},设备表={},设备={}. 删除设备成功", req, delDevice.getTableId(), delDevice.getTableDataId());
 
                         response.setStatus(true);
                         response.setInfo("success");
-
-                        this.globalContext.removeDevice(delDevice.getTableId(), delDevice.getTableDataId());
-
                         break;
                     case EDIT_DEVICE:
                         ConfigUpdateRequest.EditDeviceData editDevice = request.getEditDeviceData();
+                        loggerContext.withTableDevice(editDevice.getTableId(), editDevice.getTableDataId());
 
                         if (logger.isDebugEnabled()) {
-                            logger.debug("req = {}, type = configUpdate, 编辑设备, table={},device={}", req, editDevice.getTableId(), editDevice.getTableData().toStringUtf8());
+                            logger.debug("配置变更新: req={},设备表={},设备={}. 编辑设备, {}", req, editDevice.getTableId(), editDevice.getTableDataId(), editDevice.getTableData().toStringUtf8());
                         }
 
-                        driverApp.onEditDevice(editDevice.getTableId(), editDevice.getTableData().toByteArray());
+                        try {
+                            Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
+                            Type deviceConfigType = TypeReference.parametricType(Device.class, baseConfigType);
+                            Device<BasicConfig<? extends Tag>> deviceConfig = JSON.parseObject(editDevice.getTableData().toStringUtf8(), deviceConfigType);
+                            deviceConfig.setTable(editDevice.getTableId());
+                            deviceConfig.setId(editDevice.getTableDataId());
+                            driverApp.onEditDevice(editDevice.getTableId(), editDevice.getTableDataId(), editDevice.getTableData().toByteArray());
 
-                        logger.info("req = {}, type = configUpdate, 编辑设备成功", req);
+                            resetGlobalContextOfDevice(this.globalContext, this.driverInstanceId, deviceConfig);
 
-                        response.setStatus(true);
-                        response.setInfo("success");
+                            logger.info("配置变更新: req={},设备表={},设备={}. 编辑设备成功", req, editDevice.getTableId(), editDevice.getTableDataId());
 
-                        // TODO 编辑设备时, 需要更新相关数据
-//                        Device<BasicConfig<? extends Tag>> device1 = JSON.parseObject(editDevice.getTableData().toStringUtf8(), new TypeReference<Device<BasicConfig<? extends Tag>>>() {
-//                        });
-//                        device1.setDriverInstanceId(this.driverInstanceId);
-//                        device1.setTable(editDevice.getTableId());
-//
-//                        Map<String, Tag> tableTags1 = this.globalContext.getTableTags(editDevice.getTableId());
-//                        Map<String, Tag> deviceTags1 = new HashMap<>(tableTags1);
-//                        if (device1.getConfig() != null && !CollectionUtils.isEmpty(device1.getConfig().getTags())) {
-//                            for (Tag tag : device1.getConfig().getTags()) {
-//                                deviceTags1.put(tag.getId(), tag);
-//                            }
-//                        }
-//
-//                        String deviceId1 = device1.getId();
-//                        DeviceInfo<? extends Tag> info1 = new DeviceInfo<>(deviceId1, editDevice.getTableId(), this.driverInstanceId, deviceTags1);
-//                        this.globalContext.addDevice(info1);
+                            response.setStatus(true);
+                            response.setInfo("success");
+                        } catch (Exception e) {
+                            logger.debug("配置变更新: req={},设备表={},设备={}. 解析设备信息失败, {}", req, editDevice.getTableId(), editDevice.getTableDataId(), editDevice.getTableData().toStringUtf8(), e);
+                            response.setStatus(false);
+                            response.setInfo("解析设备信息失败");
+                            response.setDetail(e.getMessage());
+                        }
                         break;
                     default:
-                        logger.warn("req = {}, type = configUpdate, 不支持的操作类型: {}", req, request.getOpsType());
+                        logger.warn("配置变更新: req={}, 不支持的操作类型, {}", req, request.getOpsType());
                         response.setStatus(false);
                         response.setInfo("不支持的操作类型: " + request.getOpsType());
                 }
             } catch (Exception e) {
-                logger.error("req = {}, type = configUpdate", request.getRequest(), e);
+                logger.error("配置变更新: req={}, 处理异常", request.getRequest(), e);
                 String message = e.getMessage() != null ? e.getMessage() : e.getClass().getName();
                 response.setStatus(true);
                 response.setInfo("配置更新异常");
                 response.setDetail(message);
+            } finally {
+                LoggerContexts.pop();
             }
 
             clientCall.sendMessage(response.build());
+            logger.info("配置变更新: req={}. 处理完成, status={}, message={}, detail={}", req, response.getStatus(), response.getInfo(), response.getDetail());
         }
     }
 
@@ -2029,5 +2103,96 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         public boolean isRunning() {
             return !State.CLOSING.equals(this) && !State.CLOSED.equals(this);
         }
+    }
+
+
+    static void resetGlobalContext(GlobalContext globalContext, DriverSingleConfig<BasicConfig<? extends Tag>> driverConfig) {
+        String instanceId = driverConfig.getId();
+        Map<String, List<DeviceInfo<? extends Tag>>> deviceInfos = new HashMap<>();
+        Map<String, Map<String, Tag>> allTableTags = new HashMap<>();
+
+        Map<String, Tag> driverInstanceTags = new HashMap<>();
+        if (driverConfig.getConfig() != null && !CollectionUtils.isEmpty(driverConfig.getConfig().getTags())) {
+            for (Tag tag : driverConfig.getConfig().getTags()) {
+                driverInstanceTags.put(tag.getId(), tag);
+            }
+        }
+
+        if(!CollectionUtils.isEmpty(driverConfig.getTables())) {
+            for (Model<BasicConfig<? extends Tag>, BasicConfig<? extends Tag>> table : driverConfig.getTables()) {
+                String tableId = table.getId();
+                table.setDriverInstanceId(instanceId);
+                Map<String, Tag> tableTags = new HashMap<>(driverInstanceTags);
+                if (table.getConfig() != null && !CollectionUtils.isEmpty(table.getConfig().getTags())) {
+                    for (Tag tag : table.getConfig().getTags()) {
+                        tableTags.put(tag.getId(), tag);
+                    }
+                }
+
+                allTableTags.put(tableId, tableTags);
+
+                for (Device<BasicConfig<? extends Tag>> device : table.getDevices()) {
+                    device.setDriverInstanceId(instanceId);
+                    device.setTable(tableId);
+
+                    Map<String, Tag> deviceTags = new HashMap<>(tableTags);
+                    if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
+                        for (Tag tag : device.getConfig().getTags()) {
+                            deviceTags.put(tag.getId(), tag);
+                        }
+                    }
+                    String deviceId = device.getId();
+                    DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, instanceId, deviceTags);
+                    deviceInfos.putIfAbsent(deviceId, new ArrayList<>(1));
+                    deviceInfos.get(deviceId).add(info);
+                }
+            }
+        }
+
+        globalContext.set(deviceInfos);
+        globalContext.setAllTableTags(allTableTags);
+    }
+
+    static void resetGlobalContextOfTable(GlobalContext globalContext, String driverInstanceId, DriverSingleConfig.Model<BasicConfig<? extends Tag>> table) {
+        String tableId = table.getId();
+        List<DeviceInfo<? extends Tag>> deviceInfos = new ArrayList<>();
+        Map<String, Tag> tableTags = new HashMap<>();
+
+        if (table.getConfig() != null && !CollectionUtils.isEmpty(table.getConfig().getTags())) {
+            for (Tag tag : table.getConfig().getTags()) {
+                tableTags.put(tag.getId(), tag);
+            }
+        }
+
+        if(!CollectionUtils.isEmpty(table.getDevices())) {
+            for (Device<BasicConfig<? extends Tag>> device : table.getDevices()) {
+                Map<String, Tag> deviceTags = new HashMap<>(tableTags);
+                if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
+                    for (Tag tag : device.getConfig().getTags()) {
+                        deviceTags.put(tag.getId(), tag);
+                    }
+                }
+
+                String deviceId = device.getId();
+                DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, driverInstanceId, deviceTags);
+                deviceInfos.add(info);
+            }
+        }
+
+        globalContext.setTableDevices(tableId, deviceInfos);
+        globalContext.setTableTags(tableId, tableTags);
+    }
+
+    static void resetGlobalContextOfDevice(GlobalContext globalContext, String driverInstanceId, Device<BasicConfig<? extends Tag>> device) {;
+        String tableId = device.getTable();
+        Map<String, Tag> deviceTags = new HashMap<>(globalContext.getTableTags(tableId));
+        if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
+            for (Tag tag : device.getConfig().getTags()) {
+                deviceTags.put(tag.getId(), tag);
+            }
+        }
+        String deviceId = device.getId();
+        DeviceInfo<? extends Tag> deviceInfo = new DeviceInfo<>(deviceId, tableId, driverInstanceId, deviceTags);
+        globalContext.addDevice(deviceInfo);
     }
 }

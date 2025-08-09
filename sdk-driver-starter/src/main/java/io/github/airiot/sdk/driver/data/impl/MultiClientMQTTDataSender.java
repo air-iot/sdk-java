@@ -17,6 +17,7 @@
 
 package io.github.airiot.sdk.driver.data.impl;
 
+import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.GlobalContext;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
@@ -32,7 +33,6 @@ import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.logger.driver.DriverModules;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.slf4j.Logger;
@@ -112,20 +112,21 @@ public class MultiClientMQTTDataSender extends AbstractDataSender {
     }
 
     /**
-     * 获取第一个 MQTT 客户端实例
-     * <br>
-     * 获取到的客户端可能是未连接状态, 使用前请先调用 {@link MqttClient#isConnected()} 方法检查连接状态.
+     * 创建 MQTT 客户端
      */
-    public MqttClient getMqttClient() {
-        return this.mqttClients.get(0);
-    }
+    public MqttClient createMqttClient(String clientId) {
+        String broker = this.mqttProperties.getSchema() + "://" + this.mqttProperties.getHost() + ":" + this.mqttProperties.getPort();
+        MemoryPersistence persistence = new MemoryPersistence();
 
-    /**
-     * 获取可用的 MQTT 客户端实例
-     * @return 如果有可用的客户端, 则返回 {@link Optional#empty()}
-     */
-    public Optional<MqttClient> getAvailableMqttClient() {
-        return this.availableClients.values().stream().findFirst();
+        log.info("MQTTClient: 创建客户端, {}", options);
+
+        try {
+            MqttClient mqttClient = new MqttClient(broker, clientId, persistence);
+            mqttClient.setTimeToWait(this.mqttProperties.getActionTimeout().toMillis());
+            return mqttClient;
+        } catch (MqttException e) {
+            throw new IllegalStateException("MQTTClient: 创建客户端失败", e);
+        }
     }
 
     @Override
