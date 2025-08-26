@@ -176,7 +176,7 @@ public class HttpClientAutoConfiguration {
         }
 
         @Bean
-        public TableSchemaClient tableSchemaClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
+        public TableSchemaFeignClient tableSchemaClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
                                                    HttpClientProperties properties,
                                                    RequestInterceptor authRequestInterceptor) {
             ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);

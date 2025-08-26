@@ -44,7 +44,11 @@ public abstract class AbstractDataSubscriber implements DataSubscriber {
         }
 
         try {
-            this.onSubscribes(this.subscriptions);
+            if (!CollectionUtils.isEmpty(this.subscriptions)) {
+                this.onSubscribes(this.subscriptions);
+            } else {
+                logger.info("数据订阅: 无任何订阅信息");
+            }
         } finally {
             lock.unlock();
         }
@@ -81,7 +85,7 @@ public abstract class AbstractDataSubscriber implements DataSubscriber {
         if (CollectionUtils.isEmpty(data)) {
             return Collections.emptyList();
         }
-        
+
         Map<String, DeviceLatestData> devices = new HashMap<>(subscriptions.size());
         for (LatestData datum : data) {
             if (!StringUtils.hasText(datum.getId()) || !StringUtils.hasText(datum.getTableId()) ||
