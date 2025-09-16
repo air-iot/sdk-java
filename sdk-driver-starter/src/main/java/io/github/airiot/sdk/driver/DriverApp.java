@@ -178,7 +178,7 @@ public interface DriverApp<DriverConfig, Command, Tag> {
      * @param locale 国际化语言
      */
     String schema(String locale);
-    
+
     /**
      * 从 {@link InputStream} 中读取 schema 定义
      *
@@ -194,4 +194,51 @@ public interface DriverApp<DriverConfig, Command, Tag> {
         }
         return new String(data, StandardCharsets.UTF_8);
     }
+
+    /**
+     * 编辑驱动实例配置处理函数. 当平台中修改驱动实例配置时, 会调用该方法
+     * @param data 驱动实例配置
+     */
+    default void onEditDriver(byte[] data) {}
+
+    /**
+     * 新增表处理函数. 当平台中新增表时, 会调用该方法
+     * @param tableData 新增表的信息
+     */
+    default void onAddTable(String tableId, byte[] tableData) {}
+
+    /**
+     * 删除表处理函数. 当平台中删除表时, 会调用该方法
+     * @param tableId 删除表的标识
+     */
+    default void onDeleteTable(String tableId) {}
+
+    /**
+     * 编辑表配置处理函数. 当平台中编辑表时, 会调用该方法
+     * @param tableData 编辑后的表配置信息
+     */
+    default void onEditTable(String tableId, byte[] tableData) {}
+
+    /**
+     * 新增设备处理函数. 当平台中新增设备时, 会调用该方法
+     * @param tableId 新增设备所属表标识
+     * @param tableDataId 新增设备的编号
+     * @param device 新增设备信息
+     */
+    default void onAddDevice(String tableId, String tableDataId, byte[] device) {}
+
+    /**
+     * 删除设备处理函数. 当平台中删除设备时, 会调用该方法
+     * @param tableId 删除设备所属表标识
+     * @param tableDataId 删除设备的编号
+     */
+    default void onDeleteDevice(String tableId, String tableDataId) {}
+
+    /**
+     * 编辑设备处理函数. 当平台中编辑设备时, 会调用该方法
+     * @param tableId 设备所属表标识
+     * @param tableDataId 编辑设备的编号
+     * @param deviceData 编辑后的设备信息
+     */
+    default void onEditDevice(String tableId, String tableDataId, byte[] deviceData) {}
 }

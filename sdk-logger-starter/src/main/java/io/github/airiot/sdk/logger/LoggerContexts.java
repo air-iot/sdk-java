@@ -28,12 +28,16 @@ public class LoggerContexts {
     /**
      * 最大日志上下文层级
      */
-    public static final int MAX_LEVEL = Integer.parseInt(System.getProperty("LOGGING_MAX_LEVELS", "10"));
+    public static final int MAX_LEVEL = Integer.parseInt(System.getProperty("LOGGING_MAX_LEVELS", "20"));
 
     /**
      * 根日志上下文
      */
     protected static final LoggerContext ROOT_CONTEXT = new LoggerContext(null);
+    static {
+        ROOT_CONTEXT.setService("__undefined__");
+        ROOT_CONTEXT.setModule("初始化");
+    }
 
     protected static final InheritableThreadLocal<LoggerContext> CONTEXT = new InheritableThreadLocal<>();
 
