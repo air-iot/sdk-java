@@ -19,6 +19,7 @@ option java_multiple_files = true;
 option java_generate_equals_and_hash = true;
 option java_generic_services = false;
 
+
 service DriverService {
   // 驱动用
   rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse) {}
@@ -34,6 +35,7 @@ service DriverService {
   rpc BatchRunStream (stream BatchRunResult) returns (stream BatchRunRequest) {}
   rpc DebugStream (stream Debug) returns (stream Debug) {}
   rpc HttpProxyStream (stream HttpProxyResult) returns (stream HttpProxyRequest) {}
+  rpc ConfigUpdateStream (stream ConfigUpdateResponse) returns (stream ConfigUpdateRequest) {}
   //  rpc UpdateDeviceStream (stream UpdateDeviceResult) returns (stream UpdateDeviceRequest) {}
 
   // 平台用
@@ -42,6 +44,42 @@ service DriverService {
   rpc HttpProxy (ClientHttpProxyRequest) returns (api.Response) {}
   rpc WriteTag (api.CreateRequest) returns (api.Response) {}
   rpc BatchWriteTag (api.CreateRequest) returns (api.Response) {}
+}
+
+service DriverInstanceService {
+  rpc Query (api.QueryRequest) returns (api.Response) {}
+  rpc Get (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Delete (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Update (api.UpdateRequest) returns (api.Response) {}
+  rpc Replace (api.UpdateRequest) returns (api.Response) {}
+  rpc Create (api.CreateRequest) returns (api.Response) {}
+}
+
+service DriverEventCronService {
+  rpc Query (api.QueryRequest) returns (api.Response) {}
+  rpc Get (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Delete (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Update (api.UpdateRequest) returns (api.Response) {}
+  rpc Replace (api.UpdateRequest) returns (api.Response) {}
+  rpc Create (api.CreateRequest) returns (api.Response) {}
+  rpc CreateMany (api.CreateRequest) returns (api.Response) {}
+  rpc DeleteMany (api.QueryRequest) returns (api.Response) {}
+}
+
+service DriverInstructCronService {
+  rpc Query (api.QueryRequest) returns (api.Response) {}
+  rpc Get (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Delete (api.GetOrDeleteRequest) returns (api.Response) {}
+  rpc Update (api.UpdateRequest) returns (api.Response) {}
+  rpc Replace (api.UpdateRequest) returns (api.Response) {}
+  rpc Create (api.CreateRequest) returns (api.Response) {}
+  rpc CreateMany (api.CreateRequest) returns (api.Response) {}
+  rpc DeleteMany (api.QueryRequest) returns (api.Response) {}
+}
+
+service DriverInstructService {
+  rpc GetCommands (RequestCommand) returns (api.Response) {}
+  rpc Update (api.UpdateRequest) returns (api.Response) {}
 }
 
 message UpdateRequest {
@@ -193,4 +231,71 @@ message ClientHttpProxyRequest {
 message RequestCommand {
   string tableId = 1;
   string tableDataId = 2;
+}
+
+message ConfigUpdateRequest {
+  string request = 1;
+  enum OpsType {
+    ADD_DEVICE = 0;
+    DEL_DEVICE = 1;
+    EDIT_DEVICE = 2;
+    ADD_TABLE = 3;
+    DEL_TABLE = 4;
+    EDIT_TABLE = 5;
+    EDIT_DRIVER = 6; // 编辑驱动
+  }
+
+  OpsType opsType = 2;
+
+  oneof data {
+    AddDeviceData add_device_data = 3;
+    DelDeviceData del_device_data = 4;
+    EditDeviceData edit_device_data = 5;
+    AddTable  add_table = 6;
+    DelTable del_table = 7;
+    EditTable edit_table = 8;
+    EditDriver edit_driver = 9;
+  }
+
+  message AddDeviceData {
+    string tableId = 1;
+    string tableDataId = 2;
+    bytes tableData = 3; // 字节数组
+  }
+
+  message EditDeviceData {
+    string tableId = 1;
+    string tableDataId = 2;
+    bytes tableData = 3; // 字节数组
+  }
+
+  message DelDeviceData {
+    string tableId = 1;
+    string tableDataId = 2;
+  }
+
+  message AddTable {
+    string tableId = 1;
+    bytes table = 2; // 字节数组
+  }
+
+  message DelTable {
+    string tableId = 1;
+  }
+
+  message EditTable {
+    string tableId = 1;
+    bytes table = 2; // 字节数组
+  }
+
+  message EditDriver {
+    bytes driver = 1; // 字节数组
+  }
+}
+
+message ConfigUpdateResponse {
+  string request = 1;
+  bool status = 2;
+  string info = 3;
+  string detail = 4;
 }

@@ -35,5 +35,6 @@ public interface DriverModules {
     String DEBUG = "调试";
     String HTTP_PROXY = "Http代理";
     String WARNING = "报警";
+    String CONFIG_UPDATE = "配置更新";
 
 }

@@ -40,7 +40,15 @@ public final class GlobalContext {
     /**
      * deviceId: {tableId: DeviceInfo}
      */
-    private final AtomicReference<Map<String, Map<String, DeviceInfo<? extends Tag>>>> devices = new AtomicReference<>(Collections.emptyMap());
+    private final AtomicReference<Map<String, Map<String, DeviceInfo<? extends Tag>>>> devices = new AtomicReference<>(new HashMap<>());
+
+    /**
+     * 表数据点列表
+     * <br>
+     * key: tableId
+     * value: 数据点列表
+     */
+    private final AtomicReference<Map<String, Map<String, Tag>>> tableTags = new AtomicReference<>(Collections.emptyMap());
 
     private static String VERSION = null;
 
@@ -65,7 +73,49 @@ public final class GlobalContext {
         return VERSION;
     }
 
-    public void set(Map<String, List<DeviceInfo<? extends Tag>>> deviceInfos) {
+
+    public synchronized void setAllTableTags(Map<String, Map<String, Tag>> tableTags) {
+        this.tableTags.set(tableTags);
+    }
+
+    public synchronized void setTableTags(String tableId, Map<String, Tag> tableTags) {
+        this.tableTags.get().put(tableId, tableTags);
+    }
+
+    public synchronized void addDevice(DeviceInfo<? extends Tag> device) {
+        Map<String, Map<String, DeviceInfo<? extends Tag>>> allDevices = this.devices.get();
+        Map<String, DeviceInfo<? extends Tag>> tableDevices = allDevices.getOrDefault(device.getId(), new HashMap<>());
+        tableDevices.put(device.getTableId(), device);
+        allDevices.put(device.getId(), tableDevices);
+        this.devices.set(allDevices);
+    }
+
+    public synchronized void removeDevice(String tableId, String deviceId) {
+        if(this.devices.get() == null) {
+            return;
+        }
+
+        Map<String, DeviceInfo<? extends Tag>> tableDevices = this.devices.get().get(deviceId);
+        if(tableDevices != null) {
+            tableDevices.remove(tableId);
+        }
+    }
+
+    public synchronized void removeTable(String tableId) {
+        // 删除该表的旧设备信息
+        Map<String, Map<String, DeviceInfo<?>>> allDevices = this.devices.get();
+        for (Map.Entry<String, Map<String, DeviceInfo<?>>> entry : allDevices.entrySet()) {
+            entry.getValue().remove(tableId);
+        }
+        this.devices.set(allDevices);
+        this.tableTags.get().remove(tableId);
+    }
+
+    /**
+     * 更新全部缓存的设备信息.
+     * @param deviceInfos 全部设备信息. key: 表标识, value: 设备信息列表.
+     */
+    public synchronized void set(Map<String, List<DeviceInfo<? extends Tag>>> deviceInfos) {
         if (deviceInfos == null || deviceInfos.isEmpty()) {
             return;
         }
@@ -79,6 +129,30 @@ public final class GlobalContext {
                     )));
         }
         this.devices.set(devices);
+    }
+
+    public synchronized void setTableDevices(String tableId, List<DeviceInfo<? extends Tag>> deviceInfos) {
+        // 删除该表的旧设备信息
+        Map<String, Map<String, DeviceInfo<?>>> allDevices = this.devices.get();
+        for (Map.Entry<String, Map<String, DeviceInfo<?>>> entry : allDevices.entrySet()) {
+            entry.getValue().remove(tableId);
+        }
+
+        if (CollectionUtils.isEmpty(deviceInfos)) {
+            return;
+        }
+
+        for (DeviceInfo<? extends Tag> device : deviceInfos) {
+            Map<String, DeviceInfo<?>> tableDevices = allDevices.getOrDefault(device.getId(), Maps.newHashMapWithExpectedSize(3));
+            tableDevices.put(device.getTableId(), device);
+            allDevices.put(device.getId(), tableDevices);
+        }
+
+        this.devices.set(allDevices);
+    }
+
+    public Map<String, Tag> getTableTags(String tableId) {
+        return this.tableTags.get().getOrDefault(tableId, Collections.emptyMap());
     }
 
     /**
@@ -194,7 +268,7 @@ public final class GlobalContext {
         if (!StringUtils.hasText(deviceId)) {
             throw new IllegalStateException("设备标识不能为空");
         }
-        
+
         List<Field<? extends Tag>> fields = this.createFields(tableId, deviceId, tagValues);
 
         if (fields.isEmpty()) {
