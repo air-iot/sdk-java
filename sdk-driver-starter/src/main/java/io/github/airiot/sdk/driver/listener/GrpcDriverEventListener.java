@@ -18,14 +18,13 @@
 package io.github.airiot.sdk.driver.listener;
 
 import ch.qos.logback.classic.Level;
-import com.alibaba.fastjson2.JSON;
-import com.alibaba.fastjson2.TypeReference;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import com.google.protobuf.ByteString;
 import io.github.airiot.sdk.driver.DeviceInfo;
 import io.github.airiot.sdk.driver.DriverApp;
+import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.GlobalContext;
 import io.github.airiot.sdk.driver.config.BasicConfig;
 import io.github.airiot.sdk.driver.config.Device;
@@ -34,13 +33,12 @@ import io.github.airiot.sdk.driver.config.Model;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
 import io.github.airiot.sdk.driver.event.DriverReloadApplicationEvent;
-import io.github.airiot.sdk.driver.grpc.driver.Error;
 import io.github.airiot.sdk.driver.grpc.driver.*;
+import io.github.airiot.sdk.driver.grpc.driver.Error;
 import io.github.airiot.sdk.driver.model.Tag;
 import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.driver.DriverModules;
 import io.grpc.*;
 import io.grpc.stub.MetadataUtils;
 import org.apache.commons.codec.binary.Hex;
@@ -1441,14 +1439,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             result.setCode(200);
             result.setResult("启动成功");
 
+            TypeToken<DriverSingleConfig<BasicConfig<? extends Tag>>> driverConfigType = new TypeToken<>() {
+            };
+
             boolean passed = true;
             DriverSingleConfig<BasicConfig<? extends Tag>> driverConfig = null;
             try {
-                Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
-                Type driverConfigType = TypeReference.parametricType(DriverSingleConfig.class, baseConfigType);
-
-                driverConfig = JSON.parseObject(config, driverConfigType);
-
+                driverConfig = GSON.fromJson(config, driverConfigType);
                 if (logger.isDebugEnabled()) {
                     logger.debug("启动驱动, config = {}", driverConfig);
                 }
@@ -1540,7 +1537,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
             if (passed) {
                 try {
-                    Object drvConfig = JSON.parseObject(config, this.driverConfigType);
+                    Object drvConfig = GSON.fromJson(config, this.driverConfigType);
                     this.driverApp.start(drvConfig);
                     this.clearCacheFn.accept(driverConfig);
                 } catch (Exception e) {
@@ -1755,7 +1752,6 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 result.setCode(400);
                 result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
             }
-
             String message = GSON.toJson(result);
             clientCall.sendMessage(HttpProxyResult.newBuilder()
                     .setRequest(request.getRequest())
@@ -1864,13 +1860,12 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             logger.debug("配置变更新: req={}. 修改驱动实例, {}", req, editDriver.getDriver().toStringUtf8());
                         }
 
+                        TypeToken<DriverSingleConfig<BasicConfig<? extends Tag>>> driverConfigType = new TypeToken<>() {
+                        };
+
                         DriverSingleConfig<BasicConfig<? extends Tag>> driverConfig = null;
                         try {
-                            Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
-                            Type driverConfigType = TypeReference.parametricType(DriverSingleConfig.class, baseConfigType);
-
-                            driverConfig = JSON.parseObject(editDriver.getDriver().toByteArray(), driverConfigType);
-
+                            driverConfig = GSON.fromJson(editDriver.getDriver().toStringUtf8(), driverConfigType);
                             if (logger.isDebugEnabled()) {
                                 logger.debug("配置变更新: req={}. config = {}", req, driverConfig);
                             }
@@ -1899,11 +1894,10 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                         }
 
                         try {
-                            Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
-                            Type tableConfigType = TypeReference.parametricType(DriverSingleConfig.Model.class, baseConfigType);
-                            DriverSingleConfig.Model<BasicConfig<? extends Tag>> tableConfig = JSON.parseObject(addTable.getTable().toStringUtf8(), tableConfigType);
+                            TypeToken<DriverSingleConfig.Model<BasicConfig<? extends Tag>>> tableConfigType = new TypeToken<>() {
+                            };
+                            DriverSingleConfig.Model<BasicConfig<? extends Tag>> tableConfig = GSON.fromJson(addTable.getTable().toStringUtf8(), tableConfigType);
                             tableConfig.setId(addTable.getTableId());
-
                             driverApp.onAddTable(addTable.getTableId(), addTable.getTable().toByteArray());
 
                             resetGlobalContextOfTable(this.globalContext, this.driverInstanceId, tableConfig);
@@ -1929,9 +1923,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                         }
 
                         try {
-                            Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
-                            Type tableConfigType = TypeReference.parametricType(DriverSingleConfig.Model.class, baseConfigType);
-                            DriverSingleConfig.Model<BasicConfig<? extends Tag>> tableConfig = JSON.parseObject(editTable.getTable().toStringUtf8(), tableConfigType);
+                            TypeToken<DriverSingleConfig.Model<BasicConfig<? extends Tag>>> tableConfigType = new TypeToken<>() {
+                            };
+                            DriverSingleConfig.Model<BasicConfig<? extends Tag>> tableConfig = GSON.fromJson(editTable.getTable().toStringUtf8(), tableConfigType);
                             tableConfig.setId(editTable.getTableId());
 
                             driverApp.onEditTable(editTable.getTableId(), editTable.getTable().toByteArray());
@@ -1975,9 +1969,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                         }
 
                         try {
-                            Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
-                            Type deviceConfigType = TypeReference.parametricType(Device.class, baseConfigType);
-                            Device<BasicConfig<? extends Tag>> deviceConfig = JSON.parseObject(addDevice.getTableData().toStringUtf8(), deviceConfigType);
+                            TypeToken<Device<BasicConfig<? extends Tag>>> deviceConfigType = new TypeToken<>() {
+                            };
+                            Device<BasicConfig<? extends Tag>> deviceConfig = GSON.fromJson(addDevice.getTableData().toStringUtf8(), deviceConfigType);
                             deviceConfig.setId(addDevice.getTableDataId());
                             deviceConfig.setTable(addDevice.getTableId());
                             driverApp.onAddDevice(addDevice.getTableId(), addDevice.getTableDataId(), addDevice.getTableData().toByteArray());
@@ -2021,9 +2015,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                         }
 
                         try {
-                            Type baseConfigType = TypeReference.parametricType(BasicConfig.class, this.tagType);
-                            Type deviceConfigType = TypeReference.parametricType(Device.class, baseConfigType);
-                            Device<BasicConfig<? extends Tag>> deviceConfig = JSON.parseObject(editDevice.getTableData().toStringUtf8(), deviceConfigType);
+                            TypeToken<Device<BasicConfig<? extends Tag>>> deviceConfigType = new TypeToken<>() {
+                            };
+                            Device<BasicConfig<? extends Tag>> deviceConfig = GSON.fromJson(editDevice.getTableData().toStringUtf8(), deviceConfigType);
                             deviceConfig.setTable(editDevice.getTableId());
                             deviceConfig.setId(editDevice.getTableDataId());
                             driverApp.onEditDevice(editDevice.getTableId(), editDevice.getTableDataId(), editDevice.getTableData().toByteArray());
@@ -2111,7 +2105,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             }
         }
 
-        if(!CollectionUtils.isEmpty(driverConfig.getTables())) {
+        if (!CollectionUtils.isEmpty(driverConfig.getTables())) {
             for (Model<BasicConfig<? extends Tag>, BasicConfig<? extends Tag>> table : driverConfig.getTables()) {
                 String tableId = table.getId();
                 table.setDriverInstanceId(instanceId);
@@ -2157,7 +2151,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
             }
         }
 
-        if(!CollectionUtils.isEmpty(table.getDevices())) {
+        if (!CollectionUtils.isEmpty(table.getDevices())) {
             for (Device<BasicConfig<? extends Tag>> device : table.getDevices()) {
                 Map<String, Tag> deviceTags = new HashMap<>(tableTags);
                 if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
@@ -2176,7 +2170,8 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         globalContext.setTableTags(tableId, tableTags);
     }
 
-    static void resetGlobalContextOfDevice(GlobalContext globalContext, String driverInstanceId, Device<BasicConfig<? extends Tag>> device) {;
+    static void resetGlobalContextOfDevice(GlobalContext globalContext, String driverInstanceId, Device<BasicConfig<? extends Tag>> device) {
+        ;
         String tableId = device.getTable();
         Map<String, Tag> deviceTags = new HashMap<>(globalContext.getTableTags(tableId));
         if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
