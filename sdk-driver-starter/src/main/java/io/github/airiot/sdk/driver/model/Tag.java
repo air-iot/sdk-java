@@ -25,11 +25,11 @@ public class Tag {
     /**
      * 数据点标识
      */
-    private String id;
+    protected String id;
     /**
      * 数据点名称
      */
-    private String name;
+    protected String name;
     /**
      * 数据点-数值转换配置信息
      */
