@@ -1752,7 +1752,6 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 result.setCode(400);
                 result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
             }
-
             String message = GSON.toJson(result);
             clientCall.sendMessage(HttpProxyResult.newBuilder()
                     .setRequest(request.getRequest())
