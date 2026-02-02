@@ -17,22 +17,20 @@
 
 package io.github.airiot.sdk.driver.data.impl;
 
-import io.github.airiot.sdk.driver.GlobalContext;
+import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverMQProperties;
-import io.github.airiot.sdk.driver.data.AbstractDataSender;
-import io.github.airiot.sdk.driver.data.DataHandlerChain;
+import io.github.airiot.sdk.driver.data.AbstractDataWriter;
+import io.github.airiot.sdk.driver.data.DataSenderException;
 import io.github.airiot.sdk.driver.data.LogSenderException;
 import io.github.airiot.sdk.driver.data.warning.Warning;
 import io.github.airiot.sdk.driver.data.warning.WarningRecovery;
 import io.github.airiot.sdk.driver.data.warning.WarningSenderException;
-import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.driver.DriverModules;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.slf4j.Logger;
@@ -48,25 +46,25 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * MQTT 协议
  */
-public class MQTTDataSender extends AbstractDataSender implements MqttCallbackExtended {
+public class MQTTDataSender extends AbstractDataWriter implements MqttCallbackExtended {
 
-    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(MQTTDataSender.class);
+    private final Logger log = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(MQTTDataSender.class);
 
     private final DriverAppProperties driverAppProperties;
     private final DriverMQProperties.Mqtt mqttProperties;
     private final int qos;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final String projectId;
 
     private MqttConnectOptions options;
     private MqttClient mqttClient;
 
-    public MQTTDataSender(DataHandlerChain chain,
+    public MQTTDataSender(String projectId,
                           DriverDataProperties properties,
                           DriverAppProperties driverAppProperties,
-                          DriverMQProperties.Mqtt mqttProperties,
-                          GlobalContext globalContext,
-                          DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
-        super(properties, driverAppProperties, globalContext, chain, driverGrpcClient);
+                          DriverMQProperties.Mqtt mqttProperties) {
+        super(properties);
+        this.projectId = projectId;
         this.driverAppProperties = driverAppProperties;
         this.mqttProperties = mqttProperties;
         this.qos = mqttProperties.getQos();
@@ -210,15 +208,19 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
     }
 
     @Override
-    public void doWritePoint(Point point) throws Exception {
+    public void writePoint(Point point) throws DataSenderException {
         this.checkRunState();
         byte[] payload = this.encode(point);
         String topic = String.format("data/%s/%s/%s", this.projectId, point.getTable(), point.getId());
-        this.mqttClient.publish(topic, payload, this.qos, false);
+        try {
+            this.mqttClient.publish(topic, payload, this.qos, false);
+        } catch (Exception e) {
+            throw new DataSenderException(point, "发送失败", e);
+        }
     }
 
     @Override
-    public void doWriteLog(String tableId, String deviceId, String level, String message) {
+    public void writeLog(String tableId, String deviceId, String level, String message) {
         if (!this.isRunning()) {
             throw new LogSenderException(tableId, deviceId, level, message, "未连接或连接中断");
         }
@@ -279,7 +281,7 @@ public class MQTTDataSender extends AbstractDataSender implements MqttCallbackEx
         LoggerContext context = LoggerContexts.push();
         context.withTable(tableId);
         warningLogger.info("发送报警信息, table = {}, device = {}, {}", tableId, deviceId, warning);
-        
+
         try {
             this.mqttClient.publish(String.format("warningStorage/%s/%s/%s", this.projectId, warning.getTable().getId(), warning.getTableData().getId()), warningData, this.qos, false);
             warningLogger.info("发送报警信息完成, table = {}, device = {}, {}", tableId, deviceId, warning);

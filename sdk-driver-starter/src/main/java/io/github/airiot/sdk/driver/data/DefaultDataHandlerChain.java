@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 public class DefaultDataHandlerChain implements DataHandlerChain {
 
-    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(AbstractDataSender.class);
+    private final Logger logger = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(DefaultDataSender.class);
 
     private final TagValueCache tagValueCache;
     private final List<DataHandler> handlers = new ArrayList<>();

@@ -21,22 +21,19 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.MessageProperties;
-import io.github.airiot.sdk.driver.GlobalContext;
-import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
+import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverMQProperties;
-import io.github.airiot.sdk.driver.data.AbstractDataSender;
-import io.github.airiot.sdk.driver.data.DataHandlerChain;
+import io.github.airiot.sdk.driver.data.AbstractDataWriter;
+import io.github.airiot.sdk.driver.data.DataSenderException;
 import io.github.airiot.sdk.driver.data.LogSenderException;
 import io.github.airiot.sdk.driver.data.warning.Warning;
 import io.github.airiot.sdk.driver.data.warning.WarningRecovery;
 import io.github.airiot.sdk.driver.data.warning.WarningSenderException;
-import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.driver.DriverModules;
 import org.slf4j.Logger;
 import org.springframework.util.StringUtils;
 
@@ -47,31 +44,19 @@ import java.nio.charset.StandardCharsets;
 /**
  * RabbitMQ Amqp 协议
  */
-public class AmqpDataSender extends AbstractDataSender {
+public class AmqpDataSender extends AbstractDataWriter {
 
-    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(MQTTDataSender.class);
+    private final Logger log = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(MQTTDataSender.class);
+
+
     private final DriverMQProperties.Rabbit rabbitProperties;
     private final ThreadLocal<Channel> channel = ThreadLocal.withInitial(this::createChannel);
+    private final String projectId;
     private Connection connection;
 
-    private Channel createChannel() {
-        if (this.connection == null) {
-            throw new IllegalStateException("AmqpDataSender 未连接");
-        }
-
-        try {
-            return this.connection.createChannel();
-        } catch (IOException e) {
-            throw new IllegalStateException("创建 Amqp Channel 异常", e);
-        }
-    }
-
-    public AmqpDataSender(DriverDataProperties properties, DriverAppProperties appProperties,
-                          DataHandlerChain chain,
-                          DriverMQProperties.Rabbit rabbitProperties,
-                          GlobalContext globalContext,
-                          DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
-        super(properties, appProperties, globalContext, chain, driverGrpcClient);
+    public AmqpDataSender(String projectId, DriverDataProperties properties, DriverMQProperties.Rabbit rabbitProperties) {
+        super(properties);
+        this.projectId = projectId;
         this.rabbitProperties = rabbitProperties;
     }
 
@@ -126,16 +111,32 @@ public class AmqpDataSender extends AbstractDataSender {
         return this.connection != null && this.connection.isOpen();
     }
 
-    @Override
-    public void doWritePoint(Point point) throws Exception {
-        byte[] payload = this.encode(point);
-        String routingKey = String.format("data.%s.%s.%s", this.projectId, point.getTable(), point.getId());
-        channel.get().basicPublish("data", routingKey,
-                false, false, MessageProperties.TEXT_PLAIN, payload);
+    private Channel createChannel() {
+        if (this.connection == null) {
+            throw new IllegalStateException("AmqpDataSender 未连接");
+        }
+
+        try {
+            return this.connection.createChannel();
+        } catch (IOException e) {
+            throw new IllegalStateException("创建 Amqp Channel 异常", e);
+        }
     }
 
     @Override
-    public void doWriteLog(String tableId, String deviceId, String level, String message) throws LogSenderException {
+    public void writePoint(Point point) throws DataSenderException {
+        byte[] payload = this.encode(point);
+        String routingKey = String.format("data.%s.%s.%s", this.projectId, point.getTable(), point.getId());
+        try {
+            channel.get().basicPublish("data", routingKey,
+                    false, false, MessageProperties.TEXT_PLAIN, payload);
+        } catch (Exception e) {
+            throw new DataSenderException(point, "发送失败", e);
+        }
+    }
+
+    @Override
+    public void writeLog(String tableId, String deviceId, String level, String message) throws LogSenderException {
         if (!this.isRunning()) {
             throw new LogSenderException(tableId, deviceId, level, message, "未连接或连接中断");
         }

@@ -30,6 +30,7 @@ import org.springframework.core.env.PropertySource;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 驱动基础配置
@@ -46,6 +47,24 @@ public class DriverAppProperties implements InitializingBean, EnvironmentAware {
      * 会影响 {@code GrpcDriverEventListener} 和 {@code DataSender}
      */
     public static final String DRIVER_ENABLE_PROPERTY = "airiot.driver.enabled";
+
+    /**
+     * 标准模式
+     */
+    public static final String NORMAL_MODE = "normal";
+    /**
+     * 本地模式
+     */
+    public static final String LOCAL_MODE = "local";
+
+    /**
+     * 驱动的运行模式
+     * <br>
+     * normal: 标准模式
+     * <br>
+     * local: 本地模式. 该模式下, 不会连接平台 grpc
+     */
+    private String mode = NORMAL_MODE;
 
     /**
      * 当前驱动实例所属项目ID, 默认由平台注入
@@ -73,6 +92,14 @@ public class DriverAppProperties implements InitializingBean, EnvironmentAware {
     private String instanceId;
 
     private String distributed = "";
+
+    public String getMode() {
+        return mode;
+    }
+
+    public void setMode(String mode) {
+        this.mode = mode;
+    }
 
     public String getProjectId() {
         return projectId;
@@ -143,6 +170,10 @@ public class DriverAppProperties implements InitializingBean, EnvironmentAware {
                     this.projectId = String.valueOf(projectId);
                 }
             }
+        }
+
+        if(LOCAL_MODE.equalsIgnoreCase(this.mode)) {
+            this.instanceId = UUID.randomUUID().toString();
         }
     }
 

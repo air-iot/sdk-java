@@ -86,6 +86,8 @@ public class PointSerializationAdapter extends TypeAdapter<Point> {
         }
         out.endObject();
 
+        out.name("table").value(point.getTable());
+        out.name("id").value(point.getId());
         out.name("source").value("device");
         out.name("cid").value(point.getCid());
         out.name("time").value(point.getTime());

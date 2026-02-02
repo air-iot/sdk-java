@@ -290,10 +290,6 @@ public class DriverMQProperties {
         }
     }
 
-
-    /**
-     * kafka 消息组件
-     */
     public static class Kafka {
         /**
          * kafka 服务地址列表
@@ -395,7 +391,6 @@ public class DriverMQProperties {
          * MQTT 协议
          */
         MQTT,
-
         /**
          * Rabbitmq 协议
          */
@@ -404,5 +399,19 @@ public class DriverMQProperties {
          * kafka 消息组件
          */
         KAFKA,
+        /**
+         * 本地日志
+         */
+        LOCAL,
+    }
+
+    @Override
+    public String toString() {
+        return "DriverMQProperties{" +
+                "type=" + type +
+                ", mqtt=" + mqtt +
+                ", rabbit=" + rabbit +
+                ", kafka=" + kafka +
+                '}';
     }
 }

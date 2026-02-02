@@ -17,23 +17,18 @@
 
 package io.github.airiot.sdk.driver.data.impl;
 
-import io.github.airiot.sdk.driver.GlobalContext;
+import io.github.airiot.sdk.driver.DriverModules;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverMQProperties;
-import io.github.airiot.sdk.driver.data.AbstractDataSender;
-import io.github.airiot.sdk.driver.data.DataHandlerChain;
-import io.github.airiot.sdk.driver.data.DataSenderException;
-import io.github.airiot.sdk.driver.data.LogSenderException;
+import io.github.airiot.sdk.driver.data.*;
 import io.github.airiot.sdk.driver.data.warning.Warning;
 import io.github.airiot.sdk.driver.data.warning.WarningRecovery;
 import io.github.airiot.sdk.driver.data.warning.WarningSenderException;
-import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.logger.LoggerContext;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.github.airiot.sdk.logger.LoggerFactory;
-import io.github.airiot.sdk.driver.DriverModules;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -53,22 +48,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * kafka 消息组件
  */
-public class KafkaDataSender extends AbstractDataSender {
+public class KafkaDataSender extends AbstractDataWriter {
 
-    private final Logger log = LoggerFactory.withContext().module(DriverModules.START).getStaticLogger(MQTTDataSender.class);
+    private final Logger log = LoggerFactory.withContext().module(DriverModules.WRITE_POINTS).getStaticLogger(MQTTDataSender.class);
 
     private final DriverAppProperties driverAppProperties;
     private final DriverMQProperties.Kafka kafkaProperties;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final String projectId;
     private final Integer partition;
     private Producer<String, Bytes> kafkaClient;
 
-    public KafkaDataSender(DriverDataProperties properties,
+    public KafkaDataSender(String projectId, DriverDataProperties properties,
                            DriverAppProperties driverAppProperties,
-                           DriverMQProperties.Kafka kafkaProperties,
-                           GlobalContext globalContext, DataHandlerChain chain,
-                           DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient) {
-        super(properties, driverAppProperties, globalContext, chain, driverGrpcClient);
+                           DriverMQProperties.Kafka kafkaProperties) {
+        super(properties);
+        this.projectId = projectId;
         this.driverAppProperties = driverAppProperties;
         this.kafkaProperties = kafkaProperties;
         this.partition = kafkaProperties.getPartition();
@@ -126,7 +121,7 @@ public class KafkaDataSender extends AbstractDataSender {
     }
 
     @Override
-    public void doWritePoint(Point point) throws Exception {
+    public void writePoint(Point point) throws DataSenderException {
         byte[] payload = this.encode(point);
         String key = String.format("%s/%s/%s", this.projectId, point.getTable(), point.getId());
         ProducerRecord<String, Bytes> record = null;
@@ -144,7 +139,7 @@ public class KafkaDataSender extends AbstractDataSender {
     }
 
     @Override
-    public void doWriteLog(String tableId, String deviceId, String level, String message) throws LogSenderException {
+    public void writeLog(String tableId, String deviceId, String level, String message) throws LogSenderException {
         String key = String.format("%s/%s/%s/%s", this.projectId, level, tableId, deviceId);
         ProducerRecord<String, Bytes> record = new ProducerRecord<>("logs", key, new Bytes(message.getBytes()));
 
