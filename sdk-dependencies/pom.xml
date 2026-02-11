@@ -10,6 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <name>sdk-dependencies</name>
     <artifactId>sdk-dependencies</artifactId>
     <packaging>pom</packaging>
 

@@ -10,6 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <name>sdk-algorithm-starter</name>
     <artifactId>sdk-algorithm-starter</artifactId>
     <description>AIRIOT 物联网平台算法二次开发 SDK</description>
 

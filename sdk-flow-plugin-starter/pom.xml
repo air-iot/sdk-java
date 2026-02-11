@@ -10,6 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <name>sdk-flow-plugin-starter</name>
     <artifactId>sdk-flow-plugin-starter</artifactId>
     <description>AIRIOT 物联网平台流程插件开发 SDK</description>
 

@@ -9,8 +9,8 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>sdk-datarelay-starter</artifactId>
     <name>sdk-datarelay-starter</name>
+    <artifactId>sdk-datarelay-starter</artifactId>
     <description>AIRIOT 平台北向服务二次开发 SDK 包</description>
 
     <dependencies>

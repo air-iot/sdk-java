@@ -27,8 +27,10 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <name>sdk-encrypt-starter</name>
     <artifactId>sdk-encrypt-starter</artifactId>
-    
+    <description>AIRIOT 平台配置解密包</description>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -10,6 +10,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
+    <name>sdk-driver-starter</name>
     <artifactId>sdk-driver-starter</artifactId>
     <description>AIRIOT 物联网平台数据接入驱动开发 SDK</description>
 
