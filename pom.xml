@@ -34,7 +34,7 @@
         <spring-boot.version>4.0.2</spring-boot.version>
         <reactor-netty.version>1.3.2</reactor-netty.version>
         <netty.version>4.2.9.Final</netty.version>
-        <revision>4.4.0-springboot4-SNAPSHOT</revision>
+        <revision>4.5.0-springboot4</revision>
         <maven-compiler-plugin>3.13.0</maven-compiler-plugin>
         <maven-jar-plugin>3.4.2</maven-jar-plugin>
         <maven-flatten-plugin.version>1.6.0</maven-flatten-plugin.version>
