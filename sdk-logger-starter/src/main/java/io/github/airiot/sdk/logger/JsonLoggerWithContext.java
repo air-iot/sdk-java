@@ -17,9 +17,10 @@
 
 package io.github.airiot.sdk.logger;
 
-import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
+import ch.qos.logback.core.ConsoleAppender;
+import ch.qos.logback.core.encoder.LayoutWrappingEncoder;
+import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 
 public class JsonLoggerWithContext implements org.slf4j.Logger {
@@ -29,18 +30,44 @@ public class JsonLoggerWithContext implements org.slf4j.Logger {
     public JsonLoggerWithContext(ch.qos.logback.classic.Logger delegate, LoggerContext context, boolean resetAppender) {
         this.delegate = delegate;
 
-        if (resetAppender) {
+//        if (resetAppender) {
+//            delegate.detachAndStopAllAppenders();
+//
+//            Appender<ILoggingEvent> rootAppender = delegate.getLoggerContext().getLogger(Logger.ROOT_LOGGER_NAME).getAppender(Constants.APPENDER_NAME);
+//
+//            JsonConsoleAppenderWithContext appender = new JsonConsoleAppenderWithContext(context, rootAppender);
+//            appender.setName("JSON_CONSOLE");
+//
+//            delegate.setAdditive(false);
+//            delegate.addAppender(appender);
+//
+//            appender.start();
+//        }
+
+        if(resetAppender) {
+            JsonLayout layout = new JsonLayout();
+            layout.start();
+
+            LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<>();
+            encoder.setLayout(layout);
+
+            ch.qos.logback.classic.LoggerContext lc = (ch.qos.logback.classic.LoggerContext) LoggerFactory.getILoggerFactory();
+            ConsoleAppender<ILoggingEvent> appender = new ConsoleAppender<>();
+
+            appender.setEncoder(encoder);
+            appender.setContext(lc);
+            appender.setName("JSON_CONSOLE_CONTEXT");
+
+            JsonConsoleAppenderWithContext jsonAppender = new JsonConsoleAppenderWithContext(context, appender);
+            jsonAppender.setContext(delegate.getLoggerContext());
+            jsonAppender.setName("JSON_CONSOLE_CONTEXT");
+            jsonAppender.setContext(lc);
+
             delegate.detachAndStopAllAppenders();
-
-            Appender<ILoggingEvent> rootAppender = delegate.getLoggerContext().getLogger(Logger.ROOT_LOGGER_NAME).getAppender(Constants.APPENDER_NAME);
-
-            JsonConsoleAppenderWithContext appender = new JsonConsoleAppenderWithContext(context, rootAppender);
-            appender.setName("JSON_CONSOLE");
-
             delegate.setAdditive(false);
-            delegate.addAppender(appender);
-            
-            appender.start();
+
+            delegate.addAppender(jsonAppender);
+            jsonAppender.start();
         }
     }
 

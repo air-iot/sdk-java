@@ -20,6 +20,7 @@ package io.github.airiot.sdk.driver.configuration;
 
 import io.github.airiot.sdk.driver.DriverApp;
 import io.github.airiot.sdk.driver.GlobalContext;
+import io.github.airiot.sdk.driver.ai.AIServer;
 import io.github.airiot.sdk.driver.configuration.properties.DriverAppProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverDataProperties;
 import io.github.airiot.sdk.driver.configuration.properties.DriverListenerProperties;
@@ -33,7 +34,6 @@ import io.github.airiot.sdk.driver.data.impl.MQTTDataSender;
 import io.github.airiot.sdk.driver.grpc.driver.DriverServiceGrpc;
 import io.github.airiot.sdk.driver.listener.DriverEventListener;
 import io.github.airiot.sdk.driver.listener.GrpcDriverEventListener;
-import io.github.airiot.sdk.driver.listener.LocalDriverEventListener;
 import io.github.airiot.sdk.logger.LoggerContexts;
 import io.grpc.Channel;
 import io.grpc.ManagedChannelBuilder;
@@ -43,6 +43,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.ImportRuntimeHints;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -51,7 +52,8 @@ import java.util.stream.Collectors;
  * 驱动配置类
  */
 @Configuration
-@EnableConfigurationProperties({DriverAppProperties.class, DriverDataProperties.class, DriverMQProperties.class, DriverListenerProperties.class,})
+@ImportRuntimeHints(GraalvmRuntimeHits.class)
+@EnableConfigurationProperties({DriverAppProperties.class, DriverDataProperties.class, DriverMQProperties.class, DriverListenerProperties.class})
 public class DriverAutoConfiguration {
 
     public DriverAutoConfiguration(DriverAppProperties properties) {
@@ -77,32 +79,38 @@ public class DriverAutoConfiguration {
     }
 
     @Bean
+    public AIServer aiServer(DriverAppProperties properties,
+                             GlobalContext globalContext,
+                             ObjectProvider<DriverApp> driverApp,
+                             DataDispatchers dispatchers) {
+        DriverApp<Object, Object, Object> app = driverApp.getIfUnique();
+        if (app == null) {
+            throw new BeanCreationException("未找到或找到多个 DriverApp 实例");
+        }
+        return new AIServer(properties, globalContext, app, dispatchers);
+    }
+
+    @Bean
     public DriverEventListener driverEventListener(DriverListenerProperties properties,
                                                    DriverAppProperties driverProperties,
                                                    ObjectProvider<DriverApp> driverApp,
                                                    GlobalContext globalContext) {
-        if (DriverAppProperties.NORMAL_MODE.equalsIgnoreCase(driverProperties.getMode())) {
-            DriverApp<Object, Object, Object> app = driverApp.getIfUnique();
-            if (app == null) {
-                throw new BeanCreationException("未找到或找到多个 DriverApp 实例");
-            }
-
-            Channel channel = ManagedChannelBuilder.forAddress(properties.getHost(), properties.getPort())
-                    .usePlaintext()
-                    .maxInboundMessageSize(properties.getMaxInboundMessageSize())
-                    .disableRetry()
-                    .build();
-            DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient = DriverServiceGrpc.newBlockingStub(channel);
-
-            return new GrpcDriverEventListener(
-                    driverProperties, properties,
-                    globalContext, app, driverGrpcClient
-            );
-        } else if (DriverAppProperties.LOCAL_MODE.equalsIgnoreCase(driverProperties.getMode())) {
-            return new LocalDriverEventListener();
+        DriverApp<Object, Object, Object> app = driverApp.getIfUnique();
+        if (app == null) {
+            throw new BeanCreationException("未找到或找到多个 DriverApp 实例");
         }
 
-        return null;
+        Channel channel = ManagedChannelBuilder.forAddress(properties.getHost(), properties.getPort())
+                .usePlaintext()
+                .maxInboundMessageSize(properties.getMaxInboundMessageSize())
+                .disableRetry()
+                .build();
+        DriverServiceGrpc.DriverServiceBlockingStub driverGrpcClient = DriverServiceGrpc.newBlockingStub(channel);
+
+        return new GrpcDriverEventListener(
+                driverProperties, properties,
+                globalContext, app, driverGrpcClient
+        );
     }
 
     @Bean

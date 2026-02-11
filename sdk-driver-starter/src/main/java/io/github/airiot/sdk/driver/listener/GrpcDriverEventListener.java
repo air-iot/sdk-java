@@ -535,6 +535,11 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
     @Override
     public void start() {
+        if (!this.grpcProperties.isEnabled()) {
+            log.info("GRPC Driver 未启用");
+            return;
+        }
+
         if (!state.compareAndSet(State.CLOSED, State.CONNECTING)) {
             return;
         }
@@ -667,7 +672,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
 
         this.lastConnectTime = System.currentTimeMillis();
 
-        log.info("连接 Driver 服务线程已启动, 重连间隔 {}ms", retryInterval);
+        log.info("连接 Driver 服务线程已启动, 目标地址: {}, 重连间隔: {}ms", channel, retryInterval);
 
         while (this.state.get().isRunning()) {
             retryTimes++;
@@ -780,7 +785,6 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 this.configUpdateCall.request(Integer.MAX_VALUE);
 
                 this.state.set(State.RUNNING);
-                this.lastConnectTime = 0;
 
                 log.info("连接 Driver 服务: 第 {} 次连接成功", retryTimes);
 
@@ -1481,7 +1485,9 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             }
                         }
                         String deviceId = device.getId();
-                        DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, instanceId, deviceTags);
+                        DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, instanceId,
+                                device.getConfig() == null ? null : device.getConfig().getSettings(),
+                                deviceTags);
                         deviceInfos.putIfAbsent(deviceId, new ArrayList<>(1));
                         deviceInfos.get(deviceId).add(info);
                     }
@@ -1629,13 +1635,13 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 return;
             }
 
-            logger.info("req = {}, type = schema", request.getRequest());
+            logger.info("req = {}, type = schema", req);
 
             Result result = new Result();
             try {
                 String schema = this.driverApp.schema(request.getLocale());
                 if (logger.isDebugEnabled()) {
-                    logger.debug("req = {}, type = schema, {}", request.getRequest(), schema);
+                    logger.debug("req = {}, type = schema, {}", req, schema);
                 }
 
                 if (schema != null) {
@@ -1647,14 +1653,15 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                 result.setCode(200);
                 result.setResult(schema);
             } catch (Exception e) {
-                logger.error("req = {}, type = schema", request.getRequest(), e);
+                logger.error("req = {}, type = schema", req, e);
                 result.setCode(400);
                 result.setError(e.getMessage() != null ? e.getMessage() : e.getClass().getName());
             }
 
             String message = new Gson().toJson(result);
+
             clientCall.sendMessage(SchemaResult.newBuilder()
-                    .setRequest(request.getRequest())
+                    .setRequest(req)
                     .setMessage(ByteString.copyFrom(message, StandardCharsets.UTF_8))
                     .build());
         }
@@ -1872,7 +1879,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             // 重置全局缓存
 
                             driverApp.onEditDriver(editDriver.getDriver().toByteArray());
-                            resetGlobalContext(this.globalContext, driverConfig);
+                            this.globalContext.resetGlobalContext(driverConfig);
 
                             logger.info("配置变更新: req={}. 修改驱动实例成功", req);
 
@@ -1900,7 +1907,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             tableConfig.setId(addTable.getTableId());
                             driverApp.onAddTable(addTable.getTableId(), addTable.getTable().toByteArray());
 
-                            resetGlobalContextOfTable(this.globalContext, this.driverInstanceId, tableConfig);
+                            this.globalContext.resetGlobalContextOfTable(this.driverInstanceId, tableConfig);
 
                             logger.info("配置变更新: req={},表={}. 新增表成功", req, addTable.getTableId());
 
@@ -1929,7 +1936,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             tableConfig.setId(editTable.getTableId());
 
                             driverApp.onEditTable(editTable.getTableId(), editTable.getTable().toByteArray());
-                            resetGlobalContextOfTable(this.globalContext, this.driverInstanceId, tableConfig);
+                            this.globalContext.resetGlobalContextOfTable(this.driverInstanceId, tableConfig);
 
                             logger.info("配置变更新: req={},表={}. 修改表成功", req, editTable.getTableId());
 
@@ -1975,7 +1982,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             deviceConfig.setId(addDevice.getTableDataId());
                             deviceConfig.setTable(addDevice.getTableId());
                             driverApp.onAddDevice(addDevice.getTableId(), addDevice.getTableDataId(), addDevice.getTableData().toByteArray());
-                            resetGlobalContextOfDevice(this.globalContext, this.driverInstanceId, deviceConfig);
+                            this.globalContext.resetGlobalContextOfDevice(this.driverInstanceId, deviceConfig);
 
                             logger.info("配置变更新: req={},设备表={},设备={}. 新增设备成功", req, addDevice.getTableId(), addDevice.getTableDataId());
 
@@ -2022,7 +2029,7 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
                             deviceConfig.setId(editDevice.getTableDataId());
                             driverApp.onEditDevice(editDevice.getTableId(), editDevice.getTableDataId(), editDevice.getTableData().toByteArray());
 
-                            resetGlobalContextOfDevice(this.globalContext, this.driverInstanceId, deviceConfig);
+                            this.globalContext.resetGlobalContextOfDevice(this.driverInstanceId, deviceConfig);
 
                             logger.info("配置变更新: req={},设备表={},设备={}. 编辑设备成功", req, editDevice.getTableId(), editDevice.getTableDataId());
 
@@ -2091,97 +2098,6 @@ public class GrpcDriverEventListener implements DriverEventListener, Application
         public boolean isRunning() {
             return !State.CLOSING.equals(this) && !State.CLOSED.equals(this);
         }
-    }
-
-    static void resetGlobalContext(GlobalContext globalContext, DriverSingleConfig<BasicConfig<? extends Tag>> driverConfig) {
-        String instanceId = driverConfig.getId();
-        Map<String, List<DeviceInfo<? extends Tag>>> deviceInfos = new HashMap<>();
-        Map<String, Map<String, Tag>> allTableTags = new HashMap<>();
-
-        Map<String, Tag> driverInstanceTags = new HashMap<>();
-        if (driverConfig.getConfig() != null && !CollectionUtils.isEmpty(driverConfig.getConfig().getTags())) {
-            for (Tag tag : driverConfig.getConfig().getTags()) {
-                driverInstanceTags.put(tag.getId(), tag);
-            }
-        }
-
-        if (!CollectionUtils.isEmpty(driverConfig.getTables())) {
-            for (Model<BasicConfig<? extends Tag>, BasicConfig<? extends Tag>> table : driverConfig.getTables()) {
-                String tableId = table.getId();
-                table.setDriverInstanceId(instanceId);
-                Map<String, Tag> tableTags = new HashMap<>(driverInstanceTags);
-                if (table.getConfig() != null && !CollectionUtils.isEmpty(table.getConfig().getTags())) {
-                    for (Tag tag : table.getConfig().getTags()) {
-                        tableTags.put(tag.getId(), tag);
-                    }
-                }
-
-                allTableTags.put(tableId, tableTags);
-
-                for (Device<BasicConfig<? extends Tag>> device : table.getDevices()) {
-                    device.setDriverInstanceId(instanceId);
-                    device.setTable(tableId);
-
-                    Map<String, Tag> deviceTags = new HashMap<>(tableTags);
-                    if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
-                        for (Tag tag : device.getConfig().getTags()) {
-                            deviceTags.put(tag.getId(), tag);
-                        }
-                    }
-                    String deviceId = device.getId();
-                    DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, instanceId, deviceTags);
-                    deviceInfos.putIfAbsent(deviceId, new ArrayList<>(1));
-                    deviceInfos.get(deviceId).add(info);
-                }
-            }
-        }
-
-        globalContext.set(deviceInfos);
-        globalContext.setAllTableTags(allTableTags);
-    }
-
-    static void resetGlobalContextOfTable(GlobalContext globalContext, String driverInstanceId, DriverSingleConfig.Model<BasicConfig<? extends Tag>> table) {
-        String tableId = table.getId();
-        List<DeviceInfo<? extends Tag>> deviceInfos = new ArrayList<>();
-        Map<String, Tag> tableTags = new HashMap<>();
-
-        if (table.getConfig() != null && !CollectionUtils.isEmpty(table.getConfig().getTags())) {
-            for (Tag tag : table.getConfig().getTags()) {
-                tableTags.put(tag.getId(), tag);
-            }
-        }
-
-        if (!CollectionUtils.isEmpty(table.getDevices())) {
-            for (Device<BasicConfig<? extends Tag>> device : table.getDevices()) {
-                Map<String, Tag> deviceTags = new HashMap<>(tableTags);
-                if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
-                    for (Tag tag : device.getConfig().getTags()) {
-                        deviceTags.put(tag.getId(), tag);
-                    }
-                }
-
-                String deviceId = device.getId();
-                DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, driverInstanceId, deviceTags);
-                deviceInfos.add(info);
-            }
-        }
-
-        globalContext.setTableDevices(tableId, deviceInfos);
-        globalContext.setTableTags(tableId, tableTags);
-    }
-
-    static void resetGlobalContextOfDevice(GlobalContext globalContext, String driverInstanceId, Device<BasicConfig<? extends Tag>> device) {
-        ;
-        String tableId = device.getTable();
-        Map<String, Tag> deviceTags = new HashMap<>(globalContext.getTableTags(tableId));
-        if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
-            for (Tag tag : device.getConfig().getTags()) {
-                deviceTags.put(tag.getId(), tag);
-            }
-        }
-        String deviceId = device.getId();
-        DeviceInfo<? extends Tag> deviceInfo = new DeviceInfo<>(deviceId, tableId, driverInstanceId, deviceTags);
-        globalContext.addDevice(deviceInfo);
     }
 }
 

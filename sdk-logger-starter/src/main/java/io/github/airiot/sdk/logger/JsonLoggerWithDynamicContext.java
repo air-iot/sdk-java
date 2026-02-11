@@ -19,7 +19,9 @@ package io.github.airiot.sdk.logger;
 
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
+import ch.qos.logback.core.ConsoleAppender;
+import ch.qos.logback.core.encoder.LayoutWrappingEncoder;
+import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 
 public class JsonLoggerWithDynamicContext implements org.slf4j.Logger {
@@ -29,18 +31,42 @@ public class JsonLoggerWithDynamicContext implements org.slf4j.Logger {
     public JsonLoggerWithDynamicContext(Logger delegate, LoggerContext context, boolean resetAppender) {
         this.delegate = delegate;
 
-        if (resetAppender) {
+//        if (resetAppender) {
+//            delegate.detachAndStopAllAppenders();
+//
+//            Appender<ILoggingEvent> rootAppender = delegate.getLoggerContext().getLogger(Logger.ROOT_LOGGER_NAME).getAppender(Constants.APPENDER_NAME);
+//
+//            JsonConsoleAppenderWithDynamicContext appender = new JsonConsoleAppenderWithDynamicContext(context, rootAppender);
+//            appender.setName("JSON_CONSOLE");
+//
+//            delegate.setAdditive(false);
+//            delegate.addAppender(appender);
+//
+//            appender.start();
+//        }
+
+        if(resetAppender) {
+            JsonLayout layout = new JsonLayout();
+            layout.start();
+
+            LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<>();
+            encoder.setLayout(layout);
+
+            ch.qos.logback.classic.LoggerContext lc = (ch.qos.logback.classic.LoggerContext) LoggerFactory.getILoggerFactory();
+            ConsoleAppender<ILoggingEvent> appender = new ConsoleAppender<>();
+
+            appender.setEncoder(encoder);
+            appender.setContext(lc);
+            appender.setName("JSON_CONSOLE_DYNAMIC_CONTEXT");
+
             delegate.detachAndStopAllAppenders();
 
-            Appender<ILoggingEvent> rootAppender = delegate.getLoggerContext().getLogger(Logger.ROOT_LOGGER_NAME).getAppender(Constants.APPENDER_NAME);
-
-            JsonConsoleAppenderWithDynamicContext appender = new JsonConsoleAppenderWithDynamicContext(context, rootAppender);
-            appender.setName("JSON_CONSOLE");
+            JsonConsoleAppenderWithDynamicContext jsonAppender = new JsonConsoleAppenderWithDynamicContext(context, appender);
+            jsonAppender.setContext(delegate.getLoggerContext());
 
             delegate.setAdditive(false);
-            delegate.addAppender(appender);
-
-            appender.start();
+            delegate.addAppender(jsonAppender);
+            jsonAppender.start();
         }
     }
 

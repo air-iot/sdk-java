@@ -1,13 +1,10 @@
 package io.github.airiot.config.etcd;
 
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-@ConfigurationProperties(EtcdConfigProperties.PREFIX)
 public class EtcdConfigProperties {
 
     public static final String PREFIX = "airiot.config.etcd";

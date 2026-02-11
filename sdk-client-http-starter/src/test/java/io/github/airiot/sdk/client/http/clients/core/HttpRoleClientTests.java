@@ -28,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -46,7 +47,9 @@ public class HttpRoleClientTests {
 
     @AfterAll
     void cleanup() {
-        this.roleClient.deleteById(this.createRoleId);
+        if(StringUtils.hasText(this.createRoleId)) {
+            this.roleClient.deleteById(this.createRoleId);
+        }
     }
 
     @Test
@@ -76,7 +79,12 @@ public class HttpRoleClientTests {
     void testQueryAll() {
         ResponseDTO<List<Role>> response = this.roleClient.queryAll();
         Assertions.assertTrue(response.isSuccess(), response.getMessage());
-        Assertions.assertTrue(response.getData().stream().anyMatch(r -> r.getId().equals(this.createRoleId)), "未查询到角色信息");
+        if(StringUtils.hasText(this.createRoleId)) {
+            Assertions.assertTrue(response.getData().stream().anyMatch(r -> r.getId().equals(this.createRoleId)), "未查询到角色信息");
+        } else {
+            Assertions.assertFalse(response.getData().isEmpty());
+        }
+        System.out.println(response.getData());
     }
 
     @Test

@@ -18,7 +18,11 @@
 package io.github.airiot.sdk.driver.configuration.properties;
 
 
+import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.EnvironmentAware;
+import org.springframework.core.env.Environment;
 
 import java.time.Duration;
 
@@ -27,10 +31,14 @@ import java.time.Duration;
  * 驱动事件监听器配置
  */
 @ConfigurationProperties(prefix = "driver-grpc")
-public class DriverListenerProperties {
+public class DriverListenerProperties implements EnvironmentAware, InitializingBean {
 
+    private Environment environment;
+
+    private boolean enabled = true;
     private String host = "driver";
     private int port = 9224;
+    
     /**
      * 最大接收消息大小
      * <br>
@@ -53,6 +61,10 @@ public class DriverListenerProperties {
      * 指令结果发送队列大小
      */
     private int runResultQueueSize = 1024;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
 
     public String getHost() {
         return host;
@@ -116,5 +128,17 @@ public class DriverListenerProperties {
 
     public void setRunResultQueueSize(int runResultQueueSize) {
         this.runResultQueueSize = runResultQueueSize;
+    }
+
+    @Override
+    public void setEnvironment(@NonNull Environment environment) {
+        this.environment = environment;
+    }
+
+    @Override
+    public void afterPropertiesSet() throws Exception {
+        this.enabled = this.environment.getProperty("DRIVERGRPC.ENABLE", Boolean.class, true);
+        this.host = this.environment.getProperty("DRIVERGRPC.HOST", "127.0.0.1");
+        this.port = this.environment.getProperty("DRIVERGRPC.PORT", Integer.class, 9224);
     }
 }

@@ -17,10 +17,9 @@
 
 package io.github.airiot.sdk.client.service.spm;
 
-import io.github.airiot.sdk.client.dto.Token;
-import io.github.airiot.sdk.client.annotation.DisableAuth;
 import io.github.airiot.sdk.client.annotation.NonProject;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
+import io.github.airiot.sdk.client.dto.Token;
 import io.github.airiot.sdk.client.service.PlatformClient;
 
 import javax.annotation.Nonnull;
@@ -38,7 +37,6 @@ public interface SpmUserClient extends PlatformClient {
      * @param appSecret 扩展应用密钥
      * @return token
      */
-    @DisableAuth
     ResponseDTO<Token> getToken(@Nonnull String appKey, @Nonnull String appSecret);
 
 }

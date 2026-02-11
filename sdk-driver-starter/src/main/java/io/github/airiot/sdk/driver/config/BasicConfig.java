@@ -28,11 +28,24 @@ import java.util.List;
  * 如果驱动中的配置类为该类的子类时, 则会自动将驱动实例和模型中配置的数据点合并到设备中
  */
 public class BasicConfig<T extends Tag> {
+    
+    /**
+     * 驱动配置
+     */
+    private BasicSettings settings;
 
     /**
      * 数据点列表
      */
     private List<T> tags;
+
+    public BasicSettings getSettings() {
+        return settings;
+    }
+
+    public void setSettings(BasicSettings settings) {
+        this.settings = settings;
+    }
 
     public List<T> getTags() {
         return tags;

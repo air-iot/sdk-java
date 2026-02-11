@@ -18,47 +18,64 @@
 package io.github.airiot.sdk.client.http.clients.common;
 
 
-import io.github.airiot.sdk.client.context.RequestContext;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
-import io.github.airiot.sdk.client.dto.Token;
 import io.github.airiot.sdk.client.exception.RequestFailedException;
 import io.github.airiot.sdk.client.gson.CustomGson;
-import io.github.airiot.sdk.client.http.feign.ResponseError;
+import io.github.airiot.sdk.client.http.clients.WebClientUtils;
 import io.github.airiot.sdk.client.service.AuthorizationClient;
 import io.github.airiot.sdk.client.service.Constants;
-import okhttp3.*;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import io.netty.channel.ChannelOption;
+import io.netty.handler.codec.http.HttpHeaders;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import reactor.core.publisher.Mono;
+import reactor.netty.ByteBufFlux;
+import reactor.netty.ByteBufMono;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.http.client.HttpClientRequest;
+import reactor.netty.http.client.HttpClientResponse;
+import reactor.netty.resources.ConnectionProvider;
 
-import java.io.IOException;
+import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 /**
  * 通用的 HTTP 客户端.
  */
-public class HttpCommonClient implements Authenticator {
+public class HttpCommonClient {
 
-    private final OkHttpClient httpClient;
-    private final AuthorizationClient authorizationClient;
+    private final ConnectionProvider provider;
     private final String baseUrl;
+    private final Duration connectTimeout;
+    private final Duration callTimeout;
+    private final Duration writeTimeout;
+    private final BiConsumer<? super HttpClientRequest, ? super SocketAddress> authenticator;
 
     public HttpCommonClient(String baseUrl, AuthorizationClient authorizationClient,
                             Duration connectTimeout, Duration callTimeout, Duration writeTimeout) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-        this.authorizationClient = authorizationClient;
-        //noinspection KotlinInternalInJava
-        this.httpClient = new OkHttpClient.Builder()
-                .connectTimeout(connectTimeout)
-                .callTimeout(callTimeout)
-                .writeTimeout(writeTimeout)
-                .authenticator(this).build();
+        this.connectTimeout = connectTimeout;
+        this.callTimeout = callTimeout;
+        this.writeTimeout = writeTimeout;
+
+        this.authenticator = WebClientUtils.httpAuthentication(authorizationClient);
+        this.provider = ConnectionProvider.builder("airiot")
+                .maxConnections(20)
+                .maxIdleTime(Duration.ofSeconds(60))
+                .maxLifeTime(Duration.ofSeconds(300))
+                .pendingAcquireTimeout(Duration.ofSeconds(5))
+                .build();
     }
 
-    Call handleContext(Context context, Request.Builder request) {
+    HttpClient createClient(Duration connectTimeout) {
+        return HttpClient.create(provider)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectTimeout.toMillis())
+                .httpAuthentication((req, address) -> true, this.authenticator);
+    }
+
+    void handleContext(Context context, HttpClientRequest request) {
         if (StringUtils.hasText(context.getProjectId())) {
             request.header(Constants.HEADER_PROJECT, context.getProjectId());
         }
@@ -71,59 +88,52 @@ public class HttpCommonClient implements Authenticator {
             context.getHeaders().forEach(request::header);
         }
 
-        Call call = this.httpClient.newCall(request.build());
         if (context.getTimeout() != null) {
-            long timeout = context.getTimeout().toMillis();
-            if (timeout > 0) {
-                call.timeout().timeout(timeout, TimeUnit.MILLISECONDS);
-            } else {
-                call.timeout().clearTimeout();
-            }
+            request.responseTimeout(context.getTimeout());
         }
-
-        return call;
     }
 
-    <T> ResponseDTO<T> handleResponse(Response response, Class<T> clazz) throws IOException {
-        if (response.isSuccessful()) {
+    <T> Mono<ResponseDTO<T>> handleResponse(HttpClientResponse response, ByteBufMono bodyFlux, Class<T> clazz) {
+        int statusCode = response.status().code();
+        if (statusCode >= 200 && statusCode < 300) {
             if (clazz == Void.class) {
-                return new ResponseDTO<>(true, 0, 200, "OK", "", null);
+                return Mono.just(new ResponseDTO<>(true, 0, 200, "OK", "", null));
             }
 
-            ResponseBody body = response.body();
-            if (body == null) {
-                return new ResponseDTO<>(true, 0, 200, "OK", "", null);
-            }
+            HttpHeaders headers = response.responseHeaders();
+            return bodyFlux.asString(StandardCharsets.UTF_8).flatMap(body -> {
+                int count = 0;
+                String headerCount = headers.get(Constants.HEADER_COUNT);
+                if (StringUtils.hasText(headerCount)) {
+                    count = Integer.parseInt(headerCount);
+                }
 
-            int count = 0;
-            String headerCount = response.header(Constants.HEADER_COUNT);
-            if (StringUtils.hasText(headerCount)) {
-                count = Integer.parseInt(headerCount);
-            }
+                if (!StringUtils.hasText(body)) {
+                    return Mono.just(new ResponseDTO<T>(true, 0, statusCode, "OK", "", null));
+                }
 
-            // 如果返回值是 String 类型, 则直接返回字符串
-            if (clazz == String.class) {
-                String data = new String(body.bytes(), StandardCharsets.UTF_8);
-                //noinspection unchecked
-                return (ResponseDTO<T>) (new ResponseDTO<>(true, count, 200, "OK", "", data));
-            }
+                // 如果返回值是 String 类型, 则直接返回字符串
+                if (clazz == String.class) {
+                    return Mono.just(new ResponseDTO<T>(true, count, statusCode, "OK", "", clazz.cast(body)));
+                }
 
-            T result = CustomGson.GSON.fromJson(body.charStream(), clazz);
-            return new ResponseDTO<>(true, count, 200, "OK", "", result);
+                T result = CustomGson.GSON.fromJson(body, clazz);
+                return Mono.just(new ResponseDTO<T>(true, count, statusCode, "OK", "", result));
+            });
         }
 
-        ResponseBody body = response.body();
-        if (body == null) {
-            return new ResponseDTO<>(false, 0, response.code(), "未知原因", "响应体为空", null);
-        }
+        return bodyFlux.asString(StandardCharsets.UTF_8).flatMap(body -> {
+            if (!StringUtils.hasText(body)) {
+                return Mono.just(new ResponseDTO<>(false, 0, statusCode, "未知原因", "响应体为空", null));
+            }
 
-        String bodyStr = new String(body.bytes(), StandardCharsets.UTF_8);
-        ResponseError error = CustomGson.GSON.fromJson(bodyStr, ResponseError.class);
-        if (error == null) {
-            return new ResponseDTO<>(false, 0, response.code(), "未知原因", bodyStr, null);
-        }
+            ResponseDTO<T> responseDTO = (ResponseDTO<T>)CustomGson.GSON.fromJson(body, ResponseDTO.class);
+            if (responseDTO == null) {
+                return Mono.just(new ResponseDTO<>(false, 0, statusCode, "未知原因", body, null));
+            }
 
-        return new ResponseDTO<>(false, 0, response.code(), error.getMessage(), error.getDetail(), error.getField(), null);
+            return Mono.just(responseDTO);
+        });
     }
 
     String handleUrl(String url) {
@@ -142,21 +152,14 @@ public class HttpCommonClient implements Authenticator {
         return this.baseUrl + "/" + url;
     }
 
-    RequestBody createRequestBody(Object body) {
+    ByteBufFlux createRequestBody(Object body) {
         if (body instanceof String) {
-            return RequestBody.create(((String) body).getBytes(StandardCharsets.UTF_8));
+            return ByteBufFlux.fromString(Mono.just(String.valueOf(body)));
         } else if (body instanceof byte[]) {
-            return RequestBody.create((byte[]) body);
+            return ByteBufFlux.fromString(Mono.just(new String((byte[]) body, StandardCharsets.UTF_8)));
         } else {
-            return RequestBody.create(CustomGson.GSON.toJson(body).getBytes(StandardCharsets.UTF_8));
-        }
-    }
-
-    <T> ResponseDTO<T> call(Call call, Class<T> clazz) {
-        try {
-            return this.handleResponse(call.execute(), clazz);
-        } catch (Exception e) {
-            throw new RequestFailedException(500, e.getMessage(), "", e);
+            byte[] bodyBytes = CustomGson.GSON.toJson(body).getBytes(StandardCharsets.UTF_8);
+            return ByteBufFlux.fromString(Mono.just(new String(bodyBytes, StandardCharsets.UTF_8)));
         }
     }
 
@@ -249,8 +252,13 @@ public class HttpCommonClient implements Authenticator {
      * @throws RequestFailedException 如果请求失败
      */
     public <T> ResponseDTO<T> get(Context context, String url, Class<T> clazz) {
-        Request.Builder builder = new Request.Builder().url(this.handleUrl(url)).get();
-        return this.call(this.handleContext(context, builder), clazz);
+        return this.createClient(this.connectTimeout)
+                .doOnRequest((req, conn) -> this.handleContext(context, req))
+                .get()
+                .uri(this.handleUrl(url))
+                .responseSingle((resp, respBody) -> this.handleResponse(resp, respBody, clazz))
+                .timeout(context.getTimeoutOrDefault(this.callTimeout))
+                .block();
     }
 
     /**
@@ -266,11 +274,14 @@ public class HttpCommonClient implements Authenticator {
      * @throws RequestFailedException 如果请求失败
      */
     public <B, T> ResponseDTO<T> post(Context context, String url, B body, Class<T> clazz) {
-        if (body == null) {
-            throw new IllegalArgumentException("请求体不能为空");
-        }
-        Request.Builder builder = new Request.Builder().url(this.handleUrl(url)).post(this.createRequestBody(body));
-        return this.call(this.handleContext(context, builder), clazz);
+        return this.createClient(this.connectTimeout)
+                .doOnRequest((req, conn) -> this.handleContext(context, req))
+                .post()
+                .uri(this.handleUrl(url))
+                .send((req, outbound) -> body == null ? Mono.empty() : outbound.send(this.createRequestBody(body)))
+                .responseSingle((resp, respBody) -> this.handleResponse(resp, respBody, clazz))
+                .timeout(context.getTimeoutOrDefault(this.callTimeout))
+                .block();
     }
 
     /**
@@ -286,11 +297,14 @@ public class HttpCommonClient implements Authenticator {
      * @throws RequestFailedException 如果请求失败
      */
     public <B, T> ResponseDTO<T> put(Context context, String url, B body, Class<T> clazz) {
-        if (body == null) {
-            throw new IllegalArgumentException("请求体不能为空");
-        }
-        Request.Builder builder = new Request.Builder().url(this.handleUrl(url)).put(this.createRequestBody(body));
-        return this.call(this.handleContext(context, builder), clazz);
+        return this.createClient(this.connectTimeout)
+                .doOnRequest((req, conn) -> this.handleContext(context, req))
+                .put()
+                .uri(this.handleUrl(url))
+                .send((req, outbound) -> body == null ? Mono.empty() : outbound.send(this.createRequestBody(body)))
+                .responseSingle((resp, respBody) -> this.handleResponse(resp, respBody, clazz))
+                .timeout(context.getTimeoutOrDefault(this.callTimeout))
+                .block();
     }
 
     /**
@@ -307,11 +321,14 @@ public class HttpCommonClient implements Authenticator {
      * @throws RequestFailedException   如果请求失败
      */
     public <B, T> ResponseDTO<T> patch(Context context, String url, B body, Class<T> clazz) {
-        if (body == null) {
-            throw new IllegalArgumentException("请求体不能为空");
-        }
-        Request.Builder builder = new Request.Builder().url(this.handleUrl(url)).patch(this.createRequestBody(body));
-        return this.call(this.handleContext(context, builder), clazz);
+        return this.createClient(this.connectTimeout)
+                .doOnRequest((req, conn) -> this.handleContext(context, req))
+                .patch()
+                .uri(this.handleUrl(url))
+                .send((req, outbound) -> body == null ? Mono.empty() : outbound.send(this.createRequestBody(body)))
+                .responseSingle((resp, respBody) -> this.handleResponse(resp, respBody, clazz))
+                .timeout(context.getTimeoutOrDefault(this.callTimeout))
+                .block();
     }
 
     /**
@@ -327,28 +344,13 @@ public class HttpCommonClient implements Authenticator {
      * @throws RequestFailedException 如果请求失败
      */
     public <B, T> ResponseDTO<T> delete(Context context, String url, B body, Class<T> clazz) {
-        Request.Builder builder = new Request.Builder().url(this.handleUrl(url));
-        if (body != null) {
-            builder.delete(this.createRequestBody(body));
-        } else {
-            builder.delete();
-        }
-        return this.call(this.handleContext(context, builder), clazz);
-    }
-
-    @Nullable
-    @Override
-    public Request authenticate(@Nullable Route route, @NotNull Response response) throws IOException {
-        // 如果启用了身份认证
-        if (RequestContext.isAuthEnabled()) {
-            if (response.request().header(Constants.HEADER_AUTHORIZATION) != null) {
-                // 如果已经有了 Authorization 头，说明已经认证过了，不需要再次认证
-                return response.request();
-            }
-
-            Token token = this.authorizationClient.getToken();
-            return response.request().newBuilder().header(Constants.HEADER_AUTHORIZATION, token.getToken()).build();
-        }
-        return response.request();
+        return this.createClient(this.connectTimeout)
+                .doOnRequest((req, conn) -> this.handleContext(context, req))
+                .delete()
+                .uri(this.handleUrl(url))
+                .send((req, outbound) -> body == null ? Mono.empty() : outbound.send(this.createRequestBody(body)))
+                .responseSingle((resp, respBody) -> this.handleResponse(resp, respBody, clazz))
+                .timeout(context.getTimeoutOrDefault(this.callTimeout))
+                .block();
     }
 }

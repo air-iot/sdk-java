@@ -22,14 +22,14 @@ import io.github.airiot.sdk.client.service.core.TableDataClientFactory;
 
 public class TableDataClientFactoryImpl extends TableDataClientFactory {
 
-    private final TableDataFeignClient tableDataFeignClient;
+    private final TableDataClientImpl tableDataClientImpl;
 
-    public TableDataClientFactoryImpl(TableDataFeignClient tableDataFeignClient) {
-        this.tableDataFeignClient = tableDataFeignClient;
+    public TableDataClientFactoryImpl(TableDataClientImpl tableDataClientImpl) {
+        this.tableDataClientImpl = tableDataClientImpl;
     }
     
     @Override
     protected <T> SpecificTableDataClient<T> createClient(String tableId, Class<T> clazz) {
-        return new SpecificTableDataFeignClient<>(tableId, clazz, this.tableDataFeignClient);
+        return new SpecificTableDataClientImpl<>(tableId, clazz, this.tableDataClientImpl);
     }
 }

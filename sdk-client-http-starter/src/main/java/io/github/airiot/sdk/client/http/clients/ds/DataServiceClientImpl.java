@@ -17,36 +17,41 @@
 
 package io.github.airiot.sdk.client.http.clients.ds;
 
-import com.google.gson.Gson;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
+import io.github.airiot.sdk.client.gson.CustomGson;
 import io.github.airiot.sdk.client.service.ds.DataServiceClient;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.service.annotation.PostExchange;
 
 import java.util.Map;
 
-/**
- * 数据接口客户端实现
- */
-public class DataServiceClientImpl implements DataServiceClient {
+@HttpExchange
+public interface DataServiceClientImpl extends DataServiceClient {
 
-    private final Gson gson = new Gson();
+    /**
+     * 调用数据接口
+     *
+     * @param dsId   数据接口ID
+     * @param params 请求参数
+     * @return 请求结果
+     */
+    @PostExchange("/ds/p/{dsId}")
+    ResponseDTO<String> call(@NonNull @PathVariable("dsId") String dsId, @Nullable @RequestBody Map<String, Object> params);
 
-    private final DataServiceFeignClient feignClient;
-
-    public DataServiceClientImpl(DataServiceFeignClient dataServiceFeignClient) {
-        this.feignClient = dataServiceFeignClient;
-    }
-
-    @Override
-    public <T> ResponseDTO<T> call(@NotNull Class<T> tClass, @NotNull String dsId, @Nullable Map<String, Object> params) {
-        ResponseDTO<String> response = this.feignClient.call(dsId, params);
+    default <T> ResponseDTO<T> call(Class<T> clazz, @NonNull String dsId, @Nullable Map<String, Object> params) {
+        ResponseDTO<String> response = this.call(dsId, params);
         if (!response.isSuccess() || !StringUtils.hasText(response.getData())) {
             return response.to();
+        } else if (String.class.isAssignableFrom(clazz)) {
+            return response.to((T) response.getData());
         }
 
-        T data = this.gson.fromJson(response.getData(), tClass);
-        return response.to(data);
+        T data = CustomGson.GSON.fromJson(response.getData(), clazz);
+        return new ResponseDTO<T>(response.isSuccess(), 0, response.getCode(), response.getMessage(), response.getDetail(), response.getField(), data);
     }
 }

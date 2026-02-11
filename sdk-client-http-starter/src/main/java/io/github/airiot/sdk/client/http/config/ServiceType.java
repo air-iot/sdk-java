@@ -53,6 +53,11 @@ public enum ServiceType {
     }
 
     public static ServiceType of(String serviceName) {
-        return ServiceType.valueOf(serviceName.toUpperCase());
+        for (ServiceType serviceType : ServiceType.values()) {
+            if (serviceType.name.equals(serviceName) || serviceType.name().equalsIgnoreCase(serviceName)) {
+                return serviceType;
+            }
+        }
+        throw new IllegalArgumentException("未定义的 ServiceType '" + serviceName + "'");
     }
 }

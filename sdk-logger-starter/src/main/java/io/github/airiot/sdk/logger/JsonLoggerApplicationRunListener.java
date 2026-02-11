@@ -17,34 +17,33 @@
 
 package io.github.airiot.sdk.logger;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.ConsoleAppender;
-import ch.qos.logback.core.encoder.LayoutWrappingEncoder;
-import org.slf4j.LoggerFactory;
+import org.jspecify.annotations.NonNull;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.SpringApplicationRunListener;
 import org.springframework.context.ConfigurableApplicationContext;
 
 public class JsonLoggerApplicationRunListener implements SpringApplicationRunListener {
 
+    public JsonLoggerApplicationRunListener(SpringApplication application, String[] args) {}
+
     @Override
-    public void contextLoaded(ConfigurableApplicationContext context) {
-        JsonLayout layout = new JsonLayout();
-        layout.start();
-
-        LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<>();
-        encoder.setLayout(layout);
-
-        ch.qos.logback.classic.LoggerContext lc = (ch.qos.logback.classic.LoggerContext) LoggerFactory.getILoggerFactory();
-        ConsoleAppender<ILoggingEvent> appender = new ConsoleAppender<>();
-
-        appender.setEncoder(encoder);
-        appender.setContext(lc);
-        appender.setName(Constants.APPENDER_NAME);
-
-        Logger rootLogger = lc.getLogger(Logger.ROOT_LOGGER_NAME);
-        rootLogger.addAppender(appender);
-
-        appender.start();
+    public void contextLoaded(@NonNull ConfigurableApplicationContext context) {
+//        JsonLayout layout = new JsonLayout();
+//        layout.start();
+//
+//        LayoutWrappingEncoder<ILoggingEvent> encoder = new LayoutWrappingEncoder<>();
+//        encoder.setLayout(layout);
+//
+//        ch.qos.logback.classic.LoggerContext lc = (ch.qos.logback.classic.LoggerContext) LoggerFactory.getILoggerFactory();
+//        ConsoleAppender<ILoggingEvent> appender = new ConsoleAppender<>();
+//
+//        appender.setEncoder(encoder);
+//        appender.setContext(lc);
+//        appender.setName(Constants.APPENDER_NAME);
+//
+//        Logger rootLogger = lc.getLogger(Logger.ROOT_LOGGER_NAME);
+//        rootLogger.addAppender(appender);
+//
+//        appender.start();
     }
 }

@@ -33,11 +33,19 @@ public interface DataServiceClient extends PlatformClient {
     /**
      * 调用数据接口
      *
-     * @param tClass 接口返回值类型
      * @param dsId   接口标识
      * @param params 参数列表, 即数据接口中添加的参数, 如果没有定义参数则传 {@code null}. <br> key: 参数名. <br> value: 参数值.
      * @return 请求结果
      */
-    <T> ResponseDTO<T> call(@Nonnull Class<T> tClass, @Nonnull String dsId, @Nullable Map<String, Object> params);
+    ResponseDTO<String> call(@Nonnull String dsId, @Nullable Map<String, Object> params);
 
+    /**
+     * 调用数据接口
+     *
+     * @param clazz  请求响应数据类型
+     * @param dsId   接口标识
+     * @param params 参数列表, 即数据接口中添加的参数, 如果没有定义参数则传 {@code null}. <br> key: 参数名. <br> value: 参数值.
+     * @return 请求结果
+     */
+    <T> ResponseDTO<T> call(Class<T> clazz, @Nonnull String dsId, @Nullable Map<String, Object> params);
 }

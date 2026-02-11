@@ -14,6 +14,6 @@ public interface DriverClient extends PlatformClient {
      *
      * @return 指令发送结果
      */
-    ResponseDTO<Object> sendCommand(Command command);
-    
+    ResponseDTO<String> sendCommand(Command command);
+
 }

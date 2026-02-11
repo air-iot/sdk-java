@@ -18,6 +18,7 @@
 package io.github.airiot.sdk.driver;
 
 
+import io.github.airiot.sdk.driver.config.BasicSettings;
 import io.github.airiot.sdk.driver.model.Tag;
 
 import java.util.Collections;
@@ -41,6 +42,10 @@ public class DeviceInfo<T extends Tag> {
      */
     private final String driverInstanceId;
     /**
+     * 驱动基础配置
+     */
+    private final BasicSettings settings;
+    /**
      * 设备的数据点信息
      * <br>
      * 如果驱动实例、模型上配置了数据点时则会合并进来.
@@ -61,21 +66,27 @@ public class DeviceInfo<T extends Tag> {
         return driverInstanceId;
     }
 
+    public BasicSettings getSettings() {
+        return settings;
+    }
+
     public Map<String, T> getTags() {
         return tags;
     }
 
-    public DeviceInfo(String id, String tableId, String driverInstanceId) {
+    public DeviceInfo(String id, String tableId, String driverInstanceId, BasicSettings settings) {
         this.id = id;
         this.tableId = tableId;
         this.driverInstanceId = driverInstanceId;
+        this.settings = settings;
         this.tags = Collections.emptyMap();
     }
 
-    public DeviceInfo(String id, String tableId, String driverInstanceId, Map<String, T> tags) {
+    public DeviceInfo(String id, String tableId, String driverInstanceId, BasicSettings settings, Map<String, T> tags) {
         this.id = id;
         this.tableId = tableId;
         this.driverInstanceId = driverInstanceId;
+        this.settings = settings;
         this.tags = tags == null ? Collections.emptyMap() : tags;
     }
 }

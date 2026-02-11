@@ -20,7 +20,6 @@ package io.github.airiot.sdk.client.http.clients;
 
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dto.Token;
-import io.github.airiot.sdk.client.http.configuration.HttpClientProperties;
 import io.github.airiot.sdk.client.properties.AuthorizationProperties;
 import io.github.airiot.sdk.client.service.core.AppClient;
 import org.junit.jupiter.api.*;
@@ -47,5 +46,9 @@ public class HttpAuthorizationClientImplTests {
     void getProjectToken() {
         ResponseDTO<Token> response = appClient.getToken(authorizationProperties.getAppKey(), authorizationProperties.getAppSecret());
         Assertions.assertTrue(response.isSuccess(), response.getMessage());
+        Assertions.assertNotNull(response.getData());
+        Assertions.assertNotNull(response.getData().getToken());
+        Assertions.assertFalse(response.getData().getToken().isBlank());
+        System.out.println(response.getData());
     }
 }

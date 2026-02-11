@@ -18,392 +18,61 @@
 package io.github.airiot.sdk.client.http.configuration;
 
 
-import feign.*;
-import feign.codec.Decoder;
-import feign.codec.Encoder;
-import feign.form.FormEncoder;
+import io.github.airiot.sdk.client.http.CustomQueryMethodArgumentResolver;
+import io.github.airiot.sdk.client.http.CustomWebClientHttpServiceGroupConfigurer;
 import io.github.airiot.sdk.client.http.clients.HttpProjectAuthorizationClientImpl;
 import io.github.airiot.sdk.client.http.clients.HttpTenantAuthorizationClientImpl;
 import io.github.airiot.sdk.client.http.clients.common.HttpCommonClient;
-import io.github.airiot.sdk.client.http.clients.core.*;
-import io.github.airiot.sdk.client.http.clients.driver.DriverFeignClientImpl;
-import io.github.airiot.sdk.client.http.clients.ds.DataServiceClientImpl;
-import io.github.airiot.sdk.client.http.clients.ds.DataServiceFeignClient;
-import io.github.airiot.sdk.client.http.clients.spm.SpmProjectFeignClient;
-import io.github.airiot.sdk.client.http.clients.spm.SpmUserFeignClient;
-import io.github.airiot.sdk.client.http.clients.warn.WarnFeignClient;
-import io.github.airiot.sdk.client.http.clients.warn.WarnRuleFeignClient;
+import io.github.airiot.sdk.client.http.clients.core.TableDataClientFactoryImpl;
+import io.github.airiot.sdk.client.http.clients.core.TableDataClientImpl;
+import io.github.airiot.sdk.client.http.clients.core.TableDataCommonClient;
 import io.github.airiot.sdk.client.http.config.ServiceConfig;
-import io.github.airiot.sdk.client.http.config.ServiceType;
-import io.github.airiot.sdk.client.http.feign.AuthRequestInterceptor;
-import io.github.airiot.sdk.client.http.feign.RequestHeaderInterceptor;
-import io.github.airiot.sdk.client.http.feign.UniResponseInterceptor;
-import io.github.airiot.sdk.client.interceptor.EnableClientInterceptors;
 import io.github.airiot.sdk.client.properties.AuthorizationProperties;
 import io.github.airiot.sdk.client.service.AuthorizationClient;
-import io.github.airiot.sdk.client.service.core.*;
-import io.github.airiot.sdk.client.service.driver.DriverClient;
-import io.github.airiot.sdk.client.service.ds.DataServiceClient;
-import io.github.airiot.sdk.client.service.spm.ProjectClient;
+import io.github.airiot.sdk.client.service.core.AppClient;
+import io.github.airiot.sdk.client.service.core.TableDataClientFactory;
 import io.github.airiot.sdk.client.service.spm.SpmUserClient;
-import io.github.airiot.sdk.client.service.warning.WarnClient;
-import io.github.airiot.sdk.client.service.warning.WarnRuleClient;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.EnableAspectJAutoProxy;
-import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.ImportRuntimeHints;
+import org.springframework.web.reactive.function.client.support.WebClientHttpServiceGroupConfigurer;
+import org.springframework.web.service.invoker.HttpServiceArgumentResolver;
+import org.springframework.web.service.registry.HttpServiceGroup;
+import org.springframework.web.service.registry.ImportHttpServices;
 
-import java.util.concurrent.TimeUnit;
+import java.util.List;
 
-@EnableClientInterceptors
-@EnableAspectJAutoProxy
 @Configuration
-@Import(FeignConfiguration.class)
+@ImportRuntimeHints(GraalvmRuntimeHits.class)
 @EnableConfigurationProperties({HttpClientProperties.class, AuthorizationProperties.class})
+@ImportHttpServices(group = "core", clientType = HttpServiceGroup.ClientType.WEB_CLIENT, basePackages = "io.github.airiot.sdk.client.http.clients.core")
+@ImportHttpServices(group = "driver", clientType = HttpServiceGroup.ClientType.WEB_CLIENT, basePackages = "io.github.airiot.sdk.client.http.clients.driver")
+@ImportHttpServices(group = "data-service", clientType = HttpServiceGroup.ClientType.WEB_CLIENT, basePackages = "io.github.airiot.sdk.client.http.clients.ds")
+@ImportHttpServices(group = "warning", clientType = HttpServiceGroup.ClientType.WEB_CLIENT, basePackages = "io.github.airiot.sdk.client.http.clients.warn")
+@ImportHttpServices(group = "spm", clientType = HttpServiceGroup.ClientType.WEB_CLIENT, basePackages = "io.github.airiot.sdk.client.http.clients.spm")
 public class HttpClientAutoConfiguration {
 
     @Bean
-    public AppClient appClient(Client client, Encoder encoder, Decoder decoder, Contract contract, HttpClientProperties properties) {
-        ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
-        return Feign.builder().client(client)
-                .encoder(encoder)
-                .decoder(decoder)
-                .contract(contract)
-                .options(new Request.Options(
-                        serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                        serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                        false
-                ))
-                .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                .target(AppFeignClient.class, properties.getHost());
+    public CustomQueryMethodArgumentResolver customQueryMethodArgumentResolver() {
+        return new CustomQueryMethodArgumentResolver();
     }
 
     @Bean
-    public SpmUserClient spmUserClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                       HttpClientProperties properties) {
-        ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.SPM);
-        return Feign.builder().client(client)
-                .encoder(encoder)
-                .decoder(decoder)
-                .contract(contract)
-                .options(new Request.Options(
-                        serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                        serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                        false
-                ))
-                .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                .target(SpmUserFeignClient.class, properties.getHost());
+    WebClientHttpServiceGroupConfigurer customWebClientHttpServiceGroupConfigurer(HttpClientProperties properties,
+                                                                                  ObjectProvider<AuthorizationClient> authorizationClient,
+                                                                                  List<HttpServiceArgumentResolver> httpServiceArgumentResolvers) {
+        return new CustomWebClientHttpServiceGroupConfigurer(properties, authorizationClient, httpServiceArgumentResolvers);
     }
 
     @Bean
-    public AuthorizationClient authorizationClient(AuthorizationProperties properties, AppClient httpAppClient, SpmUserClient spmUserClient) {
+    public AuthorizationClient authorizationClient(AuthorizationProperties properties,
+                                                   AppClient httpAppClient,
+                                                   SpmUserClient spmUserClient) {
         return AuthorizationProperties.Type.PROJECT.equals(properties.getType()) ?
                 new HttpProjectAuthorizationClientImpl(httpAppClient, properties) :
                 new HttpTenantAuthorizationClientImpl(spmUserClient, properties);
-    }
-
-    @Bean
-    public RequestInterceptor authRequestInterceptor(AuthorizationClient authorizationClient) {
-        return new AuthRequestInterceptor(authorizationClient);
-    }
-
-    /**
-     * 核心服务客户端
-     */
-    @Configuration
-    public static class HttpCoreClientConfiguration {
-
-        @Bean
-        public DepartmentClient departmentClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                                 HttpClientProperties properties,
-                                                 RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
-            return Feign.builder().client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(DepartmentFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public RoleClient roleClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                     HttpClientProperties properties,
-                                     RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
-            return Feign.builder().client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(RoleFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public SystemVariableClient systemVariableClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                                         HttpClientProperties properties,
-                                                         RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
-            return Feign.builder().client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(SystemVariableFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public TableSchemaClient tableSchemaClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                                   HttpClientProperties properties,
-                                                   RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
-            return Feign.builder().client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(TableSchemaFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public TableDataFeignClient tableDataClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                                    HttpClientProperties properties,
-                                                    RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
-            return Feign.builder()
-                    .client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .target(TableDataFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public TableDataClientFactory tableDataClientFactory(TableDataFeignClient tableDataFeignClient) {
-            return new TableDataClientFactoryImpl(tableDataFeignClient);
-        }
-
-        @Bean
-        public UserClient userClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                     HttpClientProperties properties,
-                                     RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
-            return Feign.builder()
-                    .client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(UserFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public TimingDataClient timingDataClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                                 HttpClientProperties properties,
-                                                 RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
-            return Feign.builder()
-                    .client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .target(TimingDataFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public MediaLibraryClient mediaLibraryClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                                     HttpClientProperties properties, RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.CORE);
-            return Feign.builder()
-                    .client(client)
-                    .encoder(new FormEncoder(encoder))
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(MediaLibraryFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public WarnRuleClient warnRuleClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                             HttpClientProperties properties, RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.WARNING);
-            return Feign.builder()
-                    .client(client)
-                    .encoder(new FormEncoder(encoder))
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(WarnRuleFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public WarnClient warnClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                     HttpClientProperties properties, RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.WARNING);
-            return Feign.builder()
-                    .client(client)
-                    .encoder(new FormEncoder(encoder))
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(WarnFeignClient.class, properties.getHost());
-        }
-    }
-
-
-    /**
-     * 数据接口服务
-     */
-    @Configuration
-    public static class HttpDataSourceClientConfiguration {
-        @Bean
-        public DataServiceFeignClient dataServiceFeignClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                                             HttpClientProperties properties,
-                                                             RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.DATA_SERVICE);
-            return Feign.builder().client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(DataServiceFeignClient.class, properties.getHost());
-        }
-
-        @Bean
-        public DataServiceClient dataServiceClient(DataServiceFeignClient dataServiceFeignClient) {
-            return new DataServiceClientImpl(dataServiceFeignClient);
-        }
-    }
-
-    /**
-     * 空间管理接口服务
-     */
-    @Configuration
-    public static class HttpSpmClientConfiguration {
-        @Bean
-        public ProjectClient projectClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                           HttpClientProperties properties,
-                                           RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.SPM);
-            return Feign.builder().client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(SpmProjectFeignClient.class, properties.getHost());
-        }
-    }
-
-    /**
-     * 驱动管理接口服务
-     */
-    @Configuration
-    public static class HttpDriverClientConfiguration {
-        @Bean
-        public DriverClient driverClient(Client client, Encoder encoder, Decoder decoder, Contract contract,
-                                         HttpClientProperties properties,
-                                         RequestInterceptor authRequestInterceptor) {
-            ServiceConfig serviceConfig = properties.getOrDefault(ServiceType.DRIVER);
-            return Feign.builder().client(client)
-                    .encoder(encoder)
-                    .decoder(decoder)
-                    .contract(contract)
-                    .options(new Request.Options(
-                            serviceConfig.getConnectTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            serviceConfig.getReadTimeout().toMillis(), TimeUnit.MILLISECONDS,
-                            false
-                    ))
-                    .requestInterceptor(authRequestInterceptor)
-                    .requestInterceptor(RequestHeaderInterceptor.INSTANCE)
-                    .responseInterceptor(UniResponseInterceptor.INSTANCE)
-                    .target(DriverFeignClientImpl.class, properties.getHost());
-        }
     }
 
     @Bean
@@ -412,9 +81,14 @@ public class HttpClientAutoConfiguration {
         return new HttpCommonClient(properties.getHost(), authorizationClient,
                 config.getConnectTimeout(), config.getReadTimeout(), config.getReadTimeout());
     }
-    
+
     @Bean
     public TableDataCommonClient tableDataCommonClient(HttpCommonClient client) {
         return new TableDataCommonClient(client);
+    }
+
+    @Bean
+    public TableDataClientFactory tableDataClientFactory(TableDataClientImpl tableDataClient) {
+        return new TableDataClientFactoryImpl(tableDataClient);
     }
 }

@@ -17,13 +17,13 @@
 
 package io.github.airiot.sdk.client.http.clients;
 
-import feign.FeignException;
 import io.github.airiot.sdk.client.dto.ResponseDTO;
 import io.github.airiot.sdk.client.dto.Token;
 import io.github.airiot.sdk.client.exception.AuthorizationException;
 import io.github.airiot.sdk.client.properties.AuthorizationProperties;
 import io.github.airiot.sdk.client.service.AuthorizationClient;
 import io.github.airiot.sdk.client.service.spm.SpmUserClient;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
@@ -45,16 +45,16 @@ public class HttpTenantAuthorizationClientImpl implements AuthorizationClient {
         if (token != null && token.equals(this.properties) && !token.getToken().isExpired(Duration.ofSeconds(60))) {
             return token.getToken();
         }
+
+        if (!StringUtils.hasText(this.properties.getAppKey()) || !StringUtils.hasText(this.properties.getAppSecret())) {
+            throw new AuthorizationException(500, "认证失败", "未设置 appKey 或 appSecret");
+        }
         
         try {
             ResponseDTO<Token> response = this.spmUserClient.getToken(this.properties.getAppKey(), this.properties.getAppSecret());
             Token t = response.unwrap(() -> new AuthorizationException(response.getCode(), response.getMessage(), response.getDetail()));
             this.holder.set(new TokenHolder(this.properties.getAppKey(), this.properties.getAppSecret(), t));
             return t;
-        } catch (FeignException.NotFound e) {
-            throw new AuthorizationException(404, "获取平台 token 失败", "请检查平台地址是否正确", e);
-        } catch (FeignException e) {
-            throw new AuthorizationException(e.status(), e.getMessage(), e.contentUTF8());
         } catch (Exception e) {
             throw new AuthorizationException(500, "获取平台 token 失败", e.getMessage(), e);
         }

@@ -17,8 +17,10 @@
 
 package io.github.airiot.sdk.encrypt;
 
+import org.jspecify.annotations.NonNull;
+import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.env.EnvironmentPostProcessor;
+import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.MutablePropertySources;
@@ -28,12 +30,12 @@ import java.util.Map;
 /**
  * PropertySource 属性值解密处理.
  */
-public class DecryptPropertySourcesEnvironmentProcessor implements EnvironmentPostProcessor {
+public class DecryptPropertySourcesEnvironmentProcessor implements EnvironmentPostProcessor, Ordered {
 
     private final static String PROPERTY_SOURCE_NAME = "airiot-encrypt";
 
     @Override
-    public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
+    public void postProcessEnvironment(@NonNull ConfigurableEnvironment environment, @NonNull SpringApplication application) {
         if (Decryptors.isEmpty()) {
             return;
         }
@@ -50,5 +52,10 @@ public class DecryptPropertySourcesEnvironmentProcessor implements EnvironmentPo
         if (!properties.isEmpty()) {
             propertySources.addFirst(new MapPropertySource(PROPERTY_SOURCE_NAME, properties));
         }
+    }
+    
+    @Override
+    public int getOrder() {
+        return Ordered.LOWEST_PRECEDENCE;
     }
 }

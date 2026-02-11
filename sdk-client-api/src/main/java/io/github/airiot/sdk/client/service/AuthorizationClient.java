@@ -24,7 +24,6 @@ import io.github.airiot.sdk.client.annotation.DisableAuth;
 /**
  * 认证客户端
  */
-@DisableAuth
 public interface AuthorizationClient extends PlatformClient {
 
     /**

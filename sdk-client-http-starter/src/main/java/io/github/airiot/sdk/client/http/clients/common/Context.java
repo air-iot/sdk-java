@@ -66,6 +66,10 @@ public class Context {
         return timeout;
     }
 
+    public Duration getTimeoutOrDefault(Duration timeout) {
+        return this.timeout == null ? timeout : this.timeout;
+    }
+
     public Context(String projectId, String token, Map<String, String> headers, Duration timeout) {
         this.projectId = projectId;
         this.token = token;

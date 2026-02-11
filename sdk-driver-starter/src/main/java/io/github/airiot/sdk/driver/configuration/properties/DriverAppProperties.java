@@ -19,6 +19,7 @@ package io.github.airiot.sdk.driver.configuration.properties;
 
 
 import jakarta.validation.constraints.NotBlank;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -27,6 +28,7 @@ import org.springframework.core.env.CommandLinePropertySource;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.PropertySource;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.Optional;
@@ -42,29 +44,17 @@ public class DriverAppProperties implements InitializingBean, EnvironmentAware {
     private Environment environment;
 
     /**
-     * 启用驱动相关功能配置项
-     * <br>
-     * 会影响 {@code GrpcDriverEventListener} 和 {@code DataSender}
+     * 本地驱动配置文件
      */
-    public static final String DRIVER_ENABLE_PROPERTY = "airiot.driver.enabled";
+    private boolean dataFileEnabled = false;
+    private String dataFilePath = "./data.json";
 
     /**
-     * 标准模式
+     * AI 服务配置
      */
-    public static final String NORMAL_MODE = "normal";
-    /**
-     * 本地模式
-     */
-    public static final String LOCAL_MODE = "local";
-
-    /**
-     * 驱动的运行模式
-     * <br>
-     * normal: 标准模式
-     * <br>
-     * local: 本地模式. 该模式下, 不会连接平台 grpc
-     */
-    private String mode = NORMAL_MODE;
+    private boolean aiServerEnabled = false;
+    private String aiServerHost = "0.0.0.0";
+    private int aiServerPort = 8080;
 
     /**
      * 当前驱动实例所属项目ID, 默认由平台注入
@@ -87,18 +77,30 @@ public class DriverAppProperties implements InitializingBean, EnvironmentAware {
      * <br>
      * 在平台安装驱动时, 该信息由平台通过命令行参数 {@code serviceId} 传入
      */
-    @NotBlank(message = "驱动实例ID不能为空")
+//    @NotBlank(message = "驱动实例ID不能为空")
     @Value("${serviceId:}")
     private String instanceId;
 
     private String distributed = "";
 
-    public String getMode() {
-        return mode;
+    public boolean isDataFileEnabled() {
+        return dataFileEnabled;
     }
 
-    public void setMode(String mode) {
-        this.mode = mode;
+    public String getDataFilePath() {
+        return dataFilePath;
+    }
+
+    public boolean isAiServerEnabled() {
+        return aiServerEnabled;
+    }
+
+    public String getAiServerHost() {
+        return aiServerHost;
+    }
+
+    public int getAiServerPort() {
+        return aiServerPort;
     }
 
     public String getProjectId() {
@@ -144,7 +146,13 @@ public class DriverAppProperties implements InitializingBean, EnvironmentAware {
     @Override
     public String toString() {
         return "DriverAppProperties{" +
-                "projectId='" + projectId + '\'' +
+                "environment=" + environment +
+                ", dataFileEnabled=" + dataFileEnabled +
+                ", dataFilePath='" + dataFilePath + '\'' +
+                ", aiServerEnabled=" + aiServerEnabled +
+                ", aiServerHost='" + aiServerHost + '\'' +
+                ", aiServerPort=" + aiServerPort +
+                ", projectId='" + projectId + '\'' +
                 ", id='" + id + '\'' +
                 ", name='" + name + '\'' +
                 ", instanceId='" + instanceId + '\'' +
@@ -154,8 +162,7 @@ public class DriverAppProperties implements InitializingBean, EnvironmentAware {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        if (this.environment instanceof ConfigurableEnvironment) {
-            ConfigurableEnvironment env = (ConfigurableEnvironment) this.environment;
+        if (this.environment instanceof ConfigurableEnvironment env) {
             Optional<PropertySource<?>> propertySource = env.getPropertySources().stream()
                     .filter(ps -> ps instanceof CommandLinePropertySource)
                     .findAny();
@@ -172,13 +179,20 @@ public class DriverAppProperties implements InitializingBean, EnvironmentAware {
             }
         }
 
-        if(LOCAL_MODE.equalsIgnoreCase(this.mode)) {
+        this.dataFileEnabled = environment.getProperty("DATAFILE.ENABLE", Boolean.class, false);
+        this.dataFilePath = environment.getProperty("DATAFILE.PATH", "./data.json");
+
+        this.aiServerEnabled = environment.getProperty("HTTP.ENABLE", Boolean.class, false);
+        this.aiServerHost = environment.getProperty("HTTP.HOST", "0.0.0.0");
+        this.aiServerPort = environment.getProperty("HTTP.PORT", Integer.class, 8080);
+
+        if (this.aiServerEnabled && !StringUtils.hasText(this.instanceId)) {
             this.instanceId = UUID.randomUUID().toString();
         }
     }
 
     @Override
-    public void setEnvironment(Environment environment) {
+    public void setEnvironment(@NonNull Environment environment) {
         this.environment = environment;
     }
 }

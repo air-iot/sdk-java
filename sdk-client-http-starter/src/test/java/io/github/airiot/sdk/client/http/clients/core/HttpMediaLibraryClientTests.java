@@ -44,7 +44,8 @@ public class HttpMediaLibraryClientTests {
 
     @Test
     void mkdir() {
-        this.mediaLibraryClient.mkdir("/aa/bb/dd");
+        ResponseDTO<Void> response = this.mediaLibraryClient.mkdir("/aa/bb/dd");
+        Assertions.assertTrue(response.isSuccess());
     }
 
     @Test

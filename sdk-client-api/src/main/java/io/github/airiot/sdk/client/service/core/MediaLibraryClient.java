@@ -27,6 +27,7 @@ import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * 媒体库客户端
@@ -68,6 +69,16 @@ public interface MediaLibraryClient extends PlatformClient {
     ResponseDTO<UploadFileResult> upload(@Nonnull String catalog, @Nonnull String action, @Nonnull String filename, @Nonnull byte[] fileData);
 
     /**
+     * 上传文件到媒体库
+     * @param catalog 上传目录
+     * @param action 出重同名文件时执行的动作. 可选值: cover: 覆盖, rename: 文件名自动加1
+     * @param filename 文件名
+     * @param inputStream 文件内容输入流
+     * @return 如果上传成功, 则返回该文件的 url
+     */
+    ResponseDTO<UploadFileResult> upload(@Nonnull String catalog, @Nonnull String action, @Nonnull String filename, @Nonnull InputStream inputStream);
+
+    /**
      * 将远程文件上传到媒体库
      * @param params 参数列表
      * @return 如果上传成功, 则返回该文件的 url
@@ -85,9 +96,7 @@ public interface MediaLibraryClient extends PlatformClient {
      */
     default ResponseDTO<UploadFileResult> upload(@Nonnull String catalog, @Nonnull String action, @Nonnull File file) throws IOException {
         try (FileInputStream fis = new FileInputStream(file)) {
-            byte[] fileData = new byte[fis.available()];
-            fis.read(fileData);
-            return upload(catalog, action, file.getName(), fileData);
+            return upload(catalog, action, file.getName(), fis);
         }
     }
 
@@ -103,9 +112,7 @@ public interface MediaLibraryClient extends PlatformClient {
      */
     default ResponseDTO<UploadFileResult> upload(@Nonnull String catalog, @Nonnull String action, String filename, @Nonnull File file) throws IOException {
         try (FileInputStream fis = new FileInputStream(file)) {
-            byte[] fileData = new byte[fis.available()];
-            fis.read(fileData);
-            return upload(catalog, action, filename, fileData);
+            return upload(catalog, action, filename, fis);
         }
     }
 

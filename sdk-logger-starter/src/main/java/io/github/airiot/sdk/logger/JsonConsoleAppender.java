@@ -33,4 +33,16 @@ public class JsonConsoleAppender extends UnsynchronizedAppenderBase<ILoggingEven
     public void append(ILoggingEvent eventObject) {
         this.delegate.doAppend(new LoggingEventWithContext(LoggerContexts.getContext(), eventObject));
     }
+
+    @Override
+    public void start() {
+        this.delegate.start();
+        super.start();
+    }
+
+    @Override
+    public void stop() {
+        this.delegate.stop();
+        super.stop();
+    }
 }

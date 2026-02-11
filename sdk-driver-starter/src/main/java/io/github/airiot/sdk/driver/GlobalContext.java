@@ -18,10 +18,15 @@
 package io.github.airiot.sdk.driver;
 
 import com.google.common.collect.Maps;
+import io.github.airiot.sdk.driver.config.BasicConfig;
+import io.github.airiot.sdk.driver.config.Device;
+import io.github.airiot.sdk.driver.config.DriverSingleConfig;
+import io.github.airiot.sdk.driver.config.Model;
 import io.github.airiot.sdk.driver.model.Field;
 import io.github.airiot.sdk.driver.model.FieldType;
 import io.github.airiot.sdk.driver.model.Point;
 import io.github.airiot.sdk.driver.model.Tag;
+import org.jspecify.annotations.NonNull;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -91,12 +96,12 @@ public final class GlobalContext {
     }
 
     public synchronized void removeDevice(String tableId, String deviceId) {
-        if(this.devices.get() == null) {
+        if (this.devices.get() == null) {
             return;
         }
 
         Map<String, DeviceInfo<? extends Tag>> tableDevices = this.devices.get().get(deviceId);
-        if(tableDevices != null) {
+        if (tableDevices != null) {
             tableDevices.remove(tableId);
         }
     }
@@ -113,6 +118,7 @@ public final class GlobalContext {
 
     /**
      * 更新全部缓存的设备信息.
+     *
      * @param deviceInfos 全部设备信息. key: 表标识, value: 设备信息列表.
      */
     public synchronized void set(Map<String, List<DeviceInfo<? extends Tag>>> deviceInfos) {
@@ -174,6 +180,24 @@ public final class GlobalContext {
         }
 
         return infos.values().stream().findFirst();
+    }
+
+    /**
+     * 获取指定表内所有设备的信息
+     * @param tableId 表标识
+     * @return 设备列表
+     */
+    public @NonNull List<DeviceInfo<? extends Tag>> getTableDevices(@NonNull String tableId) {
+        Assert.hasText(tableId, "the table id is empty");
+        List<DeviceInfo<? extends Tag>> devices = new ArrayList<>();
+        Map<String, Map<String, DeviceInfo<? extends Tag>>> tableDevices = this.devices.get();
+        for (Map<String, DeviceInfo<? extends Tag>> values : tableDevices.values()) {
+            DeviceInfo<? extends Tag> device = values.get(tableId);
+            if(device != null) {
+                devices.add(device);
+            }
+        }
+        return devices;
     }
 
     /**
@@ -282,5 +306,101 @@ public final class GlobalContext {
         }
 
         return new Point(deviceId, childDeviceId, tableId, time, fields, fieldTypes);
+    }
+
+    public void resetGlobalContext(DriverSingleConfig<BasicConfig<? extends Tag>> driverConfig) {
+        String instanceId = driverConfig.getId();
+        Map<String, List<DeviceInfo<? extends Tag>>> deviceInfos = new HashMap<>();
+        Map<String, Map<String, Tag>> allTableTags = new HashMap<>();
+
+        Map<String, Tag> driverInstanceTags = new HashMap<>();
+        if (driverConfig.getConfig() != null && !CollectionUtils.isEmpty(driverConfig.getConfig().getTags())) {
+            for (Tag tag : driverConfig.getConfig().getTags()) {
+                driverInstanceTags.put(tag.getId(), tag);
+            }
+        }
+
+        if (!CollectionUtils.isEmpty(driverConfig.getTables())) {
+            for (Model<BasicConfig<? extends Tag>, BasicConfig<? extends Tag>> table : driverConfig.getTables()) {
+                String tableId = table.getId();
+                table.setDriverInstanceId(instanceId);
+                Map<String, Tag> tableTags = new HashMap<>(driverInstanceTags);
+                if (table.getConfig() != null && !CollectionUtils.isEmpty(table.getConfig().getTags())) {
+                    for (Tag tag : table.getConfig().getTags()) {
+                        tableTags.put(tag.getId(), tag);
+                    }
+                }
+
+                allTableTags.put(tableId, tableTags);
+
+                for (Device<BasicConfig<? extends Tag>> device : table.getDevices()) {
+                    device.setDriverInstanceId(instanceId);
+                    device.setTable(tableId);
+
+                    Map<String, Tag> deviceTags = new HashMap<>(tableTags);
+                    if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
+                        for (Tag tag : device.getConfig().getTags()) {
+                            deviceTags.put(tag.getId(), tag);
+                        }
+                    }
+                    String deviceId = device.getId();
+                    DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, instanceId,
+                            device.getConfig() == null ? null : device.getConfig().getSettings(),
+                            deviceTags);
+                    deviceInfos.putIfAbsent(deviceId, new ArrayList<>(1));
+                    deviceInfos.get(deviceId).add(info);
+                }
+            }
+        }
+
+        this.set(deviceInfos);
+        this.setAllTableTags(allTableTags);
+    }
+
+    public void resetGlobalContextOfTable(String driverInstanceId, DriverSingleConfig.Model<BasicConfig<? extends Tag>> table) {
+        String tableId = table.getId();
+        List<DeviceInfo<? extends Tag>> deviceInfos = new ArrayList<>();
+        Map<String, Tag> tableTags = new HashMap<>();
+
+        if (table.getConfig() != null && !CollectionUtils.isEmpty(table.getConfig().getTags())) {
+            for (Tag tag : table.getConfig().getTags()) {
+                tableTags.put(tag.getId(), tag);
+            }
+        }
+
+        if (!CollectionUtils.isEmpty(table.getDevices())) {
+            for (Device<BasicConfig<? extends Tag>> device : table.getDevices()) {
+                Map<String, Tag> deviceTags = new HashMap<>(tableTags);
+                if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
+                    for (Tag tag : device.getConfig().getTags()) {
+                        deviceTags.put(tag.getId(), tag);
+                    }
+                }
+
+                String deviceId = device.getId();
+                DeviceInfo<? extends Tag> info = new DeviceInfo<>(deviceId, tableId, driverInstanceId,
+                        device.getConfig() == null ? null : device.getConfig().getSettings(),
+                        deviceTags);
+                deviceInfos.add(info);
+            }
+        }
+
+        this.setTableDevices(tableId, deviceInfos);
+        this.setTableTags(tableId, tableTags);
+    }
+
+    public void resetGlobalContextOfDevice(String driverInstanceId, Device<BasicConfig<? extends Tag>> device) {
+        String tableId = device.getTable();
+        Map<String, Tag> deviceTags = new HashMap<>(this.getTableTags(tableId));
+        if (device.getConfig() != null && !CollectionUtils.isEmpty(device.getConfig().getTags())) {
+            for (Tag tag : device.getConfig().getTags()) {
+                deviceTags.put(tag.getId(), tag);
+            }
+        }
+        String deviceId = device.getId();
+        DeviceInfo<? extends Tag> deviceInfo = new DeviceInfo<>(deviceId, tableId, driverInstanceId,
+                device.getConfig() == null ? null : device.getConfig().getSettings(),
+                deviceTags);
+        this.addDevice(deviceInfo);
     }
 }

@@ -124,9 +124,9 @@ public class AuthorizationProperties implements InitializingBean, EnvironmentAwa
             RequestContext.setDefaultProjectId(this.projectId);
         }
 
-        if (!StringUtils.hasText(this.appKey) || !StringUtils.hasText(this.appSecret)) {
-            throw new IllegalArgumentException("未设置 appKey 或 appSecret");
-        }
+//        if (!StringUtils.hasText(this.appKey) || !StringUtils.hasText(this.appSecret)) {
+//            throw new IllegalArgumentException("未设置 appKey 或 appSecret");
+//        }
     }
 
     @Override

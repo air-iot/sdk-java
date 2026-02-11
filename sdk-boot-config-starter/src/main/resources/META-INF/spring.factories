@@ -1,1 +1,2 @@
-org.springframework.cloud.bootstrap.BootstrapConfiguration=io.github.airiot.config.etcd.EtcdConfigBootConfiguration
+org.springframework.boot.EnvironmentPostProcessor=io.github.airiot.config.etcd.EtcdEnvironmentPostProcessor, \
+  io.github.airiot.config.lite.LiteEnvironmentPostProcessor

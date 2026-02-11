@@ -36,4 +36,16 @@ public class JsonConsoleAppenderWithDynamicContext extends UnsynchronizedAppende
         LoggerContext newContext = this.context.copy(LoggerContexts.getContext());
         this.delegate.doAppend(new LoggingEventWithContext(newContext, eventObject));
     }
+
+    @Override
+    public void start() {
+        this.delegate.start();
+        super.start();
+    }
+
+    @Override
+    public void stop() {
+        this.delegate.stop();
+        super.stop();
+    }
 }

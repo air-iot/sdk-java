@@ -21,7 +21,6 @@ package io.github.airiot.sdk.client.http.clients.core;
 import com.google.gson.Gson;
 import io.github.airiot.sdk.client.builder.LatestDataQuery;
 import io.github.airiot.sdk.client.builder.TimingDataQuery;
-import io.github.airiot.sdk.client.http.feign.JsonParamExpander;
 import io.github.airiot.sdk.client.service.core.TimingDataClient;
 import io.github.airiot.sdk.client.service.core.dto.timing.TimingData;
 import org.junit.jupiter.api.MethodOrderer;
@@ -64,7 +63,6 @@ public class HttpTimingDataClientTests {
                 .finish()
                 .build();
         
-        System.out.println(JsonParamExpander.INSTANCE.expand(queries));
         List<TimingData> result = this.timingDataClient.query(queries);
         System.out.println(new Gson().toJson(result));
     }
@@ -75,8 +73,6 @@ public class HttpTimingDataClientTests {
                 .allTags("tcp_client", "tcp_client_001")
                 .specific("tcp_client", "tcp_client_002", "b");
         Object result = this.timingDataClient.queryLatest(query);
-
-        System.out.println(JsonParamExpander.INSTANCE.expand(query.getSpecifications()));
         System.out.println(result);
     }
 }

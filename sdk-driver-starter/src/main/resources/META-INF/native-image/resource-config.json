@@ -1,0 +1,21 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": ".*schema\\.js$"
+      },
+      {
+        "pattern": ".*schema-en\\.js$"
+      },
+      {
+        "pattern": "org/graalvm/nativeimage/charset/.*\\.properties$"
+      },
+      {
+        "pattern": ".*\\.properties"
+      },
+      {
+        "pattern": "META-INF/services/.*"
+      }
+    ]
+  }
+}
